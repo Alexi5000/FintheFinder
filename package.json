@@ -1,12 +1,21 @@
 {
-  "name": "template-deep-research",
+  "name": "fin-the-finder",
   "version": "1.0.0",
-  "main": "index.js",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "mastra dev",
-    "build": "mastra build",
-    "start": "mastra start"
+    "dev": "next dev",
+    "dev:mastra": "mastra dev",
+    "build": "next build && mastra build",
+    "build:web": "next build",
+    "build:mastra": "mastra build",
+    "start": "next start",
+    "start:mastra": "mastra start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "audit": "npm audit --audit-level=moderate",
+    "verify": "npm run typecheck && npm run lint && npm run test && npm run build"
   },
   "keywords": [],
   "author": "",
@@ -17,18 +26,36 @@
     "node": ">=20.9.0"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^1.3.24",
-    "@mastra/core": "latest",
-    "@mastra/libsql": "latest",
-    "@mastra/loggers": "latest",
-    "@mastra/memory": "latest",
-    "ai": "^4.3.19",
-    "exa-js": "^1.8.27",
-    "zod": "^3.25.76"
+    "@ai-sdk/openai": "3.0.64",
+    "@mastra/core": "1.35.0",
+    "@mastra/libsql": "1.11.0",
+    "@mastra/loggers": "1.1.1",
+    "@mastra/memory": "1.18.2",
+    "@supabase/ssr": "0.10.3",
+    "@supabase/supabase-js": "2.106.0",
+    "ai": "6.0.185",
+    "exa-js": "2.13.0",
+    "lucide-react": "1.16.0",
+    "next": "16.2.6",
+    "pino": "10.3.1",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "zod": "4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^24.0.3",
-    "mastra": "latest",
-    "typescript": "^5.8.3"
+    "@playwright/test": "1.60.0",
+    "@types/node": "24.0.3",
+    "@types/react": "19.2.15",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.2",
+    "eslint-config-next": "16.2.6",
+    "jsdom": "29.1.1",
+    "mastra": "1.9.3",
+    "tsx": "4.22.3",
+    "typescript": "5.8.3",
+    "vitest": "4.1.6"
+  },
+  "overrides": {
+    "postcss": "8.5.15"
   }
 }

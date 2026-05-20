@@ -1,11 +1,10 @@
 import { Agent } from '@mastra/core/agent';
-import { openai } from '@ai-sdk/openai';
-
-// Initialize model
-const mainModel = openai('gpt-4.1');
+import { models, openaiProviderOptions } from '@/lib/models';
 
 export const learningExtractionAgent = new Agent({
+  id: 'learning-extractor',
   name: 'Learning Extraction Agent',
+  description: 'Extracts evidence-backed learnings and follow-up questions from vetted sources.',
   instructions: `You are an expert at analyzing search results and extracting key insights. Your role is to:
 
   1. Analyze search results from research queries
@@ -20,5 +19,8 @@ export const learningExtractionAgent = new Agent({
   - Consider the original research query context when extracting insights
 
   3. Generate 1 relevant follow-up question that would deepen the research`,
-  model: mainModel,
+  model: models.primary,
+  defaultOptions: {
+    providerOptions: openaiProviderOptions,
+  },
 });

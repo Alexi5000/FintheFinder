@@ -1,8 +1,15 @@
 output.txt
 node_modules
 dist
+.next
 .mastra
+.turbo
+coverage
+playwright-report
+test-results
+.vscode
 .env.development
 .env
+.env*.local
 *.db
 *.db-*

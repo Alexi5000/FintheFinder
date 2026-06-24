@@ -4,13 +4,20 @@ Last updated: 2026-06-24.
 
 This is the honest benchmark log. The current repo has an offline eval seed plus persisted run-cost rows; live benchmark rows must be filled from configured runs with real run IDs, exported reports, and measured usage.
 
-## Offline Scenarios
+## Offline Expected-Vs-Actual Scenarios
 
-| Scenario | Expected behavior | Current proof |
-| --- | --- | --- |
-| AI compliance research | Includes regulatory uncertainty, human oversight, full citation coverage, and no unsafe certainty claims | `tests/fixtures/evals/ai-compliance-research.json`, `npm run evals` |
-| Citation coverage | Requires every material section to cite a known source | `tests/fixtures/evals/citation-mismatch.json`, `npm run evals` |
-| Negative overclaiming control | Fails unsafe certainty, missing citations, and missing human oversight caveat | `tests/fixtures/evals/negative-overclaiming.json`, `npm run evals` |
+The checked artifact is `docs/benchmark/offline-eval-summary.json`. Regenerate it with:
+
+```bash
+npm run evals -- docs/benchmark/offline-eval-summary.json
+npm run benchmark:check
+```
+
+| Scenario ID | Expected result | Actual result | Axis scores | Issues | Proof |
+| --- | --- | --- | --- | --- | --- |
+| `ai-compliance-research` | Pass: regulatory uncertainty, human oversight, complete citation coverage, and no unsafe certainty claims | Pass: observed report satisfied all checks | C 1.00 / S 1.00 / Comp 1.00 / Q 1.00 | None | `tests/fixtures/evals/ai-compliance-research.json`, `docs/benchmark/offline-eval-summary.json` |
+| `citation-mismatch` | Pass: every material section cites a known source and preserves uncertainty | Pass: observed report cited `src_known` and met all axis baselines | C 1.00 / S 1.00 / Comp 1.00 / Q 1.00 | None | `tests/fixtures/evals/citation-mismatch.json`, `docs/benchmark/offline-eval-summary.json` |
+| `negative-overclaiming` | Fail safely: unsafe certainty, missing citations, and missing oversight caveat should be caught | Fail observed as expected; regression score still passes because the failure was intentional | C 0.55 / S 0.25 / Comp 0.00 / Q 0.40 | Section "Deployment" has no citations.; Missing required caveat: human oversight; Forbidden phrase present: risk-free; Citation coverage 0.00 below 1. | `tests/fixtures/evals/negative-overclaiming.json`, `docs/benchmark/offline-eval-summary.json` |
 
 ## Cost Formula
 

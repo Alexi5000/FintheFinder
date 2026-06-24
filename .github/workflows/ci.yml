@@ -29,6 +29,7 @@ jobs:
       - run: npm run notebooks:check
       - run: npm run test:coverage
       - run: npm run evals -- artifacts/evals/offline-summary.json
+      - run: npm run benchmark:check
       - uses: actions/upload-artifact@v4
         if: always()
         with:

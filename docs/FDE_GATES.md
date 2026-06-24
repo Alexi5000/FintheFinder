@@ -15,13 +15,13 @@ Fin is production-ready only when each public claim is implemented, tested, demo
 | Notebook authoring surface | Implemented as non-runtime artifact | `notebooks/` | `npm run notebooks:check` |
 | Containerization | Implemented | `Dockerfile`, `docker-compose.yml` | `npm run container:build` |
 | FDE narrative README/About | Implemented | `README.md`, `docs/ABOUT.md`, `/about` | `npm run build`, Playwright |
-| Honest benchmark doc | Implemented | `docs/BENCHMARK.md` | File review |
+| Honest benchmark doc | Implemented | `docs/BENCHMARK.md`, `docs/benchmark/offline-eval-summary.json` | `npm run benchmark:check` |
 | Recorded live demo proof | Pending configured credentials | `docs/demo/live-demo.example.json`, `scripts/demo-record.mjs` | `npm run demo:record` after live run |
 | ADRs | Implemented | `docs/adr/` | File review |
 | Full test coverage for new surface | Implemented | Unit tests and coverage gate | `npm run test:coverage` |
 | Contract single source of truth | Implemented | `contracts/schema.json` | `npm run contracts:check` |
 | Dual runtime behind contract | Implemented | Worker queue, `/run` enqueue, Docker web/worker commands | `npm run worker`, `npm run container:build` |
-| Eval regression detection | Implemented | Fixture score baselines, negative controls, CI eval artifact, eval API | `npm run evals`, `GET /api/research/evals` |
+| Eval regression detection | Implemented | Fixture score baselines, negative controls, CI eval artifact, eval API, checked benchmark artifact | `npm run evals`, `npm run benchmark:check`, `GET /api/research/evals` |
 | HITL approval state machine | Implemented | Research stage stops at approval; approvals block or waive critical gaps before reporting; `GET /api/research/sessions/:id/approvals` exposes decision history | `npm run typecheck`, API review |
 | Structured run-events log | Implemented | Run-linked events, trace/correlation fields, cost events, post-mortem events | `npm run contracts:check` |
 | Authenticated session UI loaders | Implemented | `/sessions`, `/sessions/[id]`, `/reports/[id]` client loaders | `npm run test:e2e` |

@@ -86,6 +86,7 @@ SUPABASE_SERVICE_ROLE_KEY=""
 | `npm run contracts:sync` | Regenerate JSON Schema contracts |
 | `npm run contracts:check` | Verify committed contracts and drift hash |
 | `npm run evals` | Run deterministic offline eval fixtures |
+| `npm run benchmark:check` | Verify checked-in expected-vs-actual benchmark evidence |
 | `npm run notebooks:check` | Validate authoring notebooks are non-runtime artifacts |
 | `npm run audit` | Run npm audit at moderate severity |
 | `npm run smoke` | Run repository and contract smoke checks |
@@ -119,6 +120,7 @@ npm run contracts:check
 npm run notebooks:check
 npm run test:coverage
 npm run evals
+npm run benchmark:check
 npm run build
 npm run audit
 npm run smoke

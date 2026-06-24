@@ -6,22 +6,19 @@ const args = process.argv.slice(2);
 const outputFlagIndex = args.indexOf('--output');
 const manifestFlagIndex = args.indexOf('--manifest');
 const live = args.includes('--live');
-const positionalOutputPath = args.find((arg, index) => !arg.startsWith('--') && index !== outputFlagIndex + 1 && index !== manifestFlagIndex + 1);
-const outputPath = outputFlagIndex >= 0 ? args[outputFlagIndex + 1] : positionalOutputPath;
-const manifestPath = manifestFlagIndex >= 0 ? args[manifestFlagIndex + 1] : 'docs/demo/live-demo.json';
+const consumedFlagValueIndexes = new Set<number>();
+if (outputFlagIndex >= 0) consumedFlagValueIndexes.add(outputFlagIndex + 1);
+if (manifestFlagIndex >= 0) consumedFlagValueIndexes.add(manifestFlagIndex + 1);
+const positionalOutputPath = args.find((arg, index) => !arg.startsWith('--') && !consumedFlagValueIndexes.has(index));
+const outputPath = outputFlagIndex >= 0 ? flagValue('--output', outputFlagIndex) : positionalOutputPath;
+const manifestPath = manifestFlagIndex >= 0 ? flagValue('--manifest', manifestFlagIndex) : 'docs/demo/live-demo.json';
 
-if (outputFlagIndex >= 0 && !args[outputFlagIndex + 1]) {
-  throw new Error('Missing output path after --output.');
-}
-
-if (manifestFlagIndex >= 0 && !args[manifestFlagIndex + 1]) {
-  throw new Error('Missing manifest path after --manifest.');
-}
+if (positionalOutputPath && live) throw new Error('Live eval proof uses --manifest; positional output is only supported for offline eval output.');
 
 const summary = live ? runLiveEvalProofCheck(manifestPath) : runOfflineEvalSuite();
 
 if (outputPath) {
-  const absoluteOutputPath = join(process.cwd(), outputPath);
+  const absoluteOutputPath = resolvePath(outputPath);
   mkdirSync(dirname(absoluteOutputPath), { recursive: true });
   writeFileSync(absoluteOutputPath, `${JSON.stringify(summary, null, 2)}\n`);
 }
@@ -75,4 +72,10 @@ function runLiveEvalProofCheck(path: string) {
 
 function resolvePath(path: string) {
   return isAbsolute(path) ? path : join(process.cwd(), path);
+}
+
+function flagValue(flag: string, index: number) {
+  const value = args[index + 1];
+  if (!value || value.startsWith('--')) throw new Error(`Missing value after ${flag}.`);
+  return value;
 }

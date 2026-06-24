@@ -18,17 +18,17 @@ Fin is production-ready only when each public claim is implemented, tested, demo
 | Honest benchmark doc | Implemented | `docs/BENCHMARK.md`, `docs/benchmark/offline-eval-summary.json` | `npm run benchmark:check` |
 | Recorded live demo proof | Pending configured credentials | `docs/demo/live-demo.example.json`, `scripts/demo-record.mjs`, demo verifier tests | `npm run demo:record` and `npm run evals:live` after live run |
 | ADRs | Implemented | `docs/adr/` | File review |
-| Full test coverage for new surface | Implemented | Unit tests for contracts, repository adapters, demo verifier, hosted API routes, and coverage gate | `npm run test:coverage` |
+| Full test coverage for new surface | Implemented | Unit tests for contracts, repository adapters, demo verifier, hosted API routes, worker runtime, and coverage gate | `npm run test:coverage` |
 | Contract single source of truth | Implemented | `contracts/schema.json` | `npm run contracts:check` |
-| Dual runtime behind contract | Implemented | Worker queue, `/run` enqueue, hosted route tests, Docker web/worker commands | `npx vitest run tests/unit/hosted-api-routes.test.ts`, `npm run container:build` |
+| Dual runtime behind contract | Implemented | Pure worker runtime, worker queue, `/run` enqueue, hosted route tests, Docker web/worker commands | `npx vitest run tests/unit/research-worker.test.ts`, `npx vitest run tests/unit/hosted-api-routes.test.ts`, `npm run container:build` |
 | Eval regression detection | Implemented | Fixture score baselines, negative controls, CI eval artifact, eval API, checked benchmark artifact | `npm run evals`, `npm run benchmark:check`, `GET /api/research/evals` |
 | Persisted offline eval history | Implemented | Typed eval contracts, Supabase eval history migration/RPC, public history API | `npm run evals:persist`, `GET /api/research/evals/history` |
 | HITL approval state machine | Implemented | Research stage stops at approval; approval route tests cover critical-gap blocking, waiver notes, reject, follow-up, reporting enqueue, and `GET /api/research/sessions/:id/approvals` exposes decision history | `npm run test:coverage`, API review |
-| Structured run-events log | Implemented | Run-linked events, trace/correlation fields, cost events, post-mortem events, SSE route formatting | `npm run contracts:check`, `npx vitest run tests/unit/hosted-api-routes.test.ts` |
+| Structured run-events log | Implemented | Run-linked events, trace/correlation fields, cost events, post-mortem events, worker claim events, SSE route formatting | `npm run contracts:check`, `npx vitest run tests/unit/research-worker.test.ts`, `npx vitest run tests/unit/hosted-api-routes.test.ts` |
 | Authenticated session UI loaders | Implemented | `/sessions`, `/sessions/[id]`, `/reports/[id]` client loaders | `npm run test:e2e` |
 | OpenTelemetry trace surface | Implemented | `src/server/telemetry.ts`, trace-linked run events | `npm run typecheck` |
-| Post-mortem generation | Implemented | Worker writes failed-run post-mortems and `post_mortem_created` events | Worker/API review |
-| Memory surface | Implemented | Supabase memory table, `/api/research/memory`, session UI, worker run summaries, session ownership route tests | `npm run test:coverage` |
+| Post-mortem generation | Implemented | Worker writes failed-run post-mortems only after lease ownership is proven; persisted root cause is sanitized | `npx vitest run tests/unit/research-worker.test.ts`, Worker/API review |
+| Memory surface | Implemented | Supabase memory table, `/api/research/memory`, session UI, best-effort worker run summaries, session ownership route tests | `npm run test:coverage`, `npx vitest run tests/unit/research-worker.test.ts` |
 | CI covering production gates | Implemented | `.github/workflows/ci.yml` | GitHub Actions |
 | Stale dependency PR cleanup | Implemented script | `scripts/close-stale-deps-prs.sh` | `npm run deps:close-stale-prs` |
 | Engineering blog posts | Implemented drafts | `docs/blog/` | File review |

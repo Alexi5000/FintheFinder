@@ -26,6 +26,7 @@ Current unit coverage includes:
 - Missing Exa provider behavior
 - Pipeline HITL/cost behavior
 - Repository persistence mapping for costs, memories, and post-mortems
+- Worker runtime config parsing, no-work paths, lease heartbeats, lease-loss terminal-write blocking, reporting dispatch, sanitized failure artifacts, and best-effort run-summary memory
 
 Add new unit tests for every new schema, service, and agent contract.
 

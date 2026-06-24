@@ -48,6 +48,8 @@ Worker defaults:
 - `WORKER_ONCE=1` for one-shot health checks
 - `WORKER_PROCESS_ONCE=1` to claim and process at most one queued run
 
+Worker timing values must be positive integers. `WORKER_ID` must be non-empty, and `WORKER_HEARTBEAT_MS` must be no more than half of `WORKER_LEASE_MS` so a worker can prove ownership before terminal writes.
+
 Cost and trace defaults:
 
 - `RUN_BUDGET_USD=5`
@@ -63,7 +65,9 @@ API errors preserve validation details but scrub unexpected server exception mes
 
 OpenTelemetry is initialized lazily for API spans and during worker boot. Run events persist trace IDs when an active span exists and always carry a correlation ID for worker-claimed runs. Post-mortems emit `post_mortem_created` events and are visible from run/session APIs.
 
-Scoped memory is explicit. The app writes user/session memories through `/api/research/memory`; worker summaries use the `run_summary` namespace. Do not store raw prompts, secrets, or unredacted confidential source material in memory values.
+Worker terminal run updates require a successful ownership heartbeat. If ownership cannot be proven, the worker leaves terminal writes and post-mortem creation to the current lease owner or retry path.
+
+Scoped memory is explicit. The app writes user/session memories through `/api/research/memory`; worker summaries use the `run_summary` namespace and are best-effort after terminal run updates. Do not store raw prompts, secrets, or unredacted confidential source material in memory values.
 
 ## Generated Files
 

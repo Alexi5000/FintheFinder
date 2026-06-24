@@ -30,7 +30,7 @@ Fin is production-ready only when each public claim is implemented, tested, demo
 | CI covering production gates | Implemented seed | `.github/workflows/ci.yml` | GitHub Actions |
 | Stale dependency PR cleanup | Implemented script | `scripts/close-stale-deps-prs.sh` | `npm run deps:close-stale-prs` |
 | Engineering blog posts | Implemented drafts | `docs/blog/` | File review |
-| Standard repo hygiene | Implemented | README, license, changelog, security, contributing, env example | File review |
+| Standard repo hygiene | Implemented | README, license, changelog, security, contributing, env example, issue templates, PR template | File review |
 
 ## Exception Process
 

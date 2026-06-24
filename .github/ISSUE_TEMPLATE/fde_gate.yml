@@ -1,0 +1,42 @@
+name: FDE gate gap
+description: Track a missing or regressed production proof gate.
+title: "[FDE]: "
+labels: ["fde-gate"]
+body:
+  - type: dropdown
+    id: gate
+    attributes:
+      label: Gate
+      options:
+        - Contracts
+        - Worker runtime
+        - HITL safety
+        - Eval regression
+        - Telemetry
+        - Memory
+        - Benchmark/demo proof
+        - CI/deploy
+        - Documentation
+        - Security
+    validations:
+      required: true
+  - type: textarea
+    id: gap
+    attributes:
+      label: Gap
+      description: What claim is not implemented, tested, demoed, or documented?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List the code, tests, evals, docs, and proof artifacts required to close this.
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: Owner
+    validations:
+      required: false

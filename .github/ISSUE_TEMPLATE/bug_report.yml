@@ -1,0 +1,36 @@
+name: Bug report
+description: Report a reproducible product or engineering defect.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: What user, workflow, or FDE gate is affected?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Include commands, environment, route, run ID, or fixture ID.
+      placeholder: |
+        1. Run ...
+        2. Open ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Logs, screenshots, traces, events, or failing command output.
+    validations:
+      required: false

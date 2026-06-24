@@ -3,9 +3,9 @@
 ## Production V1
 
 - Complete hosted Supabase authentication UI.
-- Replace placeholder session list/detail views with authenticated live data loaders.
-- Add report approval and follow-up interaction UI.
-- Add durable background execution for long research runs.
+- Expand authenticated session list/detail views with richer filters and live polling.
+- Deepen approval and follow-up UI with explicit gap waiver review.
+- Harden durable background execution with lease extension and dashboard visibility.
 - Add agent quality eval fixtures and CI reporting.
 
 ## V1.1

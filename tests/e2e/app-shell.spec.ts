@@ -13,3 +13,13 @@ test('settings exposes provider and model status', async ({ page }) => {
   await expect(page.getByText('gpt-5.5')).toBeVisible();
   await expect(page.getByText('gpt-5.4-mini')).toBeVisible();
 });
+
+test('session history renders authenticated loader state', async ({ page }) => {
+  await page.goto('/sessions');
+  await expect(page.getByText(/Supabase Not Configured|Sign In Required/)).toBeVisible();
+});
+
+test('report reader renders authenticated loader state', async ({ page }) => {
+  await page.goto('/reports/demo-session');
+  await expect(page.getByText(/Supabase Not Configured|Sign In Required/)).toBeVisible();
+});

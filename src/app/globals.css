@@ -173,6 +173,10 @@ textarea {
   border-color: var(--line);
 }
 
+.button.secondary.danger {
+  color: var(--accent-2);
+}
+
 .button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -230,6 +234,53 @@ textarea {
 .metric strong {
   display: block;
   font-size: 22px;
+}
+
+.split-row,
+.action-row,
+.center-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.split-row {
+  justify-content: space-between;
+}
+
+.action-row {
+  flex-wrap: wrap;
+}
+
+.center-row {
+  justify-content: center;
+}
+
+.kv-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 14px;
+  font-size: 14px;
+}
+
+.kv-grid span {
+  color: var(--muted);
+}
+
+.two-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.markdown-preview {
+  white-space: pre-wrap;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+  padding: 16px;
+  line-height: 1.55;
 }
 
 .lede {
@@ -298,7 +349,13 @@ textarea {
   .workspace-grid,
   .metric-grid,
   .about-grid,
+  .two-column,
   .flow {
     grid-template-columns: 1fr;
+  }
+
+  .split-row {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

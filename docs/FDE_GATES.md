@@ -14,7 +14,7 @@ Fin is production-ready only when each public claim is implemented, tested, demo
 | Plateau scorer | Implemented pure module | `src/server/research/plateau-scorer.ts` | `npm run test` |
 | Notebook authoring surface | Implemented as non-runtime artifact | `notebooks/` | `npm run notebooks:check` |
 | Containerization | Implemented seed | `Dockerfile`, `docker-compose.yml` | `npm run container:build` |
-| FDE narrative README/About | Partial | `README.md`, `docs/ABOUT.md`, `/about` | Build and review |
+| FDE narrative README/About | Implemented seed | `README.md`, `docs/ABOUT.md`, `/about` | `npm run build`, Playwright |
 | Honest benchmark doc | Implemented seed | `docs/BENCHMARK.md` | File review |
 | ADRs | Implemented seed | `docs/adr/` | File review |
 | Full test coverage for new surface | Implemented seed | Unit tests and coverage gate | `npm run test:coverage` |
@@ -23,6 +23,7 @@ Fin is production-ready only when each public claim is implemented, tested, demo
 | Eval regression detection | Implemented offline seed | `tests/fixtures/evals` | `npm run evals` |
 | HITL approval state machine | Partial runtime | Research stage stops at approval; approval queues reporting | `npm run typecheck`, API review |
 | Structured run-events log | Implemented seed | Run-linked events and expanded migration | `npm run contracts:check` |
+| Authenticated session UI loaders | Implemented seed | `/sessions`, `/sessions/[id]`, `/reports/[id]` client loaders | `npm run test:e2e` |
 | OpenTelemetry trace surface | Planned | `docs/OPERATIONS.md` | Implementation pending |
 | Post-mortem generation | Implemented seed | Worker writes failed-run post-mortems | Worker review |
 | Memory surface | Planned | `AGENTS.md` direction | Supabase memory tables pending |

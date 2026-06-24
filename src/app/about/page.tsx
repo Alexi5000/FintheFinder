@@ -44,19 +44,55 @@ const dataModel = [
 ];
 
 const proofSurfaces = [
-  { label: 'Contracts', value: 'Zod + JSON Schema drift hash' },
-  { label: 'Runtime', value: 'Next API plus queued worker' },
-  { label: 'Persistence', value: 'Supabase tables, RLS, leases' },
-  { label: 'Observability', value: 'Events, trace IDs, cost rows' },
-  { label: 'Evaluation', value: 'Offline benchmark artifact' },
-  { label: 'Deployment', value: 'CI, Docker, audit, smoke' },
+  {
+    label: 'Contracts',
+    status: 'Verified',
+    value: 'Zod + JSON Schema drift hash',
+    detail: 'CI fails when the generated contract artifact drifts.',
+  },
+  {
+    label: 'Runtime',
+    status: 'Verified',
+    value: 'Next API plus queued worker',
+    detail: 'Hosted routes enqueue durable work and the worker owns long-running execution.',
+  },
+  {
+    label: 'Persistence',
+    status: 'Verified',
+    value: 'Supabase tables, RLS, leases',
+    detail: 'Migration and repository tests cover ownership, claims, approvals, and graph integrity.',
+  },
+  {
+    label: 'Observability',
+    status: 'Verified',
+    value: 'Events, trace IDs, cost rows',
+    detail: 'Run events and cost records stay correlated to sessions, runs, and failure post-mortems.',
+  },
+  {
+    label: 'Evaluation',
+    status: 'Offline verified',
+    value: '10-scenario benchmark artifact',
+    detail: 'The checked eval suite includes positive cases and adversarial negative controls.',
+  },
+  {
+    label: 'Live demo',
+    status: 'Pending configured credentials',
+    value: 'demo:record plus evals:live',
+    detail: 'No live benchmark or recorded-demo claim is approved until the manifest, run export, eval output, media, and benchmark row agree.',
+  },
+  {
+    label: 'Deployment',
+    status: 'Configured',
+    value: 'CI, Docker, audit, smoke gates',
+    detail: 'Local verification and GitHub Actions are wired to exercise build, tests, container, audit, and smoke checks.',
+  },
 ];
 
 const status = [
   { label: 'Version', value: packageJson.version },
   { label: 'License', value: packageJson.license },
-  { label: 'Release', value: 'v1.0.0' },
-  { label: 'Live Proof', value: 'Pending credentials' },
+  { label: 'Proof Tier', value: 'Offline-gated' },
+  { label: 'Live Proof', value: 'Pending configured credentials' },
 ];
 
 export default function AboutPage() {
@@ -93,15 +129,21 @@ export default function AboutPage() {
         </dl>
       </section>
 
-      <section className="panel stack">
+      <section className="panel stack" aria-labelledby="research-workflow-title">
         <div>
-          <div className="eyebrow">Research Workflow</div>
-          <h2 className="h2">The path from question to report is explicit.</h2>
+          <div className="eyebrow" id="research-workflow-label">
+            Research Workflow
+          </div>
+          <h2 className="h2" id="research-workflow-title">
+            The path from question to report is explicit.
+          </h2>
         </div>
-        <ol className="workflow-diagram" aria-label="Research workflow">
+        <ol className="workflow-diagram" aria-labelledby="research-workflow-label">
           {workflow.map((step, index) => (
             <li className="workflow-step" key={step.label}>
-              <span className="step-index">{String(index + 1).padStart(2, '0')}</span>
+              <span className="step-index" aria-hidden="true">
+                {String(index + 1).padStart(2, '0')}
+              </span>
               <strong>{step.label}</strong>
               <p>{step.detail}</p>
             </li>
@@ -110,12 +152,14 @@ export default function AboutPage() {
       </section>
 
       <section className="about-grid three">
-        <article className="panel stack">
+        <article className="panel stack" aria-labelledby="evidence-model-title">
           <div className="feature-icon">
             <Database size={18} />
           </div>
-          <h2 className="h2">Evidence model</h2>
-          <ol className="evidence-chain" aria-label="Evidence data model">
+          <h2 className="h2" id="evidence-model-title">
+            Evidence model
+          </h2>
+          <ol className="evidence-chain" aria-labelledby="evidence-model-title">
             {dataModel.map((edge) => (
               <li className="evidence-edge" key={`${edge.from}-${edge.to}`}>
                 <div>
@@ -128,16 +172,24 @@ export default function AboutPage() {
           </ol>
         </article>
 
-        <article className="panel stack">
+        <article className="panel stack" aria-labelledby="proof-surfaces-title">
           <div className="feature-icon">
             <ClipboardCheck size={18} />
           </div>
-          <h2 className="h2">Proof surfaces</h2>
-          <dl className="proof-list">
+          <h2 className="h2" id="proof-surfaces-title">
+            Proof surfaces
+          </h2>
+          <dl className="proof-list" aria-labelledby="proof-surfaces-title">
             {proofSurfaces.map((surface) => (
               <div className="proof-row" key={surface.label}>
-                <dt>{surface.label}</dt>
-                <dd>{surface.value}</dd>
+                <dt>
+                  <span>{surface.label}</span>
+                  <span className="proof-status">{surface.status}</span>
+                </dt>
+                <dd>
+                  <strong>{surface.value}</strong>
+                  <span>{surface.detail}</span>
+                </dd>
               </div>
             ))}
           </dl>
@@ -150,7 +202,7 @@ export default function AboutPage() {
           <h2 className="h2">Lineage</h2>
           <p className="muted">
             Fin started from the Mastra deep-research template and is intentionally documented that way. The value added here is the production hardening:
-            typed contracts, Supabase-backed state, worker leases, claim gates, approval history, eval artifacts, cost tracking, and CI proof.
+            typed contracts, Supabase-backed state, worker leases, claim gates, approval history, eval artifacts, cost tracking, and configured CI gates.
           </p>
         </article>
       </section>
@@ -175,7 +227,8 @@ export default function AboutPage() {
           claim-ledger persistence, plateau scoring, run-cost estimates, trace-linked events, scoped memory, audit-green dependencies, and repository proof docs.
         </p>
         <p className="muted">
-          Live benchmark rows and recorded demo evidence are still pending configured credentials; the FDE gate matrix tracks that proof explicitly.
+          Configured-live benchmark rows and recorded demo evidence are intentionally pending real provider credentials; the FDE gate matrix tracks that
+          proof explicitly.
         </p>
         <div className="about-actions">
           <Link className="button secondary" href="/api/research/evals">

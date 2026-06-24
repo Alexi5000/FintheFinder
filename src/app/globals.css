@@ -393,13 +393,47 @@ textarea {
 
 .version-row dt,
 .proof-row dt {
+  min-width: 0;
   color: var(--muted);
 }
 
 .version-row dd,
 .proof-row dd {
+  min-width: 0;
   margin: 0;
+}
+
+.version-row dd {
   font-weight: 700;
+}
+
+.proof-row dt,
+.proof-row dd {
+  display: grid;
+  gap: 4px;
+}
+
+.proof-row dd strong {
+  color: var(--ink);
+}
+
+.proof-row dd span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.proof-status {
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--ink);
+  padding: 3px 7px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
 .workflow-diagram {
@@ -518,6 +552,12 @@ textarea {
   padding-bottom: 0;
 }
 
+@media (max-width: 1080px) {
+  .about-hero {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 860px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -533,7 +573,6 @@ textarea {
   .about-grid.three,
   .two-column,
   .flow,
-  .about-hero,
   .workflow-diagram {
     grid-template-columns: 1fr;
   }
@@ -541,5 +580,12 @@ textarea {
   .split-row {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 420px) {
+  .version-row,
+  .proof-row {
+    grid-template-columns: 1fr;
   }
 }

@@ -11,6 +11,7 @@ npm run contracts:check
 npm run notebooks:check
 npm run test:coverage
 npm run evals
+npm run benchmark:check
 npm run build
 npm run audit
 npm run smoke
@@ -47,6 +48,7 @@ E2E coverage should prioritize:
 
 - Workspace loads without configured providers
 - Settings exposes provider status
+- About renders the package version, offline-gated proof tier, pending configured-live proof state, and narrow-desktop layout without horizontal overflow
 - Authenticated session flow
 - Report export flow
 

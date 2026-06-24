@@ -14,7 +14,7 @@ Fin is production-ready only when each public claim is implemented, tested, demo
 | Plateau scorer | Implemented pure module | `src/server/research/plateau-scorer.ts` | `npm run test` |
 | Notebook authoring surface | Implemented as non-runtime artifact | `notebooks/` | `npm run notebooks:check` |
 | Containerization | Implemented | `Dockerfile`, `docker-compose.yml` | `npm run container:build` |
-| FDE narrative README/About | Implemented | `README.md`, `docs/ABOUT.md`, `/about` | `npm run build`, Playwright |
+| FDE narrative README/About | Implemented | `README.md`, `docs/ABOUT.md`, `/about` with dynamic package version, offline-gated proof tier, pending configured-live proof state, and narrow-desktop overflow coverage | `npm run build`, Playwright |
 | Honest benchmark doc | Implemented | `docs/BENCHMARK.md`, 10-scenario `docs/benchmark/offline-eval-summary.json` | `npm run benchmark:check` |
 | Recorded live demo proof | Pending configured credentials | `docs/demo/live-demo.example.json`, `scripts/demo-record.mjs`, demo verifier tests | `npm run demo:record` and `npm run evals:live` after live run |
 | ADRs | Implemented | `docs/adr/` | File review |

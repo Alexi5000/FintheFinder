@@ -370,6 +370,59 @@
       ],
       "additionalProperties": false
     },
+    "researchPostMortem": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "runId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rootCause": {
+          "type": "string"
+        },
+        "affectedStep": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "actionItems": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "rootCause",
+        "actionItems",
+        "createdAt"
+      ],
+      "additionalProperties": false
+    },
     "researchPacket": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -574,6 +627,116 @@
       ],
       "additionalProperties": false
     },
+    "researchMemory": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "user",
+            "session"
+          ]
+        },
+        "namespace": {
+          "type": "string",
+          "enum": [
+            "preference",
+            "source_cache",
+            "procedure",
+            "run_summary"
+          ]
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "scope",
+        "namespace",
+        "key",
+        "value",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": false
+    },
+    "upsertResearchMemory": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "user",
+            "session"
+          ]
+        },
+        "namespace": {
+          "type": "string",
+          "enum": [
+            "preference",
+            "source_cache",
+            "procedure",
+            "run_summary"
+          ]
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "value": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "scope",
+        "namespace",
+        "key",
+        "value"
+      ],
+      "additionalProperties": false
+    },
     "researchRun": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -674,6 +837,104 @@
         "metadata",
         "createdAt",
         "updatedAt"
+      ],
+      "additionalProperties": false
+    },
+    "runCost": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "usage": {
+          "type": "object",
+          "properties": {
+            "modelCalls": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "model": {
+                    "type": "string"
+                  },
+                  "inputTokens": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "outputTokens": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "model",
+                  "inputTokens",
+                  "outputTokens"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "exaSearches": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "modelCalls",
+            "exaSearches"
+          ],
+          "additionalProperties": false
+        },
+        "modelCostUsd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "searchCostUsd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "totalUsd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "pricingEffectiveDate": {
+          "type": "string"
+        },
+        "measurementMethod": {
+          "default": "estimated",
+          "type": "string",
+          "enum": [
+            "estimated",
+            "provider_usage"
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "runId",
+        "sessionId",
+        "usage",
+        "modelCostUsd",
+        "searchCostUsd",
+        "totalUsd",
+        "pricingEffectiveDate",
+        "measurementMethod",
+        "createdAt"
       ],
       "additionalProperties": false
     },
@@ -997,6 +1258,169 @@
                 "metadata",
                 "createdAt",
                 "updatedAt"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currentRunCost": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "runId": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "usage": {
+                  "type": "object",
+                  "properties": {
+                    "modelCalls": {
+                      "default": [],
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "model": {
+                            "type": "string"
+                          },
+                          "inputTokens": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "outputTokens": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "model",
+                          "inputTokens",
+                          "outputTokens"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "exaSearches": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "modelCalls",
+                    "exaSearches"
+                  ],
+                  "additionalProperties": false
+                },
+                "modelCostUsd": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "searchCostUsd": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "totalUsd": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "pricingEffectiveDate": {
+                  "type": "string"
+                },
+                "measurementMethod": {
+                  "default": "estimated",
+                  "type": "string",
+                  "enum": [
+                    "estimated",
+                    "provider_usage"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "runId",
+                "sessionId",
+                "usage",
+                "modelCostUsd",
+                "searchCostUsd",
+                "totalUsd",
+                "pricingEffectiveDate",
+                "measurementMethod",
+                "createdAt"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currentPostMortem": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "runId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "rootCause": {
+                  "type": "string"
+                },
+                "affectedStep": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "actionItems": {
+                  "default": [],
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "sessionId",
+                "rootCause",
+                "actionItems",
+                "createdAt"
               ],
               "additionalProperties": false
             },

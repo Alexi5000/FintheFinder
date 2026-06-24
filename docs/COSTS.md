@@ -10,4 +10,6 @@ Fin must never publish a fixed cost-per-run number without measured usage and a 
 
 ## Current Status
 
-Offline cost math is implemented and tested. Provider token capture and UI/API cost display are still planned production work.
+Offline cost math is implemented and tested. Hosted worker stages persist run-cost rows with estimated model tokens, Exa search count, dated pricing, and measurement method. Session detail, run JSON, and the authenticated UI expose those estimates.
+
+Provider token capture is still pending. Until it is wired end to end, public benchmark rows must label persisted run costs as estimates.

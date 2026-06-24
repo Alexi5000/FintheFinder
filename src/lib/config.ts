@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+const booleanFromEnv = z.preprocess((value) => {
+  if (value === undefined || value === '') return undefined;
+  if (typeof value === 'string') return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
+  return value;
+}, z.boolean());
+
 const serverEnvSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   EXA_API_KEY: z.string().optional(),
@@ -12,6 +18,10 @@ const serverEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().default('http://localhost:3000'),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
+  OTEL_SERVICE_NAME: z.string().default('fin-the-finder'),
+  OTEL_ENABLED: booleanFromEnv.default(false),
+  RUN_BUDGET_USD: z.coerce.number().positive().default(5),
 });
 
 export const env = serverEnvSchema.parse(process.env);

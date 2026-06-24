@@ -153,6 +153,19 @@ textarea {
   padding: 12px;
 }
 
+.textarea.compact {
+  min-height: 92px;
+}
+
+.input {
+  min-height: 38px;
+  flex: 1 1 280px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 8px 10px;
+}
+
 .button {
   display: inline-flex;
   align-items: center;
@@ -216,6 +229,39 @@ textarea {
 .status.bad {
   color: #912018;
   background: #fee4e2;
+}
+
+.callout {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfcfe;
+}
+
+.callout.danger {
+  border-color: #fecdca;
+  background: #fff5f5;
+  color: #7a271a;
+}
+
+.checkbox-row {
+  min-height: 38px;
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  align-items: start;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.checkbox-row input {
+  margin-top: 3px;
+}
+
+.memory-row {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfcfe;
 }
 
 .metric-grid {

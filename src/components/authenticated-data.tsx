@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CheckCircle2, Download, Loader2, Play, RefreshCw, XCircle } from 'lucide-react';
+import { CheckCircle2, Download, Loader2, Play, RefreshCw, Save, XCircle } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
-import type { ClaimGap, ResearchClaim, ResearchRun, ResearchSession, ResearchSessionDetail } from '@/lib/schemas';
+import type { ClaimGap, ResearchClaim, ResearchMemory, ResearchPostMortem, ResearchRun, ResearchSession, ResearchSessionDetail, RunCost } from '@/lib/schemas';
 
 type LoadState<T> = {
   status: 'idle' | 'loading' | 'ready' | 'error' | 'unauthenticated' | 'unconfigured';
@@ -157,6 +157,8 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
   const session = state.data?.session;
   if (!session) return null;
   const currentRun = session.currentRun;
+  const currentRunCost = session.currentRunCost ?? null;
+  const currentPostMortem = session.currentPostMortem ?? null;
 
   async function postAction(path: string, body?: unknown) {
     setActionStatus('Submitting...');
@@ -188,55 +190,6 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
             <Play size={16} />
             Queue research
           </button>
-          {session.status === 'awaiting_approval' ? (
-            <>
-              <button
-                className="button secondary"
-                type="button"
-                onClick={() =>
-                  postAction(`/api/research/sessions/${session.id}/approval`, {
-                    action: 'approve',
-                    notes: 'Approved from session detail UI.',
-                    approvedSourceIds: session.sources.map((source) => source.id),
-                    waivedGapIds: [],
-                  })
-                }
-              >
-                <CheckCircle2 size={16} />
-                Approve
-              </button>
-              <button
-                className="button secondary"
-                type="button"
-                onClick={() =>
-                  postAction(`/api/research/sessions/${session.id}/approval`, {
-                    action: 'follow_up',
-                    notes: 'Request more evidence before report generation.',
-                    approvedSourceIds: [],
-                    waivedGapIds: [],
-                  })
-                }
-              >
-                <RefreshCw size={16} />
-                Follow up
-              </button>
-              <button
-                className="button secondary danger"
-                type="button"
-                onClick={() =>
-                  postAction(`/api/research/sessions/${session.id}/approval`, {
-                    action: 'reject',
-                    notes: 'Rejected from session detail UI.',
-                    approvedSourceIds: [],
-                    waivedGapIds: [],
-                  })
-                }
-              >
-                <XCircle size={16} />
-                Reject
-              </button>
-            </>
-          ) : null}
           <button className="button secondary" onClick={reload} type="button">
             <RefreshCw size={16} />
             Refresh
@@ -252,8 +205,10 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
         <Metric label="Report" value={session.report ? 'Ready' : 'Pending'} />
       </div>
 
-      <RunPanel run={currentRun ?? null} />
+      <RunPanel run={currentRun ?? null} cost={currentRunCost} postMortem={currentPostMortem} />
+      {session.status === 'awaiting_approval' ? <ApprovalGatePanel session={session} postAction={postAction} /> : null}
       <ClaimsPanel sessionId={session.id} />
+      <MemoryPanel sessionId={session.id} />
       <ArtifactsPanel session={session} />
     </div>
   );
@@ -268,7 +223,17 @@ function Metric({ label, value }: { label: string; value: number | string }) {
   );
 }
 
-function RunPanel({ run }: { run: ResearchRun | null }) {
+function formatUsd(value: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 5 }).format(value);
+}
+
+function formatMemoryValue(value: Record<string, unknown>) {
+  if (typeof value.note === 'string') return value.note;
+  if (typeof value.status === 'string' && typeof value.runId === 'string') return `${value.status} - ${value.runId}`;
+  return JSON.stringify(value);
+}
+
+function RunPanel({ run, cost, postMortem }: { run: ResearchRun | null; cost: RunCost | null; postMortem: ResearchPostMortem | null }) {
   if (!run) {
     return (
       <section className="panel">
@@ -295,10 +260,103 @@ function RunPanel({ run }: { run: ResearchRun | null }) {
         <strong>{run.workerId ?? 'unclaimed'}</strong>
         <span>Updated</span>
         <strong>{new Date(run.updatedAt).toLocaleString()}</strong>
+        <span>Cost</span>
+        <strong>{cost ? `${formatUsd(cost.totalUsd)} ${cost.measurementMethod}` : 'pending'}</strong>
+        {cost ? (
+          <>
+            <span>Pricing</span>
+            <strong>{cost.pricingEffectiveDate}</strong>
+            <span>Usage</span>
+            <strong>
+              {cost.usage.modelCalls.length} calls, {cost.usage.exaSearches} searches
+            </strong>
+          </>
+        ) : null}
       </div>
+      {postMortem ? (
+        <div className="callout danger">
+          <strong>Post-mortem</strong>
+          <p>{postMortem.rootCause}</p>
+          <p className="muted">
+            {postMortem.affectedStep ?? 'unknown step'} - {new Date(postMortem.createdAt).toLocaleString()}
+          </p>
+        </div>
+      ) : null}
       <Link className="button secondary" href={`/api/research/runs/${run.id}`}>
         Inspect run JSON
       </Link>
+    </section>
+  );
+}
+
+function ApprovalGatePanel({ session, postAction }: { session: ResearchSessionDetail; postAction: (path: string, body?: unknown) => Promise<void> }) {
+  const { state, reload } = useAuthedResource<{ claims: ResearchClaim[]; gaps: ClaimGap[] }>(`/api/research/sessions/${session.id}/claims`);
+  const [selectedWaivers, setSelectedWaivers] = useState<string[]>([]);
+  const [notes, setNotes] = useState('');
+  const status = <StatusBlock state={state} loadingLabel="Loading approval gate..." />;
+  if (status) return status;
+
+  const gaps = state.data?.gaps ?? [];
+  const openCriticalGaps = gaps.filter((gap) => gap.severity === 'critical' && gap.status === 'open');
+  const selected = new Set(selectedWaivers);
+  const allCriticalWaived = openCriticalGaps.every((gap) => selected.has(gap.id));
+  const canApprove = openCriticalGaps.length === 0 || (allCriticalWaived && notes.trim().length > 0);
+
+  function toggleWaiver(gapId: string) {
+    setSelectedWaivers((current) => (current.includes(gapId) ? current.filter((id) => id !== gapId) : [...current, gapId]));
+  }
+
+  async function submit(action: 'approve' | 'follow_up' | 'reject') {
+    await postAction(`/api/research/sessions/${session.id}/approval`, {
+      action,
+      notes: notes.trim() || undefined,
+      approvedSourceIds: action === 'approve' ? session.sources.map((source) => source.id) : [],
+      waivedGapIds: action === 'approve' ? selectedWaivers : [],
+    });
+    setSelectedWaivers([]);
+    setNotes('');
+    await reload();
+  }
+
+  return (
+    <section className="panel stack">
+      <div className="split-row">
+        <div>
+          <h2 className="h2">Human approval gate</h2>
+          <p className="muted">
+            {openCriticalGaps.length ? `${openCriticalGaps.length} critical gap${openCriticalGaps.length === 1 ? '' : 's'} open` : 'No critical gaps open'}
+          </p>
+        </div>
+        <button className="button secondary" onClick={reload} type="button">
+          <RefreshCw size={16} />
+          Refresh
+        </button>
+      </div>
+      {openCriticalGaps.length ? (
+        <div className="stack">
+          {openCriticalGaps.map((gap) => (
+            <label className="checkbox-row" key={gap.id}>
+              <input checked={selectedWaivers.includes(gap.id)} onChange={() => toggleWaiver(gap.id)} type="checkbox" />
+              <span>{gap.description}</span>
+            </label>
+          ))}
+        </div>
+      ) : null}
+      <textarea className="textarea compact" onChange={(event) => setNotes(event.target.value)} placeholder="Reviewer notes" value={notes} />
+      <div className="action-row">
+        <button className="button secondary" disabled={!canApprove} onClick={() => submit('approve')} type="button">
+          <CheckCircle2 size={16} />
+          Approve
+        </button>
+        <button className="button secondary" onClick={() => submit('follow_up')} type="button">
+          <RefreshCw size={16} />
+          Follow up
+        </button>
+        <button className="button secondary danger" onClick={() => submit('reject')} type="button">
+          <XCircle size={16} />
+          Reject
+        </button>
+      </div>
     </section>
   );
 }
@@ -339,6 +397,72 @@ function ClaimsPanel({ sessionId }: { sessionId: string }) {
             <p className="muted">No claim gaps persisted yet.</p>
           )}
         </div>
+      </div>
+    </section>
+  );
+}
+
+function MemoryPanel({ sessionId }: { sessionId: string }) {
+  const { state, reload } = useAuthedResource<{ memories: ResearchMemory[] }>(`/api/research/memory?sessionId=${sessionId}`);
+  const [note, setNote] = useState('');
+  const [saveStatus, setSaveStatus] = useState('');
+  const status = <StatusBlock state={state} loadingLabel="Loading research memory..." />;
+  if (status) return status;
+
+  const memories = state.data?.memories ?? [];
+
+  async function saveNote() {
+    if (!note.trim()) return;
+    setSaveStatus('Saving...');
+    try {
+      await authedFetch<{ memory: ResearchMemory }>('/api/research/memory', {
+        method: 'POST',
+        body: JSON.stringify({
+          sessionId,
+          scope: 'session',
+          namespace: 'procedure',
+          key: `operator-note:${Date.now()}`,
+          value: { note: note.trim(), recordedAt: new Date().toISOString(), source: 'session_ui' },
+        }),
+      });
+      setNote('');
+      setSaveStatus('Saved.');
+      await reload();
+    } catch (error) {
+      setSaveStatus(error instanceof Error ? error.message : 'Save failed.');
+    }
+  }
+
+  return (
+    <section className="panel stack">
+      <div className="split-row">
+        <div>
+          <h2 className="h2">Research memory</h2>
+          <p className="muted">{memories.length ? `${memories.length} scoped memories` : 'No scoped memories yet'}</p>
+        </div>
+        <button className="button secondary" onClick={reload} type="button">
+          <RefreshCw size={16} />
+          Refresh
+        </button>
+      </div>
+      <div className="action-row">
+        <input className="input" onChange={(event) => setNote(event.target.value)} placeholder="Session memory note" value={note} />
+        <button className="button secondary" disabled={!note.trim()} onClick={saveNote} type="button">
+          <Save size={16} />
+          Save
+        </button>
+      </div>
+      {saveStatus ? <p className="muted">{saveStatus}</p> : null}
+      <div className="stack">
+        {memories.slice(0, 6).map((memory) => (
+          <article className="memory-row" key={memory.id}>
+            <div className="split-row">
+              <strong>{memory.namespace}</strong>
+              <span className="status">{memory.scope}</span>
+            </div>
+            <p className="muted">{formatMemoryValue(memory.value)}</p>
+          </article>
+        ))}
       </div>
     </section>
   );

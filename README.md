@@ -25,11 +25,11 @@ The goal is a serious engineering repo, not a demo claim. `docs/FDE_GATES.md` is
 - Mastra agent stack for planner, source evaluator, extractor, contradiction checker, citation auditor, report writer, and final reviewer roles; full hosted-path wiring is tracked in the FDE gates.
 - GPT-5.5 quality-first defaults through environment-driven model configuration.
 - Exa search integration with timeout handling, canonical URL normalization, duplicate filtering, and typed source records.
-- Supabase Auth and Postgres schema for multi-user sessions, source records, learnings, approvals, events, and reports.
+- Supabase Auth and Postgres schema for multi-user sessions, source records, learnings, approvals, events, runs, claims, costs, post-mortems, memory, and reports.
 - Next.js product shell with workspace, About, session history, session detail, report reader, settings, health, and API routes.
 - Cited markdown report export.
 - Structured logging with redaction for keys, tokens, prompts, and sensitive payloads.
-- Contract generation, offline evals, claim-ledger primitives, plateau scoring, cost estimation, coverage gate, and audit-green dependency baseline.
+- Contract generation, offline evals, claim-ledger primitives, plateau scoring, persisted cost estimates, OpenTelemetry hooks, scoped memory, coverage gate, and audit-green dependency baseline.
 
 ## Stack
 

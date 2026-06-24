@@ -4,19 +4,25 @@ import type {
   ClaimGap,
   ResearchLearning,
   ResearchClaim,
+  ResearchMemory,
+  ResearchPostMortem,
   ResearchReport,
   ResearchRun,
   ResearchRunEvent,
   ResearchSession,
   ResearchSessionDetail,
   ResearchSource,
+  RunCost,
+  RunUsage,
   SourceEvaluation,
   ResearchPhase,
   ResearchStatus,
   RunStatus,
+  UpsertResearchMemoryInput,
 } from '@/lib/schemas';
 import { nowIso, titleFromQuery } from '@/lib/utils';
 import { createSupabaseAdmin } from '@/server/supabase/server';
+import { activeTraceId } from '@/server/telemetry';
 
 function requireRows<T>(rows: T[] | null, error: { message: string } | null) {
   if (error) throw new Error(error.message);
@@ -91,7 +97,11 @@ export async function getSessionDetail(userId: string, sessionId: string): Promi
     getLatestRunForSession(sessionId),
   ]);
 
-  return { ...session, currentRun, sources, evaluations, learnings, events, report };
+  const [currentRunCost, currentPostMortem] = currentRun
+    ? await Promise.all([getRunCostForRun(currentRun.id), getPostMortemForRun(currentRun.id)])
+    : [null, null];
+
+  return { ...session, currentRun, currentRunCost, currentPostMortem, sources, evaluations, learnings, events, report };
 }
 
 export async function updateSessionState(sessionId: string, status: ResearchStatus, phase: ResearchPhase) {
@@ -189,10 +199,19 @@ export async function claimNextQueuedRun(workerId: string, leaseMs: number): Pro
   return data ? mapRunRow(data as Record<string, unknown>) : null;
 }
 
+export async function heartbeatResearchRun(runId: string, workerId: string, leaseMs: number): Promise<ResearchRun | null> {
+  const supabase = createSupabaseAdmin();
+  const { data, error } = await supabase
+    .rpc('extend_research_run_lease', { p_run_id: runId, p_worker_id: workerId, p_lease_ms: leaseMs })
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? mapRunRow(data as Record<string, unknown>) : null;
+}
+
 export async function updateRunStatus(
   runId: string,
   status: RunStatus,
-  updates: { error?: string | null; startedAt?: string | null; completedAt?: string | null } = {},
+  updates: { error?: string | null; startedAt?: string | null; completedAt?: string | null; workerId?: string } = {},
 ): Promise<ResearchRun> {
   const supabase = createSupabaseAdmin();
   const patch: Record<string, unknown> = {
@@ -208,8 +227,50 @@ export async function updateRunStatus(
   if (updates.startedAt !== undefined) patch.started_at = updates.startedAt;
   if (updates.completedAt !== undefined) patch.completed_at = updates.completedAt;
 
-  const { data, error } = await supabase.from('research_runs').update(patch).eq('id', runId).select('*').single();
+  let query = supabase.from('research_runs').update(patch).eq('id', runId);
+  if (updates.workerId) query = query.eq('worker_id', updates.workerId);
+  const { data, error } = await query.select('*').single();
   return mapRunRow(requireRow(data, error));
+}
+
+export async function getRunCostForRun(runId: string): Promise<RunCost | null> {
+  const supabase = createSupabaseAdmin();
+  const { data, error } = await supabase.from('research_run_costs').select('*').eq('run_id', runId).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? mapRunCostRow(data as Record<string, unknown>) : null;
+}
+
+export async function saveRunCost(
+  runId: string,
+  sessionId: string,
+  usage: RunUsage,
+  estimate: Pick<RunCost, 'modelCostUsd' | 'searchCostUsd' | 'totalUsd' | 'pricingEffectiveDate'>,
+  measurementMethod: RunCost['measurementMethod'] = 'estimated',
+): Promise<RunCost> {
+  const supabase = createSupabaseAdmin();
+  const existing = await getRunCostForRun(runId);
+  const payload = {
+    run_id: runId,
+    session_id: sessionId,
+    usage,
+    model_cost_usd: estimate.modelCostUsd,
+    search_cost_usd: estimate.searchCostUsd,
+    total_usd: estimate.totalUsd,
+    pricing_effective_date: estimate.pricingEffectiveDate,
+    measurement_method: measurementMethod,
+  };
+
+  if (existing) {
+    const { data, error } = await supabase.from('research_run_costs').update(payload).eq('id', existing.id).select('*').single();
+    return mapRunCostRow(requireRow(data, error));
+  }
+
+  const { data, error } = await supabase
+    .from('research_run_costs')
+    .insert({ id: crypto.randomUUID(), ...payload, created_at: nowIso() })
+    .select('*')
+    .single();
+  return mapRunCostRow(requireRow(data, error));
 }
 
 export async function replaceResearchArtifacts(
@@ -404,6 +465,109 @@ export async function addApproval(
   if (error) throw new Error(error.message);
 }
 
+export async function getOpenCriticalGaps(sessionId: string): Promise<ClaimGap[]> {
+  const { gaps } = await getClaimsAndGaps(sessionId);
+  return gaps.filter((gap) => gap.severity === 'critical' && gap.status === 'open');
+}
+
+export async function waiveClaimGaps(sessionId: string, gapIds: string[], resolution: string) {
+  if (gapIds.length === 0) return;
+  const supabase = createSupabaseAdmin();
+  const { error } = await supabase
+    .from('claim_gaps')
+    .update({ status: 'waived', resolution, resolved_at: nowIso() })
+    .eq('session_id', sessionId)
+    .in('id', gapIds);
+  if (error) throw new Error(error.message);
+}
+
+export async function listResearchMemories(userId: string, options: { sessionId?: string } = {}): Promise<ResearchMemory[]> {
+  const supabase = createSupabaseAdmin();
+  if (options.sessionId) await assertSessionOwnership(userId, options.sessionId);
+
+  const userScopedQuery = supabase
+    .from('research_memories')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('scope', 'user')
+    .is('session_id', null)
+    .order('updated_at', { ascending: false });
+
+  if (!options.sessionId) {
+    const { data, error } = await userScopedQuery;
+    return requireRows(data, error).map(mapMemoryRow);
+  }
+
+  const sessionScopedQuery = supabase
+    .from('research_memories')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('scope', 'session')
+    .eq('session_id', options.sessionId)
+    .order('updated_at', { ascending: false });
+
+  const [userScoped, sessionScoped] = await Promise.all([userScopedQuery, sessionScopedQuery]);
+  return [...requireRows(sessionScoped.data, sessionScoped.error).map(mapMemoryRow), ...requireRows(userScoped.data, userScoped.error).map(mapMemoryRow)];
+}
+
+export async function upsertResearchMemory(userId: string, input: UpsertResearchMemoryInput): Promise<ResearchMemory> {
+  if (input.scope === 'user' && input.sessionId) {
+    throw new Error('User-scoped memory cannot include a sessionId.');
+  }
+  if (input.scope === 'session' && !input.sessionId) {
+    throw new Error('Session-scoped memory requires a sessionId.');
+  }
+
+  const supabase = createSupabaseAdmin();
+  const sessionId = input.scope === 'session' ? input.sessionId : undefined;
+  if (sessionId) await assertSessionOwnership(userId, sessionId);
+
+  let existingQuery = supabase
+    .from('research_memories')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('scope', input.scope)
+    .eq('namespace', input.namespace)
+    .eq('key', input.key);
+
+  existingQuery = sessionId ? existingQuery.eq('session_id', sessionId) : existingQuery.is('session_id', null);
+  const { data: existing, error: existingError } = await existingQuery.maybeSingle();
+  if (existingError) throw new Error(existingError.message);
+
+  const now = nowIso();
+  const payload = {
+    user_id: userId,
+    session_id: sessionId ?? null,
+    scope: input.scope,
+    namespace: input.namespace,
+    key: input.key,
+    value: input.value,
+    updated_at: now,
+  };
+
+  if (existing) {
+    const { data, error } = await supabase.from('research_memories').update(payload).eq('id', existing.id).select('*').single();
+    return mapMemoryRow(requireRow(data, error));
+  }
+
+  const { data, error } = await supabase
+    .from('research_memories')
+    .insert({ id: crypto.randomUUID(), ...payload, created_at: now })
+    .select('*')
+    .single();
+  return mapMemoryRow(requireRow(data, error));
+}
+
+export async function saveRunSummaryMemory(userId: string, sessionId: string, runId: string, value: Record<string, unknown>) {
+  return upsertResearchMemory(userId, {
+    sessionId,
+    scope: 'session',
+    namespace: 'run_summary',
+    key: `run:${runId}`,
+    value,
+  });
+}
+
 export async function addEvent(
   sessionId: string,
   phase: ResearchPhase,
@@ -418,6 +582,7 @@ export async function addEvent(
     phase,
     message,
     ...options,
+    traceId: options.traceId ?? activeTraceId(),
     metadata,
     createdAt: nowIso(),
   };
@@ -511,10 +676,18 @@ export async function getResearchArtifacts(sessionId: string) {
   return { sources, evaluations, learnings, events, report, ...claimsAndGaps };
 }
 
+export async function getPostMortemForRun(runId: string): Promise<ResearchPostMortem | null> {
+  const supabase = createSupabaseAdmin();
+  const { data, error } = await supabase.from('research_post_mortems').select('*').eq('run_id', runId).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? mapPostMortemRow(data as Record<string, unknown>) : null;
+}
+
 export async function createPostMortem(sessionId: string, runId: string | undefined, rootCause: string, affectedStep?: string) {
   const supabase = createSupabaseAdmin();
+  const id = crypto.randomUUID();
   const { error } = await supabase.from('research_post_mortems').insert({
-    id: crypto.randomUUID(),
+    id,
     session_id: sessionId,
     run_id: runId ?? null,
     root_cause: rootCause,
@@ -523,6 +696,13 @@ export async function createPostMortem(sessionId: string, runId: string | undefi
     created_at: nowIso(),
   });
   if (error) throw new Error(error.message);
+  await addEvent(
+    sessionId,
+    'failed',
+    'Post-mortem created for failed research run.',
+    { postMortemId: id, rootCause, affectedStep: affectedStep ?? null },
+    { runId, eventType: 'post_mortem_created', severity: 'error', actor: 'worker', stepId: 'post_mortem' },
+  );
 }
 
 async function getSources(sessionId: string): Promise<ResearchSource[]> {
@@ -585,6 +765,13 @@ async function getReport(sessionId: string): Promise<ResearchReport | null> {
   };
 }
 
+async function assertSessionOwnership(userId: string, sessionId: string) {
+  const supabase = createSupabaseAdmin();
+  const { data, error } = await supabase.from('research_sessions').select('id').eq('id', sessionId).eq('user_id', userId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('Research session was not found for this user.');
+}
+
 function mapSessionRow(row: Record<string, string>): ResearchSession {
   return {
     id: row.id,
@@ -612,5 +799,49 @@ function mapRunRow(row: Record<string, unknown>): ResearchRun {
     error: row.error ? String(row.error) : null,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
+  };
+}
+
+function mapRunCostRow(row: Record<string, unknown>): RunCost {
+  return {
+    id: String(row.id),
+    runId: String(row.run_id),
+    sessionId: String(row.session_id),
+    usage: (row.usage as RunUsage | null) ?? { modelCalls: [], exaSearches: 0 },
+    modelCostUsd: Number(row.model_cost_usd ?? 0),
+    searchCostUsd: Number(row.search_cost_usd ?? 0),
+    totalUsd: Number(row.total_usd ?? 0),
+    pricingEffectiveDate: String(row.pricing_effective_date),
+    measurementMethod: row.measurement_method === 'provider_usage' ? 'provider_usage' : 'estimated',
+    createdAt: String(row.created_at),
+  };
+}
+
+function mapMemoryRow(row: Record<string, unknown>): ResearchMemory {
+  return {
+    id: String(row.id),
+    userId: String(row.user_id),
+    sessionId: row.session_id ? String(row.session_id) : null,
+    scope: row.scope === 'session' ? 'session' : 'user',
+    namespace:
+      row.namespace === 'source_cache' || row.namespace === 'procedure' || row.namespace === 'run_summary'
+        ? row.namespace
+        : 'preference',
+    key: String(row.key),
+    value: (row.value as Record<string, unknown> | null) ?? {},
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+function mapPostMortemRow(row: Record<string, unknown>): ResearchPostMortem {
+  return {
+    id: String(row.id),
+    sessionId: String(row.session_id),
+    runId: row.run_id ? String(row.run_id) : null,
+    rootCause: String(row.root_cause),
+    affectedStep: row.affected_step ? String(row.affected_step) : null,
+    actionItems: Array.isArray(row.action_items) ? row.action_items.map(String) : [],
+    createdAt: String(row.created_at),
   };
 }

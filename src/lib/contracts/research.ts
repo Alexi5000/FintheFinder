@@ -123,6 +123,77 @@ export const researchRunSchema = z.object({
   updatedAt: z.string(),
 });
 
+export const researchPostMortemSchema = z.object({
+  id: z.string(),
+  sessionId: z.string(),
+  runId: z.string().nullable().optional(),
+  rootCause: z.string(),
+  affectedStep: z.string().nullable().optional(),
+  actionItems: z.array(z.string()).default([]),
+  createdAt: z.string(),
+});
+
+export const modelUsageSchema = z.object({
+  model: z.string(),
+  inputTokens: z.number().int().nonnegative(),
+  outputTokens: z.number().int().nonnegative(),
+});
+
+export const runUsageSchema = z.object({
+  modelCalls: z.array(modelUsageSchema).default([]),
+  exaSearches: z.number().int().nonnegative().default(0),
+});
+
+export const runCostSchema = z.object({
+  id: z.string(),
+  runId: z.string(),
+  sessionId: z.string(),
+  usage: runUsageSchema,
+  modelCostUsd: z.number().nonnegative(),
+  searchCostUsd: z.number().nonnegative(),
+  totalUsd: z.number().nonnegative(),
+  pricingEffectiveDate: z.string(),
+  measurementMethod: z.enum(['estimated', 'provider_usage']).default('estimated'),
+  createdAt: z.string(),
+});
+
+export const researchMemoryScopeSchema = z.enum(['user', 'session']);
+export const researchMemoryNamespaceSchema = z.enum(['preference', 'source_cache', 'procedure', 'run_summary']);
+
+export const researchMemorySchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  sessionId: z.string().nullable().optional(),
+  scope: researchMemoryScopeSchema,
+  namespace: researchMemoryNamespaceSchema,
+  key: z.string().min(1),
+  value: z.record(z.string(), z.unknown()),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+}).superRefine((memory, ctx) => {
+  if (memory.scope === 'user' && memory.sessionId) {
+    ctx.addIssue({ code: 'custom', path: ['sessionId'], message: 'User-scoped memory must not include a sessionId.' });
+  }
+  if (memory.scope === 'session' && !memory.sessionId) {
+    ctx.addIssue({ code: 'custom', path: ['sessionId'], message: 'Session-scoped memory requires a sessionId.' });
+  }
+});
+
+export const upsertResearchMemorySchema = z.object({
+  sessionId: z.string().optional(),
+  scope: researchMemoryScopeSchema,
+  namespace: researchMemoryNamespaceSchema,
+  key: z.string().trim().min(1).max(160),
+  value: z.record(z.string(), z.unknown()),
+}).superRefine((memory, ctx) => {
+  if (memory.scope === 'user' && memory.sessionId) {
+    ctx.addIssue({ code: 'custom', path: ['sessionId'], message: 'User-scoped memory must not include a sessionId.' });
+  }
+  if (memory.scope === 'session' && !memory.sessionId) {
+    ctx.addIssue({ code: 'custom', path: ['sessionId'], message: 'Session-scoped memory requires a sessionId.' });
+  }
+});
+
 export const researchSessionSchema = z.object({
   id: z.string(),
   userId: z.string(),
@@ -136,6 +207,8 @@ export const researchSessionSchema = z.object({
 
 export const researchSessionDetailSchema = researchSessionSchema.extend({
   currentRun: researchRunSchema.nullable().optional(),
+  currentRunCost: runCostSchema.nullable().optional(),
+  currentPostMortem: researchPostMortemSchema.nullable().optional(),
   sources: z.array(sourceSchema),
   evaluations: z.array(sourceEvaluationSchema),
   learnings: z.array(learningSchema),
@@ -182,6 +255,14 @@ export type ResearchLearning = z.infer<typeof learningSchema>;
 export type ResearchReport = z.infer<typeof reportSchema>;
 export type ResearchRunEvent = z.infer<typeof researchRunEventSchema>;
 export type ResearchRun = z.infer<typeof researchRunSchema>;
+export type ResearchPostMortem = z.infer<typeof researchPostMortemSchema>;
+export type ModelUsage = z.infer<typeof modelUsageSchema>;
+export type RunUsage = z.infer<typeof runUsageSchema>;
+export type RunCost = z.infer<typeof runCostSchema>;
+export type ResearchMemoryScope = z.infer<typeof researchMemoryScopeSchema>;
+export type ResearchMemoryNamespace = z.infer<typeof researchMemoryNamespaceSchema>;
+export type ResearchMemory = z.infer<typeof researchMemorySchema>;
+export type UpsertResearchMemoryInput = z.infer<typeof upsertResearchMemorySchema>;
 export type ResearchSession = z.infer<typeof researchSessionSchema>;
 export type ResearchSessionDetail = z.infer<typeof researchSessionDetailSchema>;
 export type ResearchPacket = z.infer<typeof researchPacketSchema>;

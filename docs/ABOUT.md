@@ -22,9 +22,9 @@ Fin treats research artifacts as product data: sessions, sources, evaluations, l
 
 - Next.js product shell and authenticated API routes.
 - Mastra agents and Exa/OpenAI integration.
-- Supabase schema for sessions, sources, evaluations, learnings, approvals, events, and reports.
-- Contract generation, offline evals, claim-ledger seed, plateau scorer, cost model, audit-green dependency baseline, queued worker execution, and authenticated UI loaders for sessions, claims, runs, approvals, and reports.
+- Supabase schema for sessions, sources, evaluations, learnings, approvals, events, reports, runs, claims, costs, post-mortems, and scoped memory.
+- Contract generation, offline evals, claim-ledger seed, plateau scorer, cost model, audit-green dependency baseline, queued worker execution, OpenTelemetry trace hooks, and authenticated UI loaders for sessions, claims, runs, costs, approvals, memory, and reports.
 
 ## What Is Still Being Built
 
-OpenTelemetry traces, scoped memory tables, measured live benchmark rows, and recorded live demo evidence are tracked in `docs/FDE_GATES.md`.
+Measured live benchmark rows, provider-token usage capture, and recorded live demo evidence are tracked in `docs/FDE_GATES.md`.

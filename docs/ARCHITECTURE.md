@@ -9,7 +9,7 @@ User
   -> Next.js workspace
   -> API route validation
   -> Supabase Auth check
-  -> Research pipeline
+  -> Research queue and worker
   -> Mastra agents and tools
   -> Exa search and OpenAI model calls
   -> Supabase persisted session state
@@ -21,7 +21,7 @@ User
 | Domain | Responsibility |
 | --- | --- |
 | `src/app` | Product routes, API handlers, report export |
-| `src/lib/schemas.ts` | Shared Zod contracts for sessions, sources, learnings, reports, events |
+| `src/lib/contracts` | Shared Zod contracts and generated JSON Schema source |
 | `src/server/research` | Search, citation audit, report formatting, pipeline orchestration, persistence repository |
 | `src/mastra` | Agents, tools, workflows, and Mastra instance registration |
 | `supabase/migrations` | Database schema and row-level security |
@@ -51,6 +51,18 @@ Supabase stores:
 - `research_reports`
 - `research_events`
 - `research_approvals`
+- `research_runs`
+- `research_job_leases`
+- `research_claims`
+- `claim_evidence`
+- `claim_gaps`
+- `research_audits`
+- `research_run_costs`
+- `research_post_mortems`
+- `research_memories`
+- `eval_runs`
+- `eval_results`
+- `pricing_snapshots`
 
 All user-owned tables have row-level security. Server routes use Supabase Auth bearer tokens to resolve the current user and enforce ownership before reading or mutating data.
 

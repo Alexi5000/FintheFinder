@@ -1,13 +1,6 @@
-export type ModelUsage = {
-  model: string;
-  inputTokens: number;
-  outputTokens: number;
-};
+import type { ModelUsage, RunUsage } from '@/lib/schemas';
 
-export type RunUsage = {
-  modelCalls: ModelUsage[];
-  exaSearches: number;
-};
+export type { ModelUsage, RunUsage };
 
 export type PricingSnapshot = {
   effectiveDate: string;
@@ -43,6 +36,19 @@ export function estimateRunCost(usage: RunUsage, pricing: PricingSnapshot = defa
 
 export function isBudgetExceeded(usage: RunUsage, budgetUsd: number, pricing: PricingSnapshot = defaultPricingSnapshot) {
   return estimateRunCost(usage, pricing).totalUsd > budgetUsd;
+}
+
+export function estimateTokenCount(value: unknown) {
+  const text = typeof value === 'string' ? value : JSON.stringify(value);
+  return Math.max(1, Math.ceil(text.length / 4));
+}
+
+export function estimateModelCall(model: string, input: unknown, output: unknown): ModelUsage {
+  return {
+    model,
+    inputTokens: estimateTokenCount(input),
+    outputTokens: estimateTokenCount(output),
+  };
 }
 
 function roundUsd(value: number) {

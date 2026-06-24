@@ -30,7 +30,7 @@ Lists sessions for the authenticated user.
 
 ### `GET /api/research/sessions/:id`
 
-Returns session detail with current run, sources, evaluations, learnings, events, and report.
+Returns session detail with current run, current run cost, current post-mortem, sources, evaluations, learnings, events, and report.
 
 ### `POST /api/research/sessions/:id/run`
 
@@ -44,7 +44,7 @@ Response:
 
 ### `GET /api/research/runs/:id`
 
-Returns run status and run-linked events for an owned run.
+Returns run status, run-linked events, cost, and post-mortem for an owned run.
 
 ### `GET /api/research/sessions/:id/claims`
 
@@ -65,11 +65,31 @@ Request:
 }
 ```
 
-An approval queues a reporting-stage run and returns `202 { "runId": "...", "status": "queued" }`.
+An approval queues a reporting-stage run and returns `202 { "runId": "...", "status": "queued" }`. Unresolved critical gaps return `409 critical_gaps_unresolved` unless every critical gap is explicitly listed in `waivedGapIds` with reviewer notes.
 
 ### `GET /api/research/sessions/:id/events`
 
 Returns server-sent event formatted run events.
+
+### `GET /api/research/memory`
+
+Returns user-scoped memories. Pass `?sessionId=...` to include session-scoped memory for an owned session.
+
+### `POST /api/research/memory`
+
+Writes explicit user or session memory.
+
+Request:
+
+```json
+{
+  "sessionId": "optional-for-session-scope",
+  "scope": "session",
+  "namespace": "procedure",
+  "key": "operator-note:1",
+  "value": { "note": "Prefer primary sources." }
+}
+```
 
 ## Reports
 

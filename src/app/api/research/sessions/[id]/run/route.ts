@@ -3,6 +3,7 @@ import { apiError, parseError } from '@/server/http';
 import { checkRateLimit } from '@/server/rate-limit';
 import { enqueueResearchRun, getSessionDetail } from '@/server/research/repository';
 import { getUserFromRequest, hasSupabaseConfig } from '@/server/supabase/server';
+import { withSpan } from '@/server/telemetry';
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -15,8 +16,17 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     const { id } = await context.params;
     const session = await getSessionDetail(user.id, id);
-    const run = await enqueueResearchRun(session.id, { stage: 'research', requestedBy: user.id }, 'planning');
-    return NextResponse.json({ runId: run.id, status: run.status, run }, { status: 202 });
+    return await withSpan(
+      'api.research.enqueue_run',
+      {
+        'research.session_id': session.id,
+        'research.stage': 'research',
+      },
+      async () => {
+        const run = await enqueueResearchRun(session.id, { stage: 'research', requestedBy: user.id }, 'planning');
+        return NextResponse.json({ runId: run.id, status: run.status, run }, { status: 202 });
+      },
+    );
   } catch (error) {
     return parseError(error);
   }

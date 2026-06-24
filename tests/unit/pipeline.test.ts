@@ -45,6 +45,18 @@ const repositoryMock = vi.hoisted(() => ({
   replaceResearchArtifacts: vi.fn(async () => undefined),
   saveReport: vi.fn(async () => undefined),
   saveResearchAudit: vi.fn(async () => undefined),
+  saveRunCost: vi.fn(async () => ({
+    id: 'cost_1',
+    runId: 'run_1',
+    sessionId: 'session_1',
+    usage: { modelCalls: [], exaSearches: 0 },
+    modelCostUsd: 0,
+    searchCostUsd: 0,
+    totalUsd: 0,
+    pricingEffectiveDate: '2026-06-24',
+    measurementMethod: 'estimated',
+    createdAt: '2026-06-24T00:00:00.000Z',
+  })),
   updateSessionState: vi.fn(async () => undefined),
 }));
 
@@ -54,7 +66,8 @@ const agentState = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/config', () => ({
-  getProviderStatus: () => ({ openai: true, exa: true, supabase: true }),
+  env: { RUN_BUDGET_USD: 5 },
+  getProviderStatus: () => ({ openai: true, exa: true, supabase: true, models: { primary: 'gpt-5.5', fast: 'gpt-5.4-mini', reasoningEffort: 'high' } }),
 }));
 
 vi.mock('@/server/research/search-service', () => ({

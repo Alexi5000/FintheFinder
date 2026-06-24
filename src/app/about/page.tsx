@@ -63,11 +63,10 @@ export default function AboutPage() {
         </div>
         <p className="muted">
           The foundation includes typed API routes, Supabase persistence, Mastra agents, Exa/OpenAI integration, contract generation, offline evals,
-          a claim-ledger seed, plateau scoring, cost estimation, audit-green dependencies, and repository proof docs.
+          claim-ledger persistence, plateau scoring, run-cost estimates, trace-linked events, scoped memory, audit-green dependencies, and repository proof docs.
         </p>
         <p className="muted">
-          Durable worker execution, live authenticated data loaders, production claim persistence, OpenTelemetry traces, post-mortems, scoped memory,
-          and recorded live demo evidence remain tracked in the FDE gate matrix.
+          Provider-token usage capture, measured live benchmark rows, and recorded live demo evidence remain tracked in the FDE gate matrix.
         </p>
         <Link className="button secondary" href="/settings">
           Inspect provider status

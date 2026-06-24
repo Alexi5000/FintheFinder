@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { apiError, parseError } from '@/server/http';
-import { getEvents, getRunForUser } from '@/server/research/repository';
+import { getEvents, getPostMortemForRun, getRunCostForRun, getRunForUser } from '@/server/research/repository';
 import { getUserFromRequest, hasSupabaseConfig } from '@/server/supabase/server';
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -11,8 +11,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 
     const { id } = await context.params;
     const run = await getRunForUser(user.id, id);
-    const events = await getEvents(run.sessionId, { runId: run.id });
-    return NextResponse.json({ run, events });
+    const [events, cost, postMortem] = await Promise.all([getEvents(run.sessionId, { runId: run.id }), getRunCostForRun(run.id), getPostMortemForRun(run.id)]);
+    return NextResponse.json({ run, events, cost, postMortem });
   } catch (error) {
     return parseError(error);
   }

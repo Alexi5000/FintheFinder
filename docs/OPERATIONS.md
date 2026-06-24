@@ -48,11 +48,20 @@ Worker defaults:
 - `WORKER_ONCE=1` for one-shot health checks
 - `WORKER_PROCESS_ONCE=1` to claim and process at most one queued run
 
+Cost and trace defaults:
+
+- `RUN_BUDGET_USD=5`
+- `OTEL_ENABLED=false`
+- `OTEL_SERVICE_NAME=fin-the-finder`
+- `OTEL_EXPORTER_OTLP_ENDPOINT`
+
 ## Logging And Telemetry
 
 Pino redacts keys, tokens, prompts, and sensitive fields. Do not log raw model prompts, service-role keys, bearer tokens, or user-provided confidential research material.
 
-OpenTelemetry spans and post-mortem persistence are tracked in `docs/FDE_GATES.md` and are not complete until run IDs, trace IDs, costs, and post-mortems are visible from API/UI evidence.
+OpenTelemetry is initialized lazily for API spans and during worker boot. Run events persist trace IDs when an active span exists and always carry a correlation ID for worker-claimed runs. Post-mortems emit `post_mortem_created` events and are visible from run/session APIs.
+
+Scoped memory is explicit. The app writes user/session memories through `/api/research/memory`; worker summaries use the `run_summary` namespace. Do not store raw prompts, secrets, or unredacted confidential source material in memory values.
 
 ## Generated Files
 

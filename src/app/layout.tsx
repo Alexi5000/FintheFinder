@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Fish, History, Settings, Search } from 'lucide-react';
+import { Fish, History, Info, Settings, Search } from 'lucide-react';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Fin the Finder',
-  description: 'Production-grade AI deep research assistant.',
+  description: 'Evidence-first AI deep research workspace with cited reports and auditable research runs.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -24,6 +24,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               </Link>
               <Link href="/sessions">
                 <History size={16} /> Sessions
+              </Link>
+              <Link href="/about">
+                <Info size={16} /> About
               </Link>
               <Link href="/settings">
                 <Settings size={16} /> Settings

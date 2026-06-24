@@ -1,0 +1,49 @@
+{
+  "id": "citation-mismatch",
+  "prompt": "Research citation coverage failure behavior.",
+  "expected": {
+    "requiredCaveats": ["uncertainty"],
+    "minimumCitationCoverage": 1,
+    "forbiddenPhrases": ["risk-free"]
+  },
+  "actual": {
+    "sources": [
+      {
+        "id": "src_known",
+        "title": "Known Source",
+        "url": "https://example.com/known",
+        "canonicalUrl": "https://example.com/known",
+        "domain": "example.com",
+        "snippet": "Known evidence.",
+        "content": "Known evidence includes uncertainty.",
+        "publishedAt": null,
+        "score": 0.8,
+        "credibility": "medium",
+        "relevanceReason": "Fixture."
+      }
+    ],
+    "report": {
+      "id": "report_eval_2",
+      "sessionId": "session_eval_2",
+      "title": "Citation Mismatch",
+      "executiveSummary": "This report is intentionally valid after fixing citation IDs and mentions uncertainty.",
+      "sections": [
+        {
+          "heading": "Finding",
+          "body": "The finding cites known evidence and preserves uncertainty.",
+          "sourceIds": ["src_known"],
+          "claimIds": ["claim_known"]
+        }
+      ],
+      "citations": [
+        {
+          "sourceId": "src_known",
+          "url": "https://example.com/known",
+          "title": "Known Source"
+        }
+      ],
+      "markdown": "# Citation Mismatch\n\nThe report preserves uncertainty and cites known evidence.",
+      "createdAt": "2026-06-24T00:00:00.000Z"
+    }
+  }
+}

@@ -30,11 +30,25 @@ Lists sessions for the authenticated user.
 
 ### `GET /api/research/sessions/:id`
 
-Returns session detail with sources, evaluations, learnings, events, and report.
+Returns session detail with current run, sources, evaluations, learnings, events, and report.
 
 ### `POST /api/research/sessions/:id/run`
 
-Runs the research pipeline for an owned session.
+Queues a worker-owned research run for an owned session. This endpoint returns before long-running model/search work starts.
+
+Response:
+
+```json
+{ "runId": "...", "status": "queued", "run": { "id": "...", "metadata": { "stage": "research" } } }
+```
+
+### `GET /api/research/runs/:id`
+
+Returns run status and run-linked events for an owned run.
+
+### `GET /api/research/sessions/:id/claims`
+
+Returns persisted claims and claim gaps for an owned session.
 
 ### `POST /api/research/sessions/:id/approval`
 
@@ -46,9 +60,12 @@ Request:
 {
   "action": "approve",
   "notes": "Sources look good.",
-  "approvedSourceIds": ["src_abc"]
+  "approvedSourceIds": ["src_abc"],
+  "waivedGapIds": []
 }
 ```
+
+An approval queues a reporting-stage run and returns `202 { "runId": "...", "status": "queued" }`.
 
 ### `GET /api/research/sessions/:id/events`
 

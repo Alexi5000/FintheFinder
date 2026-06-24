@@ -1,6 +1,11 @@
 import type {
+  ClaimAudit,
+  ClaimEvidence,
+  ClaimGap,
   ResearchLearning,
+  ResearchClaim,
   ResearchReport,
+  ResearchRun,
   ResearchRunEvent,
   ResearchSession,
   ResearchSessionDetail,
@@ -8,6 +13,7 @@ import type {
   SourceEvaluation,
   ResearchPhase,
   ResearchStatus,
+  RunStatus,
 } from '@/lib/schemas';
 import { nowIso, titleFromQuery } from '@/lib/utils';
 import { createSupabaseAdmin } from '@/server/supabase/server';
@@ -76,15 +82,16 @@ export async function getSessionDetail(userId: string, sessionId: string): Promi
 
   const session = mapSessionRow(requireRow(sessionRow, sessionError));
 
-  const [sources, evaluations, learnings, events, report] = await Promise.all([
+  const [sources, evaluations, learnings, events, report, currentRun] = await Promise.all([
     getSources(sessionId),
     getEvaluations(sessionId),
     getLearnings(sessionId),
     getEvents(sessionId),
     getReport(sessionId),
+    getLatestRunForSession(sessionId),
   ]);
 
-  return { ...session, sources, evaluations, learnings, events, report };
+  return { ...session, currentRun, sources, evaluations, learnings, events, report };
 }
 
 export async function updateSessionState(sessionId: string, status: ResearchStatus, phase: ResearchPhase) {
@@ -96,17 +103,133 @@ export async function updateSessionState(sessionId: string, status: ResearchStat
   if (error) throw new Error(error.message);
 }
 
+export async function enqueueResearchRun(
+  sessionId: string,
+  metadata: Record<string, unknown> = { stage: 'research' },
+  phase: ResearchPhase = 'planning',
+): Promise<ResearchRun> {
+  const supabase = createSupabaseAdmin();
+  const stage = metadata.stage ?? 'research';
+  const { data: active, error: activeError } = await supabase
+    .from('research_runs')
+    .select('*')
+    .eq('session_id', sessionId)
+    .in('status', ['queued', 'leased', 'running'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (activeError) throw new Error(activeError.message);
+  if (active && ((active.metadata as Record<string, unknown> | null)?.stage ?? 'research') === stage) {
+    return mapRunRow(active);
+  }
+
+  const now = nowIso();
+  const id = crypto.randomUUID();
+  const { data, error } = await supabase
+    .from('research_runs')
+    .insert({
+      id,
+      session_id: sessionId,
+      status: 'queued',
+      attempt: 1,
+      metadata,
+      created_at: now,
+      updated_at: now,
+    })
+    .select('*')
+    .single();
+
+  if (error) throw new Error(error.message);
+  await updateSessionState(sessionId, 'queued', phase);
+  await addEvent(sessionId, phase, 'Research run queued.', { runId: id, stage }, { runId: id, eventType: 'state_transition' });
+  return mapRunRow(requireRow(data, null));
+}
+
+export async function getRunForUser(userId: string, runId: string): Promise<ResearchRun> {
+  const supabase = createSupabaseAdmin();
+  const { data, error } = await supabase
+    .from('research_runs')
+    .select('*, research_sessions!inner(user_id)')
+    .eq('id', runId)
+    .eq('research_sessions.user_id', userId)
+    .single();
+  return mapRunRow(requireRow(data, error));
+}
+
+export async function getRunById(runId: string): Promise<ResearchRun> {
+  const supabase = createSupabaseAdmin();
+  const { data, error } = await supabase.from('research_runs').select('*').eq('id', runId).single();
+  return mapRunRow(requireRow(data, error));
+}
+
+export async function getLatestRunForSession(sessionId: string): Promise<ResearchRun | null> {
+  const supabase = createSupabaseAdmin();
+  const { data, error } = await supabase
+    .from('research_runs')
+    .select('*')
+    .eq('session_id', sessionId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? mapRunRow(data as Record<string, unknown>) : null;
+}
+
+export async function getSessionById(sessionId: string): Promise<ResearchSession> {
+  const supabase = createSupabaseAdmin();
+  const { data, error } = await supabase.from('research_sessions').select('*').eq('id', sessionId).single();
+  return mapSessionRow(requireRow(data, error));
+}
+
+export async function claimNextQueuedRun(workerId: string, leaseMs: number): Promise<ResearchRun | null> {
+  const supabase = createSupabaseAdmin();
+  const { data, error } = await supabase.rpc('claim_next_research_run', { p_worker_id: workerId, p_lease_ms: leaseMs }).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? mapRunRow(data as Record<string, unknown>) : null;
+}
+
+export async function updateRunStatus(
+  runId: string,
+  status: RunStatus,
+  updates: { error?: string | null; startedAt?: string | null; completedAt?: string | null } = {},
+): Promise<ResearchRun> {
+  const supabase = createSupabaseAdmin();
+  const patch: Record<string, unknown> = {
+    status,
+    updated_at: nowIso(),
+  };
+  if (status === 'running') patch.started_at = updates.startedAt ?? nowIso();
+  if (['completed', 'failed', 'cancelled', 'awaiting_approval'].includes(status)) {
+    patch.completed_at = updates.completedAt ?? nowIso();
+    patch.lease_expires_at = null;
+  }
+  if (updates.error !== undefined) patch.error = updates.error;
+  if (updates.startedAt !== undefined) patch.started_at = updates.startedAt;
+  if (updates.completedAt !== undefined) patch.completed_at = updates.completedAt;
+
+  const { data, error } = await supabase.from('research_runs').update(patch).eq('id', runId).select('*').single();
+  return mapRunRow(requireRow(data, error));
+}
+
 export async function replaceResearchArtifacts(
   sessionId: string,
   artifacts: {
     sources: ResearchSource[];
     evaluations: SourceEvaluation[];
     learnings: ResearchLearning[];
+    claims?: ResearchClaim[];
+    claimEvidence?: ClaimEvidence[];
+    claimGaps?: ClaimGap[];
+    audits?: Array<{ runId?: string; auditType: string; audit: ClaimAudit | { ok: boolean; issues: string[] } }>;
     report?: ResearchReport;
   },
 ) {
   const supabase = createSupabaseAdmin();
   await Promise.all([
+    supabase.from('research_audits').delete().eq('session_id', sessionId),
+    supabase.from('claim_gaps').delete().eq('session_id', sessionId),
+    supabase.from('research_claims').delete().eq('session_id', sessionId),
     supabase.from('research_sources').delete().eq('session_id', sessionId),
     supabase.from('source_evaluations').delete().eq('session_id', sessionId),
     supabase.from('research_learnings').delete().eq('session_id', sessionId),
@@ -163,6 +286,68 @@ export async function replaceResearchArtifacts(
     if (error) throw new Error(error.message);
   }
 
+  if (artifacts.claims?.length) {
+    const { error } = await supabase.from('research_claims').insert(
+      artifacts.claims.map((claim) => ({
+        id: claim.id,
+        session_id: sessionId,
+        text: claim.text,
+        status: claim.status,
+        severity: claim.severity,
+        source_ids: claim.sourceIds,
+        evidence_ids: claim.evidenceIds,
+        created_at: claim.createdAt,
+      })),
+    );
+    if (error) throw new Error(error.message);
+  }
+
+  if (artifacts.claimEvidence?.length) {
+    const { error } = await supabase.from('claim_evidence').insert(
+      artifacts.claimEvidence.map((evidence) => ({
+        id: evidence.id,
+        claim_id: evidence.claimId,
+        source_id: evidence.sourceId,
+        quote: evidence.quote,
+        confidence: evidence.confidence,
+        created_at: evidence.createdAt,
+      })),
+    );
+    if (error) throw new Error(error.message);
+  }
+
+  if (artifacts.claimGaps?.length) {
+    const { error } = await supabase.from('claim_gaps').insert(
+      artifacts.claimGaps.map((gap) => ({
+        id: gap.id,
+        session_id: sessionId,
+        claim_id: gap.claimId ?? null,
+        description: gap.description,
+        severity: gap.severity,
+        status: gap.status,
+        resolution: gap.resolution ?? null,
+        created_at: gap.createdAt,
+        resolved_at: gap.resolvedAt ?? null,
+      })),
+    );
+    if (error) throw new Error(error.message);
+  }
+
+  if (artifacts.audits?.length) {
+    const { error } = await supabase.from('research_audits').insert(
+      artifacts.audits.map(({ runId, auditType, audit }) => ({
+        id: crypto.randomUUID(),
+        session_id: sessionId,
+        run_id: runId ?? null,
+        audit_type: auditType,
+        ok: audit.ok,
+        issues: 'issues' in audit ? audit.issues : audit.openGaps,
+        created_at: nowIso(),
+      })),
+    );
+    if (error) throw new Error(error.message);
+  }
+
   if (artifacts.report) {
     await saveReport(artifacts.report);
   }
@@ -183,7 +368,28 @@ export async function saveReport(report: ResearchReport) {
   if (error) throw new Error(error.message);
 }
 
-export async function addApproval(sessionId: string, userId: string, action: string, notes?: string, approvedSourceIds: string[] = []) {
+export async function saveResearchAudit(sessionId: string, auditType: string, audit: { ok: boolean; issues?: unknown[] }, runId?: string) {
+  const supabase = createSupabaseAdmin();
+  const { error } = await supabase.from('research_audits').insert({
+    id: crypto.randomUUID(),
+    session_id: sessionId,
+    run_id: runId ?? null,
+    audit_type: auditType,
+    ok: audit.ok,
+    issues: audit.issues ?? [],
+    created_at: nowIso(),
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function addApproval(
+  sessionId: string,
+  userId: string,
+  action: string,
+  notes?: string,
+  approvedSourceIds: string[] = [],
+  waivedGapIds: string[] = [],
+) {
   const supabase = createSupabaseAdmin();
   const { error } = await supabase.from('research_approvals').insert({
     id: crypto.randomUUID(),
@@ -192,26 +398,43 @@ export async function addApproval(sessionId: string, userId: string, action: str
     action,
     notes: notes ?? null,
     approved_source_ids: approvedSourceIds,
+    waived_gap_ids: waivedGapIds,
     created_at: nowIso(),
   });
   if (error) throw new Error(error.message);
 }
 
-export async function addEvent(sessionId: string, phase: ResearchPhase, message: string, metadata: Record<string, unknown> = {}) {
+export async function addEvent(
+  sessionId: string,
+  phase: ResearchPhase,
+  message: string,
+  metadata: Record<string, unknown> = {},
+  options: Partial<Pick<ResearchRunEvent, 'runId' | 'attemptId' | 'eventType' | 'severity' | 'actor' | 'stepId' | 'durationMs' | 'traceId' | 'correlationId'>> = {},
+) {
   const supabase = createSupabaseAdmin();
   const event: ResearchRunEvent = {
     id: crypto.randomUUID(),
     sessionId,
     phase,
     message,
+    ...options,
     metadata,
     createdAt: nowIso(),
   };
   const { error } = await supabase.from('research_events').insert({
     id: event.id,
     session_id: sessionId,
+    run_id: event.runId ?? null,
+    attempt_id: event.attemptId ?? null,
     phase,
+    event_type: event.eventType ?? null,
+    severity: event.severity ?? 'info',
+    actor: event.actor ?? 'system',
+    step_id: event.stepId ?? null,
     message,
+    duration_ms: event.durationMs ?? null,
+    trace_id: event.traceId ?? null,
+    correlation_id: event.correlationId ?? null,
     metadata,
     created_at: event.createdAt,
   });
@@ -219,17 +442,87 @@ export async function addEvent(sessionId: string, phase: ResearchPhase, message:
   return event;
 }
 
-export async function getEvents(sessionId: string): Promise<ResearchRunEvent[]> {
+export async function getEvents(sessionId: string, options: { runId?: string } = {}): Promise<ResearchRunEvent[]> {
   const supabase = createSupabaseAdmin();
-  const { data, error } = await supabase.from('research_events').select('*').eq('session_id', sessionId).order('created_at');
+  let query = supabase.from('research_events').select('*').eq('session_id', sessionId);
+  if (options.runId) query = query.eq('run_id', options.runId);
+  const { data, error } = await query.order('created_at').order('id');
   return requireRows(data, error).map((row) => ({
     id: row.id,
     sessionId: row.session_id,
+    runId: row.run_id ?? undefined,
+    attemptId: row.attempt_id ?? undefined,
     phase: row.phase,
+    eventType: row.event_type ?? undefined,
+    severity: row.severity ?? undefined,
+    actor: row.actor ?? undefined,
+    stepId: row.step_id ?? undefined,
     message: row.message,
+    durationMs: row.duration_ms ?? undefined,
+    traceId: row.trace_id ?? undefined,
+    correlationId: row.correlation_id ?? undefined,
     metadata: row.metadata ?? {},
     createdAt: row.created_at,
   }));
+}
+
+export async function getClaimsAndGaps(sessionId: string) {
+  const supabase = createSupabaseAdmin();
+  const [claimsResult, gapsResult] = await Promise.all([
+    supabase.from('research_claims').select('*').eq('session_id', sessionId),
+    supabase.from('claim_gaps').select('*').eq('session_id', sessionId).order('created_at'),
+  ]);
+
+  return {
+    claims: requireRows(claimsResult.data, claimsResult.error).map((row) => ({
+      id: row.id,
+      sessionId: row.session_id,
+      text: row.text,
+      status: row.status,
+      severity: row.severity,
+      sourceIds: row.source_ids ?? [],
+      evidenceIds: row.evidence_ids ?? [],
+      createdAt: row.created_at,
+    })),
+    gaps: requireRows(gapsResult.data, gapsResult.error).map((row) => ({
+      id: row.id,
+      sessionId: row.session_id,
+      claimId: row.claim_id ?? undefined,
+      description: row.description,
+      severity: row.severity,
+      status: row.status,
+      resolution: row.resolution ?? undefined,
+      createdAt: row.created_at,
+      resolvedAt: row.resolved_at ?? undefined,
+    })),
+  };
+}
+
+export async function getResearchArtifacts(sessionId: string) {
+  const [sources, evaluations, learnings, events, report, claimsAndGaps] = await Promise.all([
+    getSources(sessionId),
+    getEvaluations(sessionId),
+    getLearnings(sessionId),
+    getEvents(sessionId),
+    getReport(sessionId),
+    getClaimsAndGaps(sessionId),
+  ]);
+
+  return { sources, evaluations, learnings, events, report, ...claimsAndGaps };
+}
+
+export async function createPostMortem(sessionId: string, runId: string | undefined, rootCause: string, affectedStep?: string) {
+  const supabase = createSupabaseAdmin();
+  const { error } = await supabase.from('research_post_mortems').insert({
+    id: crypto.randomUUID(),
+    session_id: sessionId,
+    run_id: runId ?? null,
+    root_cause: rootCause,
+    affected_step: affectedStep ?? null,
+    action_items: [],
+    created_at: nowIso(),
+  });
+  if (error) throw new Error(error.message);
 }
 
 async function getSources(sessionId: string): Promise<ResearchSource[]> {
@@ -302,5 +595,22 @@ function mapSessionRow(row: Record<string, string>): ResearchSession {
     phase: row.phase as ResearchPhase,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function mapRunRow(row: Record<string, unknown>): ResearchRun {
+  return {
+    id: String(row.id),
+    sessionId: String(row.session_id),
+    status: row.status as RunStatus,
+    attempt: Number(row.attempt ?? 1),
+    metadata: (row.metadata as Record<string, unknown> | null) ?? {},
+    workerId: row.worker_id ? String(row.worker_id) : null,
+    leaseExpiresAt: row.lease_expires_at ? String(row.lease_expires_at) : null,
+    startedAt: row.started_at ? String(row.started_at) : null,
+    completedAt: row.completed_at ? String(row.completed_at) : null,
+    error: row.error ? String(row.error) : null,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
   };
 }

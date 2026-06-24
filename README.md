@@ -4,11 +4,11 @@
 
 # Fin the Finder
 
-**A production-grade AI deep research assistant built with Next.js, Mastra, OpenAI, Exa, and Supabase.**
+**An evidence-first AI deep research workspace built with Next.js, Mastra, OpenAI, Exa, and Supabase.**
 
-Fin plans research, searches the web, evaluates source quality, extracts evidence-backed learnings, checks citations, and generates polished markdown reports with a human review loop.
+Fin plans research, searches the web, evaluates source quality, extracts evidence-backed learnings, checks citations, and is being hardened behind FDE gates so every production claim has code, tests, evals, and demo evidence.
 
-[Architecture](docs/ARCHITECTURE.md) · [Setup](docs/SETUP.md) · [API](docs/API.md) · [Testing](docs/TESTING.md) · [Operations](docs/OPERATIONS.md) · [Security](SECURITY.md)
+[About](docs/ABOUT.md) - [Architecture](docs/ARCHITECTURE.md) - [FDE Gates](docs/FDE_GATES.md) - [Benchmark](docs/BENCHMARK.md) - [API](docs/API.md) - [Operations](docs/OPERATIONS.md) - [Security](SECURITY.md)
 
 <img src="assets/fin-hero.png" alt="Fin the Finder product visual" width="100%" />
 
@@ -16,20 +16,20 @@ Fin plans research, searches the web, evaluates source quality, extracts evidenc
 
 ## Why This Exists
 
-Research tools often stop at search results or a long model answer. Fin is designed as an agentic research product: it keeps source records, run events, learnings, approvals, and reports as first-class data so research can be reviewed, resumed, audited, and improved.
+Research tools often stop at search results or a long model answer. Fin is designed as an agentic research product: it keeps source records, run events, learnings, approvals, claims, evals, costs, and reports as first-class data so research can be reviewed, resumed, audited, and improved.
 
-The goal is a serious engineering repo, not a demo: typed contracts, pinned dependencies, production UI routes, Supabase persistence, Mastra workflows, tests, security posture, and operator documentation.
+The goal is a serious engineering repo, not a demo claim. `docs/FDE_GATES.md` is the source of truth for what is implemented, partially built, or still planned.
 
 ## Product Capabilities
 
-- Multi-agent Mastra research pipeline with planner, source evaluator, extractor, contradiction checker, citation auditor, report writer, and final reviewer agents.
+- Mastra agent stack for planner, source evaluator, extractor, contradiction checker, citation auditor, report writer, and final reviewer roles; full hosted-path wiring is tracked in the FDE gates.
 - GPT-5.5 quality-first defaults through environment-driven model configuration.
 - Exa search integration with timeout handling, canonical URL normalization, duplicate filtering, and typed source records.
 - Supabase Auth and Postgres schema for multi-user sessions, source records, learnings, approvals, events, and reports.
-- Next.js product shell with workspace, session history, session detail, report reader, settings, and API routes.
+- Next.js product shell with workspace, About, session history, session detail, report reader, settings, health, and API routes.
 - Cited markdown report export.
 - Structured logging with redaction for keys, tokens, prompts, and sensitive payloads.
-- Unit tests for schemas, URL normalization, citation auditing, and provider-failure behavior.
+- Contract generation, offline evals, claim-ledger primitives, plateau scoring, cost estimation, coverage gate, and audit-green dependency baseline.
 
 ## Stack
 
@@ -51,8 +51,11 @@ npm install
 cp .env.example .env
 npm run typecheck
 npm run lint
-npm run test
+npm run contracts:check
+npm run test:coverage
+npm run evals
 npm run build
+npm run audit
 npm run dev
 ```
 
@@ -78,8 +81,14 @@ SUPABASE_SERVICE_ROLE_KEY=""
 | `npm run typecheck` | Run strict TypeScript checks |
 | `npm run lint` | Run ESLint |
 | `npm run test` | Run unit tests |
+| `npm run test:coverage` | Run unit tests with coverage thresholds |
 | `npm run test:e2e` | Run Playwright tests |
+| `npm run contracts:sync` | Regenerate JSON Schema contracts |
+| `npm run contracts:check` | Verify committed contracts and drift hash |
+| `npm run evals` | Run deterministic offline eval fixtures |
+| `npm run notebooks:check` | Validate authoring notebooks are non-runtime artifacts |
 | `npm run audit` | Run npm audit at moderate severity |
+| `npm run smoke` | Run repository and contract smoke checks |
 | `npm run verify` | Run the main local verification suite |
 
 ## Repository Map
@@ -87,28 +96,35 @@ SUPABASE_SERVICE_ROLE_KEY=""
 ```text
 src/app/                 Next.js UI and API routes
 src/components/          Client UI components
-src/lib/                 Shared config, schemas, utilities
+src/lib/                 Shared config, contracts, schemas, utilities
 src/mastra/              Agents, tools, workflows, Mastra registry
-src/server/              Server services: Supabase, research pipeline, logging
+src/server/              Server services: research pipeline, evals, logging
+contracts/               Generated JSON Schema contracts and drift hash
+notebooks/               Authoring-only eval/design notebooks
 supabase/migrations/     Production database schema and RLS
 tests/unit/              Unit tests
 tests/e2e/               Playwright tests
-docs/                    Architecture, setup, API, testing, operations
+docs/                    Architecture, setup, API, testing, operations, FDE gates
 assets/                  Repo visuals and brand assets
 ```
 
 ## Current Verification Snapshot
 
-The current local implementation passes:
+The current local implementation is expected to pass:
 
 ```bash
 npm run typecheck
 npm run lint
-npm run test
+npm run contracts:check
+npm run notebooks:check
+npm run test:coverage
+npm run evals
 npm run build
+npm run audit
+npm run smoke
 ```
 
-`npm audit --audit-level=moderate` currently passes with zero vulnerabilities. The repo pins a `postcss` override to keep the Next.js dependency tree on the patched line without downgrading the framework.
+`npm audit --audit-level=moderate` currently passes with zero vulnerabilities after direct package updates plus targeted overrides for patched transitive dependencies.
 
 ## License
 

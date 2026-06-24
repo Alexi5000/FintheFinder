@@ -32,13 +32,14 @@ export function ResearchWorkspace({ providerReady }: Props) {
       const createdJson = await created.json();
       if (!created.ok) throw new Error(createdJson.error?.message ?? 'Could not create session.');
 
-      setStatus('Running research pipeline...');
+      setStatus('Queueing research run...');
       const run = await fetch(`/api/research/sessions/${createdJson.session.id}/run`, {
         method: 'POST',
         headers: { authorization: `Bearer ${token}` },
       });
       const runJson = await run.json();
       if (!run.ok) throw new Error(runJson.error?.message ?? 'Research run failed.');
+      setStatus(`Research run queued: ${runJson.runId}`);
       window.location.href = `/sessions/${createdJson.session.id}`;
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Unexpected research failure.');

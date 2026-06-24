@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { apiError, parseError } from '@/server/http';
 import { checkRateLimit } from '@/server/rate-limit';
-import { getSessionDetail } from '@/server/research/repository';
-import { runResearchSession } from '@/server/research/pipeline';
+import { enqueueResearchRun, getSessionDetail } from '@/server/research/repository';
 import { getUserFromRequest, hasSupabaseConfig } from '@/server/supabase/server';
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -16,8 +15,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     const { id } = await context.params;
     const session = await getSessionDetail(user.id, id);
-    const result = await runResearchSession(session.id, session.query);
-    return NextResponse.json({ result });
+    const run = await enqueueResearchRun(session.id, { stage: 'research', requestedBy: user.id }, 'planning');
+    return NextResponse.json({ runId: run.id, status: run.status, run }, { status: 202 });
   } catch (error) {
     return parseError(error);
   }

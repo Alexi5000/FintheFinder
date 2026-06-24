@@ -1,0 +1,13 @@
+services:
+  web:
+    build: .
+    command: npm run start
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+  worker:
+    build: .
+    command: npm run start:worker
+    env_file:
+      - .env

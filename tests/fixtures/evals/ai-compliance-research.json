@@ -1,0 +1,49 @@
+{
+  "id": "ai-compliance-research",
+  "prompt": "Research practical uses of AI agents in compliance-heavy financial services.",
+  "expected": {
+    "requiredCaveats": ["regulatory uncertainty", "human oversight"],
+    "minimumCitationCoverage": 1,
+    "forbiddenPhrases": ["guaranteed approval", "risk-free"]
+  },
+  "actual": {
+    "sources": [
+      {
+        "id": "src_regulator",
+        "title": "Regulator guidance on AI governance",
+        "url": "https://example.com/regulator-ai-governance",
+        "canonicalUrl": "https://example.com/regulator-ai-governance",
+        "domain": "example.com",
+        "snippet": "AI governance requires documented controls and human oversight.",
+        "content": "Financial institutions should preserve human oversight and document controls.",
+        "publishedAt": "2026-01-10",
+        "score": 0.94,
+        "credibility": "high",
+        "relevanceReason": "Primary regulatory guidance fixture."
+      }
+    ],
+    "report": {
+      "id": "report_eval_1",
+      "sessionId": "session_eval_1",
+      "title": "AI Agents In Compliance-Heavy Financial Services",
+      "executiveSummary": "AI agents can improve compliance operations, but regulatory uncertainty and human oversight remain central.",
+      "sections": [
+        {
+          "heading": "Practical Use",
+          "body": "AI agents are most defensible when they prepare evidence, route exceptions, and preserve human oversight.",
+          "sourceIds": ["src_regulator"],
+          "claimIds": ["claim_oversight"]
+        }
+      ],
+      "citations": [
+        {
+          "sourceId": "src_regulator",
+          "url": "https://example.com/regulator-ai-governance",
+          "title": "Regulator guidance on AI governance"
+        }
+      ],
+      "markdown": "# AI Agents In Compliance-Heavy Financial Services\n\nRegulatory uncertainty remains material. Production systems need human oversight and auditable controls.",
+      "createdAt": "2026-06-24T00:00:00.000Z"
+    }
+  }
+}

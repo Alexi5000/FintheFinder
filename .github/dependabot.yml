@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    groups:
+      app-runtime:
+        patterns:
+          - next
+          - react
+          - react-dom
+          - ai
+          - "@ai-sdk/*"
+      mastra:
+        patterns:
+          - mastra
+          - "@mastra/*"
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies

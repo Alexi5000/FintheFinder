@@ -220,3 +220,6 @@ begin
   return claimed;
 end;
 $$;
+
+revoke execute on function public.claim_next_research_run(text, integer) from public, anon, authenticated;
+grant execute on function public.claim_next_research_run(text, integer) to service_role;

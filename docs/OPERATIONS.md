@@ -67,6 +67,8 @@ OpenTelemetry is initialized lazily for API spans and during worker boot. Run ev
 
 Worker terminal run updates require a successful ownership heartbeat. If ownership cannot be proven, the worker leaves terminal writes and post-mortem creation to the current lease owner or retry path.
 
+Approval mutations must go through the hosted API routes. Direct authenticated Supabase writes to `research_approvals` are intentionally denied so critical-gap blocking, waiver notes, rejection, and follow-up transitions stay inside the audited HITL state machine.
+
 Scoped memory is explicit. The app writes user/session memories through `/api/research/memory`; worker summaries use the `run_summary` namespace and are best-effort after terminal run updates. Do not store raw prompts, secrets, or unredacted confidential source material in memory values.
 
 ## Generated Files

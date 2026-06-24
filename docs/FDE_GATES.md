@@ -18,8 +18,9 @@ Fin is production-ready only when each public claim is implemented, tested, demo
 | Honest benchmark doc | Implemented | `docs/BENCHMARK.md`, 10-scenario `docs/benchmark/offline-eval-summary.json` | `npm run benchmark:check` |
 | Recorded live demo proof | Pending configured credentials | `docs/demo/live-demo.example.json`, `scripts/demo-record.mjs`, demo verifier tests | `npm run demo:record` and `npm run evals:live` after live run |
 | ADRs | Implemented | `docs/adr/` | File review |
-| Full test coverage for new surface | Implemented | Unit tests for contracts, repository adapters, demo verifier, hosted API routes, worker runtime, and coverage gate | `npm run test:coverage` |
+| Full test coverage for new surface | Implemented | Unit tests for contracts, repository adapters, Supabase schema parity, demo verifier, hosted API routes, worker runtime, and coverage gate | `npm run test:coverage` |
 | Contract single source of truth | Implemented | `contracts/schema.json` | `npm run contracts:check` |
+| Supabase schema/RLS parity | Implemented | Migration tests cover table columns, SQL/Zod enum checks, event constraints, RLS enablement, ownership policies, API-only approval writes, service-role RPC grants, active-run uniqueness, and lease uniqueness; repository tests cover artifact/event DB payload shape | `npx vitest run tests/unit/migrations.test.ts tests/unit/repository.test.ts` |
 | Dual runtime behind contract | Implemented | Pure worker runtime, worker queue, `/run` enqueue, hosted route tests, Docker web/worker commands | `npx vitest run tests/unit/research-worker.test.ts`, `npx vitest run tests/unit/hosted-api-routes.test.ts`, `npm run container:build` |
 | Eval regression detection | Implemented | Fixture score baselines, seven adversarial negative controls, CI eval artifact, eval API, checked benchmark artifact | `npm run evals`, `npm run benchmark:check`, `GET /api/research/evals` |
 | Persisted offline eval history | Implemented | Typed eval contracts, Supabase eval history migration/RPC, public history API | `npm run evals:persist`, `GET /api/research/evals/history` |

@@ -141,6 +141,177 @@ describe('research repository persistence helpers', () => {
     );
   });
 
+  it('persists a full artifact graph with database column names', async () => {
+    const { replaceResearchArtifacts } = await import('@/server/research/repository');
+
+    await replaceResearchArtifacts('session_1', {
+      sources: [
+        {
+          id: 'src_1',
+          title: 'Primary source',
+          url: 'https://example.com/source',
+          canonicalUrl: 'https://example.com/source',
+          domain: 'example.com',
+          snippet: 'Evidence snippet',
+          content: 'Evidence content',
+          publishedAt: '2026-06-24',
+          score: 0.92,
+          credibility: 'high',
+          relevanceReason: 'Primary evidence',
+        },
+      ],
+      evaluations: [
+        {
+          sourceId: 'src_1',
+          isRelevant: true,
+          score: 0.92,
+          credibility: 'high',
+          reason: 'Directly answers the query.',
+          risks: ['none'],
+        },
+      ],
+      learnings: [
+        {
+          id: 'learning_1',
+          sourceId: 'src_1',
+          claim: 'AI systems need review.',
+          evidence: 'The source says review is required.',
+          followUpQuestions: ['What controls are required?'],
+        },
+      ],
+      claims: [
+        {
+          id: 'claim_1',
+          sessionId: 'session_1',
+          text: 'AI systems need review.',
+          status: 'supported',
+          severity: 'high',
+          sourceIds: ['src_1'],
+          evidenceIds: ['evidence_1'],
+          createdAt: '2026-06-24T00:00:00.000Z',
+        },
+      ],
+      claimEvidence: [
+        {
+          id: 'evidence_1',
+          claimId: 'claim_1',
+          sourceId: 'src_1',
+          quote: 'Review is required.',
+          confidence: 0.95,
+          createdAt: '2026-06-24T00:00:00.000Z',
+        },
+      ],
+      claimGaps: [
+        {
+          id: 'gap_1',
+          sessionId: 'session_1',
+          claimId: 'claim_1',
+          description: 'Need implementation detail.',
+          severity: 'medium',
+          status: 'open',
+          createdAt: '2026-06-24T00:00:00.000Z',
+        },
+      ],
+      audits: [{ runId: 'run_1', auditType: 'claim', audit: { ok: false, openGaps: [], openCriticalGaps: [], unsupportedClaimIds: [] } }],
+      report: {
+        id: 'report_1',
+        sessionId: 'session_1',
+        title: 'Report',
+        executiveSummary: 'Summary',
+        sections: [{ heading: 'Finding', body: 'AI systems need review.', sourceIds: ['src_1'], claimIds: ['claim_1'] }],
+        citations: [{ sourceId: 'src_1', url: 'https://example.com/source', title: 'Primary source' }],
+        markdown: '# Report',
+        createdAt: '2026-06-24T00:00:00.000Z',
+      },
+    });
+
+    expect(supabaseHarness.calls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          table: 'research_sources',
+          op: 'insert',
+          payload: [expect.objectContaining({ canonical_url: 'https://example.com/source', relevance_reason: 'Primary evidence' })],
+        }),
+        expect.objectContaining({
+          table: 'source_evaluations',
+          op: 'insert',
+          payload: [expect.objectContaining({ source_id: 'src_1', is_relevant: true, risks: ['none'] })],
+        }),
+        expect.objectContaining({
+          table: 'research_learnings',
+          op: 'insert',
+          payload: [expect.objectContaining({ source_id: 'src_1', follow_up_questions: ['What controls are required?'] })],
+        }),
+        expect.objectContaining({
+          table: 'research_claims',
+          op: 'insert',
+          payload: [expect.objectContaining({ source_ids: ['src_1'], evidence_ids: ['evidence_1'] })],
+        }),
+        expect.objectContaining({
+          table: 'claim_evidence',
+          op: 'insert',
+          payload: [expect.objectContaining({ claim_id: 'claim_1', source_id: 'src_1' })],
+        }),
+        expect.objectContaining({
+          table: 'claim_gaps',
+          op: 'insert',
+          payload: [expect.objectContaining({ claim_id: 'claim_1', resolved_at: null })],
+        }),
+        expect.objectContaining({
+          table: 'research_audits',
+          op: 'insert',
+          payload: [expect.objectContaining({ run_id: 'run_1', audit_type: 'claim', ok: false })],
+        }),
+        expect.objectContaining({
+          table: 'research_reports',
+          op: 'insert',
+          payload: expect.objectContaining({ executive_summary: 'Summary', sections: expect.any(Array), citations: expect.any(Array) }),
+        }),
+      ]),
+    );
+  });
+
+  it('persists structured run-event columns for tracing and SSE replay', async () => {
+    const { addEvent } = await import('@/server/research/repository');
+
+    await addEvent(
+      'session_1',
+      'searching',
+      'Search tool completed.',
+      { sourceCount: 3 },
+      {
+        runId: 'run_1',
+        attemptId: 'attempt_1',
+        eventType: 'tool_completed',
+        severity: 'debug',
+        actor: 'tool',
+        stepId: 'web_search',
+        durationMs: 123,
+        traceId: 'trace_1',
+        correlationId: 'corr_1',
+      },
+    );
+
+    expect(supabaseHarness.calls).toContainEqual(
+      expect.objectContaining({
+        table: 'research_events',
+        op: 'insert',
+        payload: expect.objectContaining({
+          run_id: 'run_1',
+          attempt_id: 'attempt_1',
+          event_type: 'tool_completed',
+          severity: 'debug',
+          actor: 'tool',
+          step_id: 'web_search',
+          duration_ms: 123,
+          trace_id: 'trace_1',
+          correlation_id: 'corr_1',
+          metadata: { sourceCount: 3 },
+        }),
+      }),
+    );
+  });
+
   it('maps approval history rows into the public contract shape', async () => {
     supabaseHarness.rowsResponses.push({
       data: [

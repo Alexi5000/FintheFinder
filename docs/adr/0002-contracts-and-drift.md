@@ -13,4 +13,4 @@ Keep Zod as the runtime validation source and generate committed JSON Schema plu
 
 ## Consequences
 
-CI can fail when contracts drift. Supabase generated types remain the persistence source and need adapter tests where row shapes differ from API contracts.
+CI can fail when API contracts drift. Supabase migrations are also checked against the Zod contracts for table columns, enum/check constraints, event contract constraints, RLS posture, service-role RPC boundaries, and repository adapter payload shape. If generated Supabase `Database` types are refreshed from a configured project, they must match the same migration parity tests before replacing or narrowing repository row types.

@@ -89,6 +89,7 @@ export const researchEventTypeSchema = z.enum([
 ]);
 
 export const eventSeveritySchema = z.enum(['debug', 'info', 'warn', 'error']);
+export const eventActorSchema = z.enum(['system', 'user', 'worker', 'agent', 'tool']);
 
 export const researchRunEventSchema = z.object({
   id: z.string(),
@@ -98,7 +99,7 @@ export const researchRunEventSchema = z.object({
   phase: researchPhaseSchema,
   eventType: researchEventTypeSchema.optional(),
   severity: eventSeveritySchema.optional(),
-  actor: z.enum(['system', 'user', 'worker', 'agent', 'tool']).optional(),
+  actor: eventActorSchema.optional(),
   stepId: z.string().optional(),
   message: z.string(),
   durationMs: z.number().int().nonnegative().optional(),

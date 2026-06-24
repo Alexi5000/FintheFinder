@@ -2,6 +2,8 @@
 
 ## Local Gates
 
+`npm run typecheck` runs the app compiler plus `tsconfig.type-tests.json`, which includes compile-only Supabase DB parity assertions under `tests/type/`.
+
 ```bash
 npm run typecheck
 npm run lint
@@ -28,6 +30,7 @@ Current unit coverage includes:
 - Repository persistence mapping for costs, memories, and post-mortems
 - Worker runtime config parsing, no-work paths, lease heartbeats, lease-loss terminal-write blocking, reporting dispatch, sanitized failure artifacts, and best-effort run-summary memory
 - Supabase migration parity for table columns, SQL/Zod enum checks, event constraints, RLS, service-role RPCs, API-only approval writes, and repository artifact/event payload shape
+- Supabase DB type parity with a committed migration-derived snapshot, typed clients, RPC/table union checks, and migration inventory tests
 
 Add new unit tests for every new schema, service, and agent contract.
 

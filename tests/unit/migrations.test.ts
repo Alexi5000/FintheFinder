@@ -18,6 +18,7 @@ import {
   runStatusSchema,
   sourceSchema,
 } from '@/lib/schemas';
+import { databaseFunctionNames, databaseTableNames } from '@/lib/supabase/database.types';
 
 const migrations = [
   '001_initial_research_product.sql',
@@ -293,6 +294,15 @@ describe('database migrations', () => {
     }
   });
 
+  it('keeps the committed Supabase database type snapshot aligned with migration inventory', () => {
+    const sql = readAllMigrations();
+    const migrationTables = uniqueSorted([...sql.matchAll(/create table if not exists public\.([a-z_]+)/gi)].map(([, table]) => table));
+    const migrationFunctions = uniqueSorted([...sql.matchAll(/create or replace function public\.([a-z_]+)/gi)].map(([, functionName]) => functionName));
+
+    expect([...databaseTableNames].sort()).toEqual(migrationTables);
+    expect([...databaseFunctionNames].sort()).toEqual(migrationFunctions);
+  });
+
   it('keeps SQL check constraints aligned with exported Zod enums', () => {
     const sql = readAllMigrations();
     const enumChecks: Array<{ table: string; column: string; values: string[] }> = [
@@ -425,4 +435,8 @@ function enumValues(schema: unknown): string[] {
 
 function objectField(schema: unknown, field: string) {
   return (schema as { shape: Record<string, unknown> }).shape[field];
+}
+
+function uniqueSorted(values: string[]) {
+  return [...new Set(values)].sort();
 }

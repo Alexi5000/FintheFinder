@@ -12,7 +12,7 @@
     "start:mastra": "mastra start",
     "start:worker": "tsx src/worker/research-worker.ts",
     "worker": "tsx src/worker/research-worker.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.type-tests.json --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",

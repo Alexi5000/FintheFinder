@@ -13,4 +13,4 @@ Keep Zod as the runtime validation source and generate committed JSON Schema plu
 
 ## Consequences
 
-CI can fail when API contracts drift. Supabase migrations are also checked against the Zod contracts for table columns, enum/check constraints, event contract constraints, RLS posture, service-role RPC boundaries, and repository adapter payload shape. If generated Supabase `Database` types are refreshed from a configured project, they must match the same migration parity tests before replacing or narrowing repository row types.
+CI can fail when API contracts drift. Supabase migrations are also checked against the Zod contracts for table columns, enum/check constraints, event contract constraints, RLS posture, service-role RPC boundaries, repository adapter payload shape, and committed DB type inventory. The current `Database` type surface is migration-derived and compile-checked through `tsconfig.type-tests.json`; it must not be described as live-generated. If generated Supabase `Database` types are refreshed from a configured project, they must satisfy the same migration and type parity gates before replacing or narrowing repository row types.

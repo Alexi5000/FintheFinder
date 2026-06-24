@@ -21,6 +21,7 @@ import type {
   RunStatus,
   UpsertResearchMemoryInput,
 } from '@/lib/schemas';
+import type { DbUpdate, Json } from '@/lib/supabase/database.types';
 import { nowIso, titleFromQuery } from '@/lib/utils';
 import { createSupabaseAdmin } from '@/server/supabase/server';
 import { activeTraceId } from '@/server/telemetry';
@@ -132,7 +133,7 @@ export async function enqueueResearchRun(
     .maybeSingle();
 
   if (activeError) throw new Error(activeError.message);
-  if (active && ((active.metadata as Record<string, unknown> | null)?.stage ?? 'research') === stage) {
+  if (active && (recordFromJson(active.metadata).stage ?? 'research') === stage) {
     return mapRunRow(active);
   }
 
@@ -145,7 +146,7 @@ export async function enqueueResearchRun(
       session_id: sessionId,
       status: 'queued',
       attempt: 1,
-      metadata,
+      metadata: toJson(metadata),
       created_at: now,
       updated_at: now,
     })
@@ -216,7 +217,7 @@ export async function updateRunStatus(
   updates: { error?: string | null; startedAt?: string | null; completedAt?: string | null; workerId?: string } = {},
 ): Promise<ResearchRun> {
   const supabase = createSupabaseAdmin();
-  const patch: Record<string, unknown> = {
+  const patch: DbUpdate<'research_runs'> = {
     status,
     updated_at: nowIso(),
   };
@@ -254,7 +255,7 @@ export async function saveRunCost(
   const payload = {
     run_id: runId,
     session_id: sessionId,
-    usage,
+    usage: toJson(usage),
     model_cost_usd: estimate.modelCostUsd,
     search_cost_usd: estimate.searchCostUsd,
     total_usd: estimate.totalUsd,
@@ -329,7 +330,7 @@ export async function replaceResearchArtifacts(
         score: evaluation.score,
         credibility: evaluation.credibility,
         reason: evaluation.reason,
-        risks: evaluation.risks,
+        risks: toJson(evaluation.risks),
       })),
     );
     if (error) throw new Error(error.message);
@@ -343,7 +344,7 @@ export async function replaceResearchArtifacts(
         source_id: learning.sourceId,
         claim: learning.claim,
         evidence: learning.evidence,
-        follow_up_questions: learning.followUpQuestions,
+        follow_up_questions: toJson(learning.followUpQuestions),
       })),
     );
     if (error) throw new Error(error.message);
@@ -357,8 +358,8 @@ export async function replaceResearchArtifacts(
         text: claim.text,
         status: claim.status,
         severity: claim.severity,
-        source_ids: claim.sourceIds,
-        evidence_ids: claim.evidenceIds,
+        source_ids: toJson(claim.sourceIds),
+        evidence_ids: toJson(claim.evidenceIds),
         created_at: claim.createdAt,
       })),
     );
@@ -404,7 +405,7 @@ export async function replaceResearchArtifacts(
         run_id: runId ?? null,
         audit_type: auditType,
         ok: audit.ok,
-        issues: 'issues' in audit ? audit.issues : audit.openGaps,
+        issues: toJson('issues' in audit ? audit.issues : audit.openGaps),
         created_at: nowIso(),
       })),
     );
@@ -423,8 +424,8 @@ export async function saveReport(report: ResearchReport) {
     session_id: report.sessionId,
     title: report.title,
     executive_summary: report.executiveSummary,
-    sections: report.sections,
-    citations: report.citations,
+    sections: toJson(report.sections),
+    citations: toJson(report.citations),
     markdown: report.markdown,
     created_at: report.createdAt,
   });
@@ -439,7 +440,7 @@ export async function saveResearchAudit(sessionId: string, auditType: string, au
     run_id: runId ?? null,
     audit_type: auditType,
     ok: audit.ok,
-    issues: audit.issues ?? [],
+    issues: toJson(audit.issues ?? []),
     created_at: nowIso(),
   });
   if (error) throw new Error(error.message);
@@ -448,7 +449,7 @@ export async function saveResearchAudit(sessionId: string, auditType: string, au
 export async function addApproval(
   sessionId: string,
   userId: string,
-  action: string,
+  action: ResearchApproval['action'],
   notes?: string,
   approvedSourceIds: string[] = [],
   waivedGapIds: string[] = [],
@@ -460,8 +461,8 @@ export async function addApproval(
     user_id: userId,
     action,
     notes: notes ?? null,
-    approved_source_ids: approvedSourceIds,
-    waived_gap_ids: waivedGapIds,
+    approved_source_ids: toJson(approvedSourceIds),
+    waived_gap_ids: toJson(waivedGapIds),
     created_at: nowIso(),
   });
   if (error) throw new Error(error.message);
@@ -554,7 +555,7 @@ export async function upsertResearchMemory(userId: string, input: UpsertResearch
     scope: input.scope,
     namespace: input.namespace,
     key: input.key,
-    value: input.value,
+    value: toJson(input.value),
     updated_at: now,
   };
 
@@ -613,7 +614,7 @@ export async function addEvent(
     duration_ms: event.durationMs ?? null,
     trace_id: event.traceId ?? null,
     correlation_id: event.correlationId ?? null,
-    metadata,
+    metadata: toJson(metadata),
     created_at: event.createdAt,
   });
   if (error) throw new Error(error.message);
@@ -639,7 +640,7 @@ export async function getEvents(sessionId: string, options: { runId?: string } =
     durationMs: row.duration_ms ?? undefined,
     traceId: row.trace_id ?? undefined,
     correlationId: row.correlation_id ?? undefined,
-    metadata: row.metadata ?? {},
+    metadata: recordFromJson(row.metadata),
     createdAt: row.created_at,
   }));
 }
@@ -658,8 +659,8 @@ export async function getClaimsAndGaps(sessionId: string) {
       text: row.text,
       status: row.status,
       severity: row.severity,
-      sourceIds: row.source_ids ?? [],
-      evidenceIds: row.evidence_ids ?? [],
+      sourceIds: stringArrayFromJson(row.source_ids),
+      evidenceIds: stringArrayFromJson(row.evidence_ids),
       createdAt: row.created_at,
     })),
     gaps: requireRows(gapsResult.data, gapsResult.error).map((row) => ({
@@ -745,7 +746,7 @@ async function getEvaluations(sessionId: string): Promise<SourceEvaluation[]> {
     score: row.score,
     credibility: row.credibility,
     reason: row.reason,
-    risks: row.risks ?? [],
+    risks: stringArrayFromJson(row.risks),
   }));
 }
 
@@ -757,7 +758,7 @@ async function getLearnings(sessionId: string): Promise<ResearchLearning[]> {
     sourceId: row.source_id,
     claim: row.claim,
     evidence: row.evidence,
-    followUpQuestions: row.follow_up_questions ?? [],
+    followUpQuestions: stringArrayFromJson(row.follow_up_questions),
   }));
 }
 
@@ -771,8 +772,8 @@ async function getReport(sessionId: string): Promise<ResearchReport | null> {
     sessionId: data.session_id,
     title: data.title,
     executiveSummary: data.executive_summary,
-    sections: data.sections,
-    citations: data.citations,
+    sections: arrayFromJson<ResearchReport['sections'][number]>(data.sections),
+    citations: arrayFromJson<ResearchReport['citations'][number]>(data.citations),
     markdown: data.markdown,
     createdAt: data.created_at,
   };
@@ -871,4 +872,21 @@ function mapPostMortemRow(row: Record<string, unknown>): ResearchPostMortem {
     actionItems: Array.isArray(row.action_items) ? row.action_items.map(String) : [],
     createdAt: String(row.created_at),
   };
+}
+
+function toJson(value: unknown): Json {
+  return value as Json;
+}
+
+function recordFromJson(value: unknown): Record<string, unknown> {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value as Record<string, unknown>;
+  return {};
+}
+
+function stringArrayFromJson(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(String) : [];
+}
+
+function arrayFromJson<Item>(value: unknown): Item[] {
+  return Array.isArray(value) ? (value as Item[]) : [];
 }

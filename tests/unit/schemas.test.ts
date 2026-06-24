@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { createResearchSessionSchema, researchMemorySchema, researchPacketSchema, runCostSchema, upsertResearchMemorySchema } from '@/lib/schemas';
+import {
+  createResearchSessionSchema,
+  researchApprovalSchema,
+  researchMemorySchema,
+  researchPacketSchema,
+  runCostSchema,
+  upsertResearchMemorySchema,
+} from '@/lib/schemas';
 
 describe('research schemas', () => {
   it('accepts a valid research session request', () => {
@@ -64,6 +71,21 @@ describe('research schemas', () => {
         namespace: 'procedure',
         key: 'operator-note:1',
         value: { note: 'Prefer primary sources.' },
+      }),
+    ).not.toThrow();
+  });
+
+  it('accepts typed human approval records', () => {
+    expect(() =>
+      researchApprovalSchema.parse({
+        id: 'approval_1',
+        sessionId: 'session_1',
+        userId: 'user_1',
+        action: 'approve',
+        notes: 'Critical source gap waived after manual review.',
+        approvedSourceIds: ['src_1'],
+        waivedGapIds: ['gap_1'],
+        createdAt: '2026-06-24T00:00:00.000Z',
       }),
     ).not.toThrow();
   });

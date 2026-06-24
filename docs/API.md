@@ -30,7 +30,7 @@ Lists sessions for the authenticated user.
 
 ### `GET /api/research/sessions/:id`
 
-Returns session detail with current run, current run cost, current post-mortem, sources, evaluations, learnings, events, and report.
+Returns session detail with current run, current run cost, current post-mortem, sources, evaluations, learnings, events, approvals, and report.
 
 ### `POST /api/research/sessions/:id/run`
 
@@ -66,6 +66,29 @@ Request:
 ```
 
 An approval queues a reporting-stage run and returns `202 { "runId": "...", "status": "queued" }`. Unresolved critical gaps return `409 critical_gaps_unresolved` unless every critical gap is explicitly listed in `waivedGapIds` with reviewer notes.
+
+### `GET /api/research/sessions/:id/approvals`
+
+Returns the human decision history for an owned session.
+
+Response:
+
+```json
+{
+  "approvals": [
+    {
+      "id": "approval_abc",
+      "sessionId": "session_abc",
+      "userId": "user_abc",
+      "action": "approve",
+      "notes": "Sources look good.",
+      "approvedSourceIds": ["src_abc"],
+      "waivedGapIds": [],
+      "createdAt": "2026-06-24T00:00:00.000Z"
+    }
+  ]
+}
+```
 
 ### `GET /api/research/sessions/:id/events`
 

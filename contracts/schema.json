@@ -306,6 +306,66 @@
       ],
       "additionalProperties": false
     },
+    "researchApproval": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "approve",
+            "reject",
+            "follow_up"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "approvedSourceIds": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "waivedGapIds": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "userId",
+        "action",
+        "approvedSourceIds",
+        "waivedGapIds",
+        "createdAt"
+      ],
+      "additionalProperties": false
+    },
     "researchClaim": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -1698,6 +1758,69 @@
             "additionalProperties": false
           }
         },
+        "approvals": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "userId": {
+                "type": "string"
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "approve",
+                  "reject",
+                  "follow_up"
+                ]
+              },
+              "notes": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "approvedSourceIds": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "waivedGapIds": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "userId",
+              "action",
+              "approvedSourceIds",
+              "waivedGapIds",
+              "createdAt"
+            ],
+            "additionalProperties": false
+          }
+        },
         "report": {
           "anyOf": [
             {
@@ -1816,6 +1939,7 @@
         "evaluations",
         "learnings",
         "events",
+        "approvals",
         "report"
       ],
       "additionalProperties": false

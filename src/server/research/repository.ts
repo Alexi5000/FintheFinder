@@ -3,6 +3,7 @@ import type {
   ClaimEvidence,
   ClaimGap,
   ResearchLearning,
+  ResearchApproval,
   ResearchClaim,
   ResearchMemory,
   ResearchPostMortem,
@@ -88,11 +89,12 @@ export async function getSessionDetail(userId: string, sessionId: string): Promi
 
   const session = mapSessionRow(requireRow(sessionRow, sessionError));
 
-  const [sources, evaluations, learnings, events, report, currentRun] = await Promise.all([
+  const [sources, evaluations, learnings, events, approvals, report, currentRun] = await Promise.all([
     getSources(sessionId),
     getEvaluations(sessionId),
     getLearnings(sessionId),
     getEvents(sessionId),
+    getApprovals(sessionId),
     getReport(sessionId),
     getLatestRunForSession(sessionId),
   ]);
@@ -101,7 +103,7 @@ export async function getSessionDetail(userId: string, sessionId: string): Promi
     ? await Promise.all([getRunCostForRun(currentRun.id), getPostMortemForRun(currentRun.id)])
     : [null, null];
 
-  return { ...session, currentRun, currentRunCost, currentPostMortem, sources, evaluations, learnings, events, report };
+  return { ...session, currentRun, currentRunCost, currentPostMortem, sources, evaluations, learnings, events, approvals, report };
 }
 
 export async function updateSessionState(sessionId: string, status: ResearchStatus, phase: ResearchPhase) {
@@ -465,6 +467,17 @@ export async function addApproval(
   if (error) throw new Error(error.message);
 }
 
+export async function getApprovals(sessionId: string): Promise<ResearchApproval[]> {
+  const supabase = createSupabaseAdmin();
+  const { data, error } = await supabase.from('research_approvals').select('*').eq('session_id', sessionId).order('created_at', { ascending: false });
+  return requireRows(data, error).map(mapApprovalRow);
+}
+
+export async function getApprovalsForUser(userId: string, sessionId: string): Promise<ResearchApproval[]> {
+  await assertSessionOwnership(userId, sessionId);
+  return getApprovals(sessionId);
+}
+
 export async function getOpenCriticalGaps(sessionId: string): Promise<ClaimGap[]> {
   const { gaps } = await getClaimsAndGaps(sessionId);
   return gaps.filter((gap) => gap.severity === 'critical' && gap.status === 'open');
@@ -765,7 +778,7 @@ async function getReport(sessionId: string): Promise<ResearchReport | null> {
   };
 }
 
-async function assertSessionOwnership(userId: string, sessionId: string) {
+export async function assertSessionOwnership(userId: string, sessionId: string) {
   const supabase = createSupabaseAdmin();
   const { data, error } = await supabase.from('research_sessions').select('id').eq('id', sessionId).eq('user_id', userId).maybeSingle();
   if (error) throw new Error(error.message);
@@ -831,6 +844,20 @@ function mapMemoryRow(row: Record<string, unknown>): ResearchMemory {
     value: (row.value as Record<string, unknown> | null) ?? {},
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
+  };
+}
+
+function mapApprovalRow(row: Record<string, unknown>): ResearchApproval {
+  const action = row.action === 'reject' || row.action === 'follow_up' ? row.action : 'approve';
+  return {
+    id: String(row.id),
+    sessionId: String(row.session_id),
+    userId: String(row.user_id),
+    action,
+    notes: row.notes ? String(row.notes) : null,
+    approvedSourceIds: Array.isArray(row.approved_source_ids) ? row.approved_source_ids.map(String) : [],
+    waivedGapIds: Array.isArray(row.waived_gap_ids) ? row.waived_gap_ids.map(String) : [],
+    createdAt: String(row.created_at),
   };
 }
 

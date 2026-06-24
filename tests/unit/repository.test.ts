@@ -140,4 +140,74 @@ describe('research repository persistence helpers', () => {
       ]),
     );
   });
+
+  it('maps approval history rows into the public contract shape', async () => {
+    supabaseHarness.rowsResponses.push({
+      data: [
+        {
+          id: 'approval_1',
+          session_id: 'session_1',
+          user_id: 'user_1',
+          action: 'approve',
+          notes: 'Waived one critical gap after source review.',
+          approved_source_ids: ['src_1'],
+          waived_gap_ids: ['gap_1'],
+          created_at: '2026-06-24T00:00:00.000Z',
+        },
+      ],
+      error: null,
+    });
+
+    const { getApprovals } = await import('@/server/research/repository');
+    const approvals = await getApprovals('session_1');
+
+    expect(approvals).toEqual([
+      {
+        id: 'approval_1',
+        sessionId: 'session_1',
+        userId: 'user_1',
+        action: 'approve',
+        notes: 'Waived one critical gap after source review.',
+        approvedSourceIds: ['src_1'],
+        waivedGapIds: ['gap_1'],
+        createdAt: '2026-06-24T00:00:00.000Z',
+      },
+    ]);
+  });
+
+  it('checks session ownership before reading approval history', async () => {
+    supabaseHarness.maybeSingleResponses.push({ data: { id: 'session_1' }, error: null });
+    supabaseHarness.rowsResponses.push({
+      data: [
+        {
+          id: 'approval_1',
+          session_id: 'session_1',
+          user_id: 'user_1',
+          action: 'reject',
+          notes: null,
+          approved_source_ids: [],
+          waived_gap_ids: [],
+          created_at: '2026-06-24T00:00:00.000Z',
+        },
+      ],
+      error: null,
+    });
+
+    const { getApprovalsForUser } = await import('@/server/research/repository');
+    const approvals = await getApprovalsForUser('user_1', 'session_1');
+
+    expect(approvals[0]?.action).toBe('reject');
+    expect(supabaseHarness.supabase.from).toHaveBeenNthCalledWith(1, 'research_sessions');
+    expect(supabaseHarness.supabase.from).toHaveBeenNthCalledWith(2, 'research_approvals');
+  });
+
+  it('does not read approval history when ownership is not proven', async () => {
+    supabaseHarness.maybeSingleResponses.push({ data: null, error: null });
+
+    const { getApprovalsForUser } = await import('@/server/research/repository');
+    await expect(getApprovalsForUser('user_1', 'session_2')).rejects.toThrow('Research session was not found for this user.');
+
+    expect(supabaseHarness.supabase.from).toHaveBeenCalledTimes(1);
+    expect(supabaseHarness.supabase.from).toHaveBeenCalledWith('research_sessions');
+  });
 });

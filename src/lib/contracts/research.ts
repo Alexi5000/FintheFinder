@@ -194,6 +194,19 @@ export const upsertResearchMemorySchema = z.object({
   }
 });
 
+export const approvalActionSchema = z.enum(['approve', 'reject', 'follow_up']);
+
+export const researchApprovalSchema = z.object({
+  id: z.string(),
+  sessionId: z.string(),
+  userId: z.string(),
+  action: approvalActionSchema,
+  notes: z.string().nullable().optional(),
+  approvedSourceIds: z.array(z.string()).default([]),
+  waivedGapIds: z.array(z.string()).default([]),
+  createdAt: z.string(),
+});
+
 export const researchSessionSchema = z.object({
   id: z.string(),
   userId: z.string(),
@@ -213,6 +226,7 @@ export const researchSessionDetailSchema = researchSessionSchema.extend({
   evaluations: z.array(sourceEvaluationSchema),
   learnings: z.array(learningSchema),
   events: z.array(researchRunEventSchema),
+  approvals: z.array(researchApprovalSchema).default([]),
   report: reportSchema.nullable(),
 });
 
@@ -228,8 +242,6 @@ export const researchPacketSchema = z.object({
 export const createResearchSessionSchema = z.object({
   query: z.string().trim().min(3).max(2000),
 });
-
-export const approvalActionSchema = z.enum(['approve', 'reject', 'follow_up']);
 
 export const approvalRequestSchema = z.object({
   action: approvalActionSchema,
@@ -263,6 +275,7 @@ export type ResearchMemoryScope = z.infer<typeof researchMemoryScopeSchema>;
 export type ResearchMemoryNamespace = z.infer<typeof researchMemoryNamespaceSchema>;
 export type ResearchMemory = z.infer<typeof researchMemorySchema>;
 export type UpsertResearchMemoryInput = z.infer<typeof upsertResearchMemorySchema>;
+export type ResearchApproval = z.infer<typeof researchApprovalSchema>;
 export type ResearchSession = z.infer<typeof researchSessionSchema>;
 export type ResearchSessionDetail = z.infer<typeof researchSessionDetailSchema>;
 export type ResearchPacket = z.infer<typeof researchPacketSchema>;

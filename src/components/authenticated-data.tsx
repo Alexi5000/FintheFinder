@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, Download, Loader2, Play, RefreshCw, Save, XCircle } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
-import type { ClaimGap, ResearchClaim, ResearchMemory, ResearchPostMortem, ResearchRun, ResearchSession, ResearchSessionDetail, RunCost } from '@/lib/schemas';
+import type { ClaimGap, ResearchApproval, ResearchClaim, ResearchMemory, ResearchPostMortem, ResearchRun, ResearchSession, ResearchSessionDetail, RunCost } from '@/lib/schemas';
 
 type LoadState<T> = {
   status: 'idle' | 'loading' | 'ready' | 'error' | 'unauthenticated' | 'unconfigured';
@@ -202,11 +202,13 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
         <Metric label="Sources" value={session.sources.length} />
         <Metric label="Learnings" value={session.learnings.length} />
         <Metric label="Events" value={session.events.length} />
+        <Metric label="Approvals" value={session.approvals.length} />
         <Metric label="Report" value={session.report ? 'Ready' : 'Pending'} />
       </div>
 
       <RunPanel run={currentRun ?? null} cost={currentRunCost} postMortem={currentPostMortem} />
       {session.status === 'awaiting_approval' ? <ApprovalGatePanel session={session} postAction={postAction} /> : null}
+      <ApprovalHistoryPanel approvals={session.approvals} />
       <ClaimsPanel sessionId={session.id} />
       <MemoryPanel sessionId={session.id} />
       <ArtifactsPanel session={session} />
@@ -357,6 +359,33 @@ function ApprovalGatePanel({ session, postAction }: { session: ResearchSessionDe
           Reject
         </button>
       </div>
+    </section>
+  );
+}
+
+function ApprovalHistoryPanel({ approvals }: { approvals: ResearchApproval[] }) {
+  return (
+    <section className="panel stack">
+      <div>
+        <h2 className="h2">Approval history</h2>
+        <p className="muted">{approvals.length ? `${approvals.length} recorded decision${approvals.length === 1 ? '' : 's'}` : 'No human decisions recorded yet.'}</p>
+      </div>
+      {approvals.length ? (
+        <div className="stack">
+          {approvals.slice(0, 5).map((approval) => (
+            <article className="memory-row" key={approval.id}>
+              <div className="split-row">
+                <strong>{approval.action}</strong>
+                <span className="status">{new Date(approval.createdAt).toLocaleString()}</span>
+              </div>
+              {approval.notes ? <p>{approval.notes}</p> : <p className="muted">No reviewer notes.</p>}
+              <p className="muted">
+                {approval.approvedSourceIds.length} approved sources, {approval.waivedGapIds.length} waived gaps
+              </p>
+            </article>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }

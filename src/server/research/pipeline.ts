@@ -11,6 +11,7 @@ import {
   type ResearchReport,
   type ResearchRun,
   type ResearchSource,
+  type ModelUsage,
   type RunUsage,
   type SourceEvaluation,
   type ResearchPhase,
@@ -57,6 +58,11 @@ type PipelineStageResult = {
   status: 'awaiting_approval' | 'completed';
 };
 
+type MeasuredModelCall = {
+  call: ModelUsage;
+  measured: boolean;
+};
+
 export async function runResearchSession(sessionId: string, query: string, options: PipelineOptions = {}): Promise<PipelineStageResult> {
   const runId = options.run?.id;
   const correlationId = options.correlationId;
@@ -71,7 +77,7 @@ export async function runResearchSession(sessionId: string, query: string, optio
   await addEvent(sessionId, 'planning', 'Planning focused search queries.', {}, { runId, correlationId, eventType: 'agent_started', actor: 'agent', stepId: 'planner' });
 
   const planner = mastra.getAgent('plannerAgent');
-  const plan = await planner.generate(
+  const planResponse = await planner.generate(
     [
       {
         role: 'user',
@@ -80,12 +86,14 @@ export async function runResearchSession(sessionId: string, query: string, optio
     ],
     { structuredOutput: { schema: planSchema } },
   );
+  const plan = planSchema.parse(planResponse.object);
+  const plannerUsage = modelUsageFromResponse(status.models.primary, planResponse, { task: 'planner', query }, plan);
 
   const sources: ResearchSource[] = [];
   const seen = new Set<string>();
 
   await updateSessionState(sessionId, 'running', 'searching');
-  for (const searchQuery of plan.object.queries) {
+  for (const searchQuery of plan.queries) {
     await addEvent(sessionId, 'searching', `Searching: ${searchQuery}`, {}, { runId, correlationId, eventType: 'tool_started', actor: 'tool', stepId: 'exa_search' });
     const results = await searchWeb(searchQuery, { numResults: 5 });
     for (const source of results) {
@@ -97,19 +105,22 @@ export async function runResearchSession(sessionId: string, query: string, optio
 
   await updateSessionState(sessionId, 'running', 'evaluating');
   await addEvent(sessionId, 'evaluating', `Evaluating ${sources.length} sources.`, {}, { runId, correlationId, eventType: 'agent_started', actor: 'agent', stepId: 'source_evaluator' });
-  const evaluations = await evaluateSources(query, sources);
+  const evaluatedSources = await evaluateSources(query, sources);
+  const evaluations = evaluatedSources.evaluations;
   const relevantSources = sources.filter((source) => evaluations.some((evaluation) => evaluation.sourceId === source.id && evaluation.isRelevant));
 
   await updateSessionState(sessionId, 'running', 'extracting');
   await addEvent(sessionId, 'extracting', `Extracting learnings from ${relevantSources.length} relevant sources.`, {}, { runId, correlationId, eventType: 'agent_started', actor: 'agent', stepId: 'learning_extractor' });
-  const learnings = await extractLearnings(query, relevantSources);
+  const extractedLearnings = await extractLearnings(query, relevantSources);
+  const learnings = extractedLearnings.learnings;
 
   await updateSessionState(sessionId, 'awaiting_approval', 'reviewing');
   await addEvent(sessionId, 'reviewing', 'Building claim ledger and checking for gaps.', {}, { runId, correlationId, eventType: 'agent_started', actor: 'agent', stepId: 'claim_audit' });
   const claims = claimsFromLearnings(sessionId, learnings, relevantSources);
   const claimEvidence = evidenceFromLearnings(sessionId, learnings, relevantSources);
-  const claimAudit = auditClaims(sessionId, claims, plan.object.successCriteria);
-  const contradictionReview = await reviewContradictions(query, learnings, claims);
+  const claimAudit = auditClaims(sessionId, claims, plan.successCriteria);
+  const contradictionResult = await reviewContradictions(query, learnings, claims);
+  const contradictionReview = contradictionResult.review;
   const contradictionGaps = contradictionReview.criticalGaps.map((description) => ({
     id: `gap_${crypto.randomUUID()}`,
     sessionId,
@@ -133,25 +144,11 @@ export async function runResearchSession(sessionId: string, query: string, optio
     ],
   });
 
-  await recordEstimatedRunCost(sessionId, runId, correlationId, 'reviewing', {
-    exaSearches: plan.object.queries.length,
+  const researchModelUsage = [plannerUsage, ...evaluatedSources.usage, ...extractedLearnings.usage, contradictionResult.usage];
+  await recordRunCost(sessionId, runId, correlationId, 'reviewing', measurementMethodFor(researchModelUsage), {
+    exaSearches: plan.queries.length,
     modelCalls: [
-      estimateModelCall(status.models.primary, { task: 'planner', query }, plan.object),
-      ...sources.map((source) =>
-        estimateModelCall(
-          status.models.primary,
-          { task: 'source_evaluation', query, source: { id: source.id, title: source.title, url: source.url, content: source.content.slice(0, 3000) } },
-          evaluations.find((evaluation) => evaluation.sourceId === source.id) ?? {},
-        ),
-      ),
-      ...relevantSources.map((source) =>
-        estimateModelCall(
-          status.models.primary,
-          { task: 'learning_extraction', query, source: { id: source.id, title: source.title, url: source.url, content: source.content.slice(0, 6000) } },
-          learnings.filter((learning) => learning.sourceId === source.id),
-        ),
-      ),
-      estimateModelCall(status.models.primary, { task: 'contradiction_review', query, learnings, claims }, contradictionReview),
+      ...researchModelUsage.map((usage) => usage.call),
     ],
   });
 
@@ -193,35 +190,46 @@ export async function runApprovedReportSession(sessionId: string, query: string,
   await updateSessionState(sessionId, 'running', 'reporting');
   await addEvent(sessionId, 'reporting', 'Synthesizing cited report from approved research artifacts.', {}, { runId, correlationId, eventType: 'agent_started', actor: 'agent', stepId: 'report_writer' });
 
-  const report = await generateReport(sessionId, query, artifacts.sources, artifacts.learnings);
+  const reportResult = await generateReport(sessionId, query, artifacts.sources, artifacts.learnings);
+  const report = reportResult.report;
   const citationAudit = auditReportCitations(report, artifacts.sources);
-  const citationAgentAudit = await auditCitationsWithAgent(report, artifacts.sources);
-  const reportCall = estimateModelCall(status.models.primary, { task: 'report_writer', query, sources: artifacts.sources, learnings: artifacts.learnings }, report);
-  const citationAuditCall = estimateModelCall(status.models.primary, { task: 'citation_auditor', report, sources: artifacts.sources }, citationAgentAudit);
+  const citationAgentAuditResult = await auditCitationsWithAgent(report, artifacts.sources);
+  const citationAgentAudit = citationAgentAuditResult.audit;
 
   if (!citationAudit.ok || !citationAgentAudit.ok) {
     const issues = [...citationAudit.issues, ...citationAgentAudit.issues];
     logger.warn({ issues, sessionId, runId }, 'citation audit blocked report readiness');
     await saveResearchAudit(sessionId, 'citation', { ok: false, issues }, runId);
-    await recordEstimatedRunCost(sessionId, runId, correlationId, 'reviewing', { exaSearches: 0, modelCalls: [reportCall, citationAuditCall] });
+    const modelUsage = [reportResult.usage, citationAgentAuditResult.usage];
+    await recordRunCost(sessionId, runId, correlationId, 'reviewing', measurementMethodFor(modelUsage), {
+      exaSearches: 0,
+      modelCalls: modelUsage.map((usage) => usage.call),
+    });
     await updateSessionState(sessionId, 'awaiting_approval', 'reviewing');
     await addEvent(sessionId, 'reviewing', 'Citation audit blocked report readiness.', { issues }, { runId, correlationId, eventType: 'claim_gap_opened', severity: 'warn' });
     return { status: 'awaiting_approval' };
   }
 
   await updateSessionState(sessionId, 'running', 'reviewing');
-  const finalReview = await reviewFinalReport(report);
-  const finalReviewCall = estimateModelCall(status.models.primary, { task: 'final_reviewer', report }, finalReview);
+  const finalReviewResult = await reviewFinalReport(report);
+  const finalReview = finalReviewResult.review;
   await saveResearchAudit(sessionId, 'final_review', { ok: finalReview.approved, issues: finalReview.issues }, runId);
+  const reportingModelUsage = [reportResult.usage, citationAgentAuditResult.usage, finalReviewResult.usage];
 
   if (!finalReview.approved) {
-    await recordEstimatedRunCost(sessionId, runId, correlationId, 'reviewing', { exaSearches: 0, modelCalls: [reportCall, citationAuditCall, finalReviewCall] });
+    await recordRunCost(sessionId, runId, correlationId, 'reviewing', measurementMethodFor(reportingModelUsage), {
+      exaSearches: 0,
+      modelCalls: reportingModelUsage.map((usage) => usage.call),
+    });
     await updateSessionState(sessionId, 'awaiting_approval', 'reviewing');
     await addEvent(sessionId, 'reviewing', 'Final reviewer requested human follow-up.', { issues: finalReview.issues }, { runId, correlationId, eventType: 'claim_gap_opened', severity: 'warn' });
     return { status: 'awaiting_approval' };
   }
 
-  await recordEstimatedRunCost(sessionId, runId, correlationId, 'complete', { exaSearches: 0, modelCalls: [reportCall, citationAuditCall, finalReviewCall] });
+  await recordRunCost(sessionId, runId, correlationId, 'complete', measurementMethodFor(reportingModelUsage), {
+    exaSearches: 0,
+    modelCalls: reportingModelUsage.map((usage) => usage.call),
+  });
   await saveReport(report);
   await updateSessionState(sessionId, 'report_ready', 'complete');
   await addEvent(sessionId, 'complete', 'Report is ready.', { reportId: report.id }, { runId, correlationId, eventType: 'report_ready', actor: 'worker' });
@@ -233,7 +241,7 @@ export async function runLegacySynchronousResearchSession(sessionId: string, que
   await updateSessionState(sessionId, 'running', 'reporting');
   await addEvent(sessionId, 'reporting', 'Synthesizing cited report.');
   const artifacts = await getResearchArtifacts(sessionId);
-  const report = await generateReport(sessionId, query, artifacts.sources, artifacts.learnings);
+  const { report } = await generateReport(sessionId, query, artifacts.sources, artifacts.learnings);
 
   const citationAudit = auditReportCitations(report, artifacts.sources);
   if (!citationAudit.ok) {
@@ -248,11 +256,13 @@ export async function runLegacySynchronousResearchSession(sessionId: string, que
   return { ...artifacts, report };
 }
 
-async function evaluateSources(query: string, sources: ResearchSource[]): Promise<SourceEvaluation[]> {
+async function evaluateSources(query: string, sources: ResearchSource[]): Promise<{ evaluations: SourceEvaluation[]; usage: MeasuredModelCall[] }> {
   const agent = mastra.getAgent('evaluationAgent');
   const evaluations: SourceEvaluation[] = [];
+  const usage: MeasuredModelCall[] = [];
 
   for (const source of sources) {
+    const input = { task: 'source_evaluation', query, source: { id: source.id, title: source.title, url: source.url, content: source.content.slice(0, 3000) } };
     const response = await agent.generate(
       [
         {
@@ -267,17 +277,21 @@ Content: ${source.content.slice(0, 3000)}`,
       ],
       { structuredOutput: { schema: sourceEvaluationSchema } },
     );
-    evaluations.push(sourceEvaluationSchema.parse(response.object));
+    const evaluation = sourceEvaluationSchema.parse(response.object);
+    evaluations.push(evaluation);
+    usage.push(modelUsageFromResponse(getProviderStatus().models.primary, response, input, evaluation));
   }
 
-  return evaluations;
+  return { evaluations, usage };
 }
 
-async function extractLearnings(query: string, sources: ResearchSource[]): Promise<ResearchLearning[]> {
+async function extractLearnings(query: string, sources: ResearchSource[]): Promise<{ learnings: ResearchLearning[]; usage: MeasuredModelCall[] }> {
   const agent = mastra.getAgent('learningExtractionAgent');
   const learnings: ResearchLearning[] = [];
+  const usage: MeasuredModelCall[] = [];
 
   for (const source of sources) {
+    const input = { task: 'learning_extraction', query, source: { id: source.id, title: source.title, url: source.url, content: source.content.slice(0, 6000) } };
     const response = await agent.generate(
       [
         {
@@ -292,14 +306,22 @@ Content: ${source.content.slice(0, 6000)}`,
       ],
       { structuredOutput: { schema: learningSchema } },
     );
-    learnings.push(learningSchema.parse(response.object));
+    const learning = learningSchema.parse(response.object);
+    learnings.push(learning);
+    usage.push(modelUsageFromResponse(getProviderStatus().models.primary, response, input, learning));
   }
 
-  return learnings;
+  return { learnings, usage };
 }
 
-async function generateReport(sessionId: string, query: string, sources: ResearchSource[], learnings: ResearchLearning[]): Promise<ResearchReport> {
+async function generateReport(
+  sessionId: string,
+  query: string,
+  sources: ResearchSource[],
+  learnings: ResearchLearning[],
+): Promise<{ report: ResearchReport; usage: MeasuredModelCall }> {
   const agent = mastra.getAgent('reportAgent');
+  const input = { task: 'report_writer', query, sources, learnings };
   const response = await agent.generate(
     [
       {
@@ -324,14 +346,18 @@ Every section must cite source IDs from the supplied sources.`,
   };
 
   return {
-    ...reportWithoutMarkdown,
-    title: response.object.title || titleFromQuery(query),
-    markdown: renderReportMarkdown(reportWithoutMarkdown, sources, learnings),
+    report: {
+      ...reportWithoutMarkdown,
+      title: response.object.title || titleFromQuery(query),
+      markdown: renderReportMarkdown(reportWithoutMarkdown, sources, learnings),
+    },
+    usage: modelUsageFromResponse(getProviderStatus().models.primary, response, input, reportWithoutMarkdown),
   };
 }
 
 async function reviewContradictions(query: string, learnings: ResearchLearning[], claims: unknown[]) {
   const agent = mastra.getAgent('contradictionAgent');
+  const input = { task: 'contradiction_review', query, learnings, claims };
   const response = await agent.generate(
     [
       {
@@ -348,11 +374,16 @@ Return ok=false if critical contradictions or gaps remain.`,
     { structuredOutput: { schema: contradictionReviewSchema } },
   );
 
-  return contradictionReviewSchema.parse(response.object);
+  const review = contradictionReviewSchema.parse(response.object);
+  return {
+    review,
+    usage: modelUsageFromResponse(getProviderStatus().models.primary, response, input, review),
+  };
 }
 
 async function auditCitationsWithAgent(report: ResearchReport, sources: ResearchSource[]) {
   const agent = mastra.getAgent('citationAuditorAgent');
+  const input = { task: 'citation_auditor', report, sources };
   const response = await agent.generate(
     [
       {
@@ -368,11 +399,16 @@ Return ok=false if citations are missing, mismatched, or unsupported.`,
     { structuredOutput: { schema: citationAgentAuditSchema } },
   );
 
-  return citationAgentAuditSchema.parse(response.object);
+  const audit = citationAgentAuditSchema.parse(response.object);
+  return {
+    audit,
+    usage: modelUsageFromResponse(getProviderStatus().models.primary, response, input, audit),
+  };
 }
 
 async function reviewFinalReport(report: ResearchReport) {
   const agent = mastra.getAgent('finalReviewerAgent');
+  const input = { task: 'final_reviewer', report };
   const response = await agent.generate(
     [
       {
@@ -387,18 +423,29 @@ Approve only if it is ready to publish.`,
     { structuredOutput: { schema: finalReviewSchema } },
   );
 
-  return finalReviewSchema.parse(response.object);
+  const review = finalReviewSchema.parse(response.object);
+  return {
+    review,
+    usage: modelUsageFromResponse(getProviderStatus().models.primary, response, input, review),
+  };
 }
 
-async function recordEstimatedRunCost(sessionId: string, runId: string | undefined, correlationId: string | undefined, phase: ResearchPhase, usage: RunUsage) {
+async function recordRunCost(
+  sessionId: string,
+  runId: string | undefined,
+  correlationId: string | undefined,
+  phase: ResearchPhase,
+  measurementMethod: 'estimated' | 'provider_usage',
+  usage: RunUsage,
+) {
   if (!runId) return null;
 
   const estimate = estimateRunCost(usage);
-  const cost = await saveRunCost(runId, sessionId, usage, estimate, 'estimated');
+  const cost = await saveRunCost(runId, sessionId, usage, estimate, measurementMethod);
   await addEvent(
     sessionId,
     phase,
-    'Run cost estimate recorded.',
+    measurementMethod === 'provider_usage' ? 'Run provider usage cost recorded.' : 'Run cost estimate recorded.',
     {
       usage,
       budgetUsd: env.RUN_BUDGET_USD,
@@ -416,4 +463,46 @@ async function recordEstimatedRunCost(sessionId: string, runId: string | undefin
     },
   );
   return cost;
+}
+
+function measurementMethodFor(calls: MeasuredModelCall[]): 'estimated' | 'provider_usage' {
+  return calls.length > 0 && calls.every((call) => call.measured) ? 'provider_usage' : 'estimated';
+}
+
+function modelUsageFromResponse(model: string, response: unknown, fallbackInput: unknown, fallbackOutput: unknown): MeasuredModelCall {
+  const providerUsage = extractProviderUsage(response);
+  if (providerUsage) {
+    return {
+      call: {
+        model,
+        inputTokens: providerUsage.inputTokens,
+        outputTokens: providerUsage.outputTokens,
+      },
+      measured: true,
+    };
+  }
+
+  return {
+    call: estimateModelCall(model, fallbackInput, fallbackOutput),
+    measured: false,
+  };
+}
+
+function extractProviderUsage(response: unknown): { inputTokens: number; outputTokens: number } | null {
+  const usage = (response as { usage?: unknown; totalUsage?: unknown } | null)?.usage ?? (response as { totalUsage?: unknown } | null)?.totalUsage;
+  if (!usage || typeof usage !== 'object') return null;
+
+  const inputTokens = numberField(usage, ['inputTokens', 'promptTokens']);
+  const outputTokens = numberField(usage, ['outputTokens', 'completionTokens']);
+  if (inputTokens === null || outputTokens === null) return null;
+  return { inputTokens, outputTokens };
+}
+
+function numberField(value: object, keys: string[]) {
+  const record = value as Record<string, unknown>;
+  for (const key of keys) {
+    const candidate = record[key];
+    if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate >= 0) return candidate;
+  }
+  return null;
 }

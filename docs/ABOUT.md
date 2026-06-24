@@ -27,4 +27,4 @@ Fin treats research artifacts as product data: sessions, sources, evaluations, l
 
 ## What Is Still Being Built
 
-Measured live benchmark rows, provider-token usage capture, and recorded live demo evidence are tracked in `docs/FDE_GATES.md`.
+Measured live benchmark rows and recorded live demo evidence are tracked in `docs/FDE_GATES.md`.

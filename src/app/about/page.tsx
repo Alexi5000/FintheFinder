@@ -66,7 +66,7 @@ export default function AboutPage() {
           claim-ledger persistence, plateau scoring, run-cost estimates, trace-linked events, scoped memory, audit-green dependencies, and repository proof docs.
         </p>
         <p className="muted">
-          Provider-token usage capture, measured live benchmark rows, and recorded live demo evidence remain tracked in the FDE gate matrix.
+          Measured live benchmark rows and recorded live demo evidence remain tracked in the FDE gate matrix.
         </p>
         <Link className="button secondary" href="/settings">
           Inspect provider status

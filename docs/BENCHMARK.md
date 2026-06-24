@@ -2,7 +2,7 @@
 
 Last updated: 2026-06-24.
 
-This is the honest benchmark log. The current repo has an offline eval seed plus persisted deterministic cost estimates; live benchmark rows must be filled from configured runs with real run IDs, exported reports, and measured usage.
+This is the honest benchmark log. The current repo has an offline eval seed plus persisted run-cost rows; live benchmark rows must be filled from configured runs with real run IDs, exported reports, and measured usage.
 
 ## Offline Scenarios
 
@@ -24,7 +24,7 @@ extraction calls = one per relevant source
 report calls = 1
 ```
 
-The deterministic estimator lives in `src/server/research/cost-model.ts` and uses a dated pricing snapshot. Hosted runs persist `research_run_costs` with `measurementMethod="estimated"` until provider token usage is captured. Pricing must be refreshed before publishing fixed cost claims.
+The deterministic estimator lives in `src/server/research/cost-model.ts` and uses a dated pricing snapshot. Hosted runs persist `research_run_costs` with `measurementMethod="provider_usage"` when Mastra returns token usage, otherwise `measurementMethod="estimated"`. Pricing must be refreshed before publishing fixed cost claims.
 
 ## Live Run Log
 
@@ -32,4 +32,4 @@ The deterministic estimator lives in `src/server/research/cost-model.ts` and use
 | --- | --- | --- | --- | ---: | ---: | ---: | --- | --- |
 | Pending | Configured live demo run | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
 
-No live measured cost-per-run claim is approved until this table has real usage. Estimated demo rows must say `estimated` and link the run JSON that contains the persisted cost object.
+No live measured cost-per-run claim is approved until this table has real usage. Demo rows must report the persisted measurement method and link the run JSON that contains the cost object.

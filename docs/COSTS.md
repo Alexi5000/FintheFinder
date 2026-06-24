@@ -10,6 +10,6 @@ Fin must never publish a fixed cost-per-run number without measured usage and a 
 
 ## Current Status
 
-Offline cost math is implemented and tested. Hosted worker stages persist run-cost rows with estimated model tokens, Exa search count, dated pricing, and measurement method. Session detail, run JSON, and the authenticated UI expose those estimates.
+Offline cost math is implemented and tested. Hosted worker stages persist run-cost rows with model tokens, Exa search count, dated pricing, and measurement method. When Mastra returns provider usage, the row is marked `provider_usage`; otherwise the pipeline falls back to deterministic estimates. Session detail, run JSON, and the authenticated UI expose the row.
 
-Provider token capture is still pending. Until it is wired end to end, public benchmark rows must label persisted run costs as estimates.
+Live benchmark proof is still pending. Public benchmark rows must label persisted run costs as `estimated` or `provider_usage` exactly as recorded on the run.

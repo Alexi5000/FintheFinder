@@ -63,6 +63,7 @@ const repositoryMock = vi.hoisted(() => ({
 const agentState = vi.hoisted(() => ({
   citationOk: true,
   finalApproved: true,
+  useProviderUsage: false,
 }));
 
 vi.mock('@/lib/config', () => ({
@@ -80,13 +81,14 @@ vi.mock('@/mastra', () => ({
   mastra: {
     getAgent: (name: string) => ({
       generate: async () => {
-        if (name === 'plannerAgent') return { object: { queries: ['agent compliance', 'agent controls'], successCriteria: ['Human oversight is required.'] } };
-        if (name === 'evaluationAgent') return { object: evaluation };
-        if (name === 'learningExtractionAgent') return { object: learning };
-        if (name === 'contradictionAgent') return { object: { ok: true, issues: [], criticalGaps: [] } };
-        if (name === 'reportAgent') return { object: reportDraft };
-        if (name === 'citationAuditorAgent') return { object: { ok: agentState.citationOk, issues: agentState.citationOk ? [] : ['missing citation'] } };
-        if (name === 'finalReviewerAgent') return { object: { approved: agentState.finalApproved, issues: agentState.finalApproved ? [] : ['needs caveat'], summary: 'ready' } };
+        const output = (object: unknown) => (agentState.useProviderUsage ? { object, usage: { inputTokens: 100, outputTokens: 40, totalTokens: 140 } } : { object });
+        if (name === 'plannerAgent') return output({ queries: ['agent compliance', 'agent controls'], successCriteria: ['Human oversight is required.'] });
+        if (name === 'evaluationAgent') return output(evaluation);
+        if (name === 'learningExtractionAgent') return output(learning);
+        if (name === 'contradictionAgent') return output({ ok: true, issues: [], criticalGaps: [] });
+        if (name === 'reportAgent') return output(reportDraft);
+        if (name === 'citationAuditorAgent') return output({ ok: agentState.citationOk, issues: agentState.citationOk ? [] : ['missing citation'] });
+        if (name === 'finalReviewerAgent') return output({ approved: agentState.finalApproved, issues: agentState.finalApproved ? [] : ['needs caveat'], summary: 'ready' });
         throw new Error(`Unexpected agent ${name}`);
       },
     }),
@@ -98,6 +100,7 @@ describe('research pipeline', () => {
     vi.clearAllMocks();
     agentState.citationOk = true;
     agentState.finalApproved = true;
+    agentState.useProviderUsage = false;
     repositoryMock.getResearchArtifacts.mockResolvedValue({
       sources: [source],
       evaluations: [evaluation],
@@ -135,6 +138,24 @@ describe('research pipeline', () => {
         audits: expect.any(Array),
       }),
     );
+  });
+
+  it('marks run cost as provider usage when all agent calls report tokens', async () => {
+    agentState.useProviderUsage = true;
+    const { runResearchSession } = await import('@/server/research/pipeline');
+    await runResearchSession('session_1', 'Research AI compliance', {
+      run: {
+        id: 'run_usage',
+        sessionId: 'session_1',
+        status: 'running',
+        attempt: 1,
+        metadata: { stage: 'research' },
+        createdAt: '2026-06-24T00:00:00.000Z',
+        updatedAt: '2026-06-24T00:00:00.000Z',
+      },
+    });
+
+    expect(repositoryMock.saveRunCost).toHaveBeenCalledWith('run_usage', 'session_1', expect.any(Object), expect.any(Object), 'provider_usage');
   });
 
   it('runs approved reporting through citation audit and final review', async () => {

@@ -27,6 +27,7 @@ Current unit coverage includes:
 - Citation auditing
 - Missing Exa provider behavior
 - Pipeline HITL/cost behavior
+- Persisted eval history with public-safe column projection and summary sanitization
 - Repository persistence mapping for costs, memories, and post-mortems
 - Worker runtime config parsing, no-work paths, lease heartbeats, lease-loss terminal-write blocking, reporting dispatch, sanitized failure artifacts, and best-effort run-summary memory
 - Supabase migration parity for table columns, SQL/Zod enum checks, event constraints, RLS, cross-session graph integrity, service-role RPCs, API-only approval writes, and repository artifact/event payload shape

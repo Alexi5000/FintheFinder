@@ -9,8 +9,14 @@ const supabaseHarness = vi.hoisted(() => {
 
   function createBuilder(table: string) {
     const builder = {
-      select: vi.fn(() => builder),
-      eq: vi.fn(() => builder),
+      select: vi.fn((columns = '*') => {
+        calls.push({ table, op: 'select', payload: columns });
+        return builder;
+      }),
+      eq: vi.fn((column: string, value: unknown) => {
+        calls.push({ table, op: 'eq', payload: { column, value } });
+        return builder;
+      }),
       order: vi.fn(() => builder),
       limit: vi.fn(() => builder),
       maybeSingle: vi.fn(async () => maybeSingleResponses.shift() ?? { data: null, error: null }),
@@ -145,14 +151,20 @@ describe('eval history repository', () => {
   });
 
   it('lists persisted eval runs in public contract shape', async () => {
+    const persistedSummary = {
+      ...summary,
+      rawModelOutput: 'do not expose',
+      results: [{ ...summary.results[0]!, rawModelOutput: 'do not expose' }],
+    };
     supabaseHarness.rowsResponses.push({
       data: [
         {
           id: 'eval_run_1',
           suite: 'offline',
           status: 'passed',
-          summary,
+          summary: persistedSummary,
           created_at: '2026-06-24T00:00:00.000Z',
+          raw_model_output: 'do not expose',
         },
       ],
       error: null,
@@ -170,6 +182,14 @@ describe('eval history repository', () => {
         createdAt: '2026-06-24T00:00:00.000Z',
       },
     ]);
+    expect(runs[0]?.summary).not.toHaveProperty('rawModelOutput');
+    expect(runs[0]?.summary.results[0]).not.toHaveProperty('rawModelOutput');
+    expect(supabaseHarness.calls).toContainEqual({
+      table: 'eval_runs',
+      op: 'select',
+      payload: 'id,suite,status,summary,created_at',
+    });
+    expect(supabaseHarness.calls).not.toContainEqual(expect.objectContaining({ op: 'select', payload: '*' }));
   });
 
   it('returns null when no latest eval run exists', async () => {
@@ -183,10 +203,6 @@ describe('eval history repository', () => {
     supabaseHarness.maybeSingleResponses.push({
       data: {
         id: 'eval_run_1',
-        suite: 'offline',
-        status: 'passed',
-        summary,
-        created_at: '2026-06-24T00:00:00.000Z',
       },
       error: null,
     });
@@ -225,6 +241,21 @@ describe('eval history repository', () => {
         regressions: [],
       }),
     );
+    expect(supabaseHarness.calls).toEqual(
+      expect.arrayContaining([
+        { table: 'eval_runs', op: 'select', payload: 'id' },
+        { table: 'eval_runs', op: 'eq', payload: { column: 'suite', value: 'offline' } },
+        { table: 'eval_runs', op: 'select', payload: 'id,suite,status,summary,created_at' },
+        { table: 'eval_runs', op: 'eq', payload: { column: 'id', value: 'eval_run_1' } },
+        {
+          table: 'eval_results',
+          op: 'select',
+          payload: 'id,eval_run_id,fixture_id,passed,expected_pass,observed_pass,scores,issues,regressions,created_at',
+        },
+        { table: 'eval_results', op: 'eq', payload: { column: 'eval_run_id', value: 'eval_run_1' } },
+      ]),
+    );
+    expect(supabaseHarness.calls).not.toContainEqual(expect.objectContaining({ op: 'select', payload: '*' }));
   });
 
   it('rejects invalid persisted statuses and scores', async () => {

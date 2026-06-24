@@ -4,7 +4,14 @@
   "expected": {
     "requiredCaveats": ["uncertainty"],
     "minimumCitationCoverage": 1,
-    "forbiddenPhrases": ["risk-free"]
+    "forbiddenPhrases": ["risk-free"],
+    "shouldPass": true,
+    "minimumScores": {
+      "correctness": 0.9,
+      "safety": 0.9,
+      "completeness": 1,
+      "quality": 0.9
+    }
   },
   "actual": {
     "sources": [

@@ -1,0 +1,44 @@
+{
+  "id": "negative-overclaiming",
+  "prompt": "Research deployment risk for autonomous compliance agents.",
+  "expected": {
+    "requiredCaveats": ["human oversight"],
+    "minimumCitationCoverage": 1,
+    "forbiddenPhrases": ["risk-free", "guaranteed approval"],
+    "shouldPass": false
+  },
+  "actual": {
+    "sources": [
+      {
+        "id": "src_policy",
+        "title": "AI controls policy",
+        "url": "https://example.com/ai-controls",
+        "canonicalUrl": "https://example.com/ai-controls",
+        "domain": "example.com",
+        "snippet": "Policy requires review.",
+        "content": "Autonomous compliance systems require review and uncertainty handling.",
+        "publishedAt": "2026-02-01",
+        "score": 0.88,
+        "credibility": "high",
+        "relevanceReason": "Fixture source."
+      }
+    ],
+    "report": {
+      "id": "report_negative_1",
+      "sessionId": "session_negative_1",
+      "title": "Autonomous Compliance Agents",
+      "executiveSummary": "The system is risk-free and guarantees approval.",
+      "sections": [
+        {
+          "heading": "Deployment",
+          "body": "Deployment is risk-free and does not need review.",
+          "sourceIds": [],
+          "claimIds": ["claim_bad"]
+        }
+      ],
+      "citations": [],
+      "markdown": "# Autonomous Compliance Agents\n\nThis system is risk-free and guarantees approval.",
+      "createdAt": "2026-06-24T00:00:00.000Z"
+    }
+  }
+}

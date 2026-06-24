@@ -18,6 +18,11 @@ Expected: `/` renders the workspace, provider status shows missing keys, `/setti
 2. Run Supabase migrations.
 3. Start the web service and worker.
 4. Sign in, create a session, enqueue a run, review sources/claims/events, approve, generate a report, export markdown.
-5. Record the run ID, exported report, screenshots or video, eval summary, and cost row in `docs/BENCHMARK.md`.
+5. Record the run ID, trace ID, exported report, screenshots or video, eval summary, and cost row in `docs/BENCHMARK.md`.
+6. Copy `docs/demo/live-demo.example.json` to `docs/demo/live-demo.json`, fill it with the recorded evidence, and run:
 
-`npm run demo:record` prints the required manual evidence checklist.
+```bash
+npm run demo:record
+```
+
+`npm run demo:record` fails closed until every evidence field is present and local artifact paths exist. Do not claim live demo proof from the example manifest.

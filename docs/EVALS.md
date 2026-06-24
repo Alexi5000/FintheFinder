@@ -13,6 +13,14 @@ Fin should be evaluated like a research system, not only like a web app.
 | Citation coverage | Every material report section maps to source IDs |
 | Report quality | Executive summary is clear, nuanced, and actionable |
 
+## Harness Shape
+
+Offline evals use a deterministic three-role adversarial harness:
+
+- Planner: converts each fixture into caveat, citation, forbidden-phrase, and score-baseline checks.
+- Generator: extracts citation coverage, unknown source IDs, missing caveats, and overclaiming signals from the actual report.
+- Evaluator: produces the four-axis score, compares it with fixture baselines, and flags regressions.
+
 ## Fixture Set
 
 Add fixtures under `tests/fixtures/evals/` with:
@@ -21,8 +29,12 @@ Add fixtures under `tests/fixtures/evals/` with:
 - Expected source characteristics
 - Required caveats
 - Minimum citation coverage
+- Expected pass/fail outcome
+- Minimum score baselines for passing fixtures
 - Report acceptance rubric
 
 ## Release Rule
 
 Any model, prompt, or agent-role change should run against the fixture set before release. Failed evals should block promotion unless the rubric is intentionally updated.
+
+Negative-control fixtures are allowed and expected to pass the harness only when the evaluator observes the intended failure.

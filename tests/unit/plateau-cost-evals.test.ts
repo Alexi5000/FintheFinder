@@ -88,4 +88,47 @@ describe('offline eval runner', () => {
     };
     expect(runOfflineEval(fixture).passed).toBe(true);
   });
+
+  it('passes a negative-control fixture only when the intended failure is observed', () => {
+    const fixture: EvalFixture = {
+      id: 'negative_unit_eval',
+      prompt: 'fixture',
+      expected: {
+        requiredCaveats: ['human oversight'],
+        minimumCitationCoverage: 1,
+        forbiddenPhrases: ['risk-free'],
+        shouldPass: false,
+      },
+      actual: {
+        sources: [
+          {
+            id: 'src_1',
+            title: 'Source',
+            url: 'https://example.com/source',
+            canonicalUrl: 'https://example.com/source',
+            domain: 'example.com',
+            snippet: '',
+            content: '',
+            publishedAt: null,
+            score: 1,
+            credibility: 'high',
+            relevanceReason: 'fixture',
+          },
+        ],
+        report: {
+          id: 'report_1',
+          sessionId: 'session_1',
+          title: 'Bad Report',
+          executiveSummary: 'Risk-free.',
+          sections: [{ heading: 'Finding', body: 'No citations', sourceIds: [] }],
+          citations: [],
+          markdown: '# Bad Report\n\nThis is risk-free.',
+          createdAt: '2026-06-24T00:00:00.000Z',
+        },
+      },
+    };
+    const result = runOfflineEval(fixture);
+    expect(result.observedPass).toBe(false);
+    expect(result.passed).toBe(true);
+  });
 });

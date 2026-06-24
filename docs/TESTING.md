@@ -5,8 +5,13 @@
 ```bash
 npm run typecheck
 npm run lint
-npm run test
+npm run contracts:check
+npm run notebooks:check
+npm run test:coverage
+npm run evals
 npm run build
+npm run audit
+npm run smoke
 ```
 
 ## Unit Tests
@@ -17,6 +22,8 @@ Current unit coverage includes:
 - Canonical URL normalization
 - Citation auditing
 - Missing Exa provider behavior
+- Pipeline HITL/cost behavior
+- Repository persistence mapping for costs, memories, and post-mortems
 
 Add new unit tests for every new schema, service, and agent contract.
 
@@ -45,4 +52,4 @@ Future eval fixtures should score:
 - Report completeness
 - Uncertainty labeling
 
-Every prompt or model change should be evaluated against the fixture set before release.
+Every prompt or model change should be evaluated against the fixture set before release. Use `npm run evals -- --output artifacts/evals/offline-summary.json` when a persisted eval artifact is needed.

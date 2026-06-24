@@ -28,12 +28,18 @@ jobs:
       - run: npm run contracts:check
       - run: npm run notebooks:check
       - run: npm run test:coverage
-      - run: npm run evals
+      - run: npm run evals -- artifacts/evals/offline-summary.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage
           path: coverage
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evals
+          path: artifacts/evals
           if-no-files-found: ignore
 
   build-and-audit:

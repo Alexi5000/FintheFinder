@@ -9,7 +9,7 @@ Fin is production-ready only when each public claim is implemented, tested, demo
 | Agent-legible procedural memory | Implemented | `AGENTS.md` | File review |
 | Skills vs tools distinction | Implemented in docs, partial in runtime | `AGENTS.md`, `docs/SKILLS_AND_TOOLS.md` | File review |
 | Typed/versioned sprint contracts | Implemented seed | `docs/sprints/2026-06-24-fde-foundation.md` | File review |
-| Three-agent adversarial harness | Partial | `src/server/evals/offline-eval.ts`, fixtures | `npm run evals` |
+| Three-agent adversarial harness | Implemented offline seed | `src/server/evals/offline-eval.ts`, fixtures | `npm run evals` |
 | Four-axis grader | Implemented offline seed | `src/server/evals/offline-eval.ts` | `npm run evals` |
 | Plateau scorer | Implemented pure module | `src/server/research/plateau-scorer.ts` | `npm run test` |
 | Notebook authoring surface | Implemented as non-runtime artifact | `notebooks/` | `npm run notebooks:check` |
@@ -20,7 +20,7 @@ Fin is production-ready only when each public claim is implemented, tested, demo
 | Full test coverage for new surface | Implemented seed | Unit tests and coverage gate | `npm run test:coverage` |
 | Contract single source of truth | Implemented seed | `contracts/schema.json` | `npm run contracts:check` |
 | Dual runtime behind contract | Implemented seed | Worker queue, `/run` enqueue, Docker web/worker commands | `npm run worker`, `npm run container:build` |
-| Eval regression detection | Implemented offline seed | `tests/fixtures/evals` | `npm run evals` |
+| Eval regression detection | Implemented offline seed | Fixture score baselines, negative controls, CI eval artifact | `npm run evals` |
 | HITL approval state machine | Implemented seed | Research stage stops at approval; approvals block or waive critical gaps before reporting | `npm run typecheck`, API review |
 | Structured run-events log | Implemented seed | Run-linked events, trace/correlation fields, cost events, post-mortem events | `npm run contracts:check` |
 | Authenticated session UI loaders | Implemented seed | `/sessions`, `/sessions/[id]`, `/reports/[id]` client loaders | `npm run test:e2e` |

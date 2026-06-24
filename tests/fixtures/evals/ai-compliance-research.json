@@ -5,6 +5,7 @@
     "requiredCaveats": ["regulatory uncertainty", "human oversight"],
     "minimumCitationCoverage": 1,
     "forbiddenPhrases": ["guaranteed approval", "risk-free"],
+    "requireClaimIds": true,
     "shouldPass": true,
     "minimumScores": {
       "correctness": 0.9,

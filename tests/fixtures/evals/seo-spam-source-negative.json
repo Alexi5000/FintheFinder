@@ -1,0 +1,53 @@
+{
+  "id": "seo-spam-source-negative",
+  "prompt": "Research whether an AI procurement vendor's risk claims are credible when search results include SEO spam.",
+  "expected": {
+    "requiredCaveats": ["source quality", "independent evidence"],
+    "minimumCitationCoverage": 1,
+    "forbiddenPhrases": ["best ai compliance vendor", "buy now", "guaranteed savings"],
+    "forbiddenSourceIds": ["src_seo_spam"],
+    "blockedSourceCredibilities": ["low", "unknown"],
+    "requireClaimIds": true,
+    "shouldPass": false
+  },
+  "actual": {
+    "sources": [
+      {
+        "id": "src_seo_spam",
+        "title": "Best AI Compliance Vendor 2026 Buy Now",
+        "url": "https://example.com/best-ai-compliance-vendor-buy-now",
+        "canonicalUrl": "https://example.com/best-ai-compliance-vendor-buy-now",
+        "domain": "example.com",
+        "snippet": "Best AI compliance vendor buy now guaranteed savings.",
+        "content": "This SEO page repeats best AI compliance vendor buy now and guaranteed savings without evidence.",
+        "publishedAt": "2026-06-01",
+        "score": 0.18,
+        "credibility": "low",
+        "relevanceReason": "Fixture SEO spam source."
+      }
+    ],
+    "report": {
+      "id": "report_seo_spam_source_negative",
+      "sessionId": "session_seo_spam_source_negative",
+      "title": "AI Procurement Vendor",
+      "executiveSummary": "The vendor has guaranteed savings according to a low-quality search result.",
+      "sections": [
+        {
+          "heading": "Vendor Claim",
+          "body": "Best AI compliance vendor results show guaranteed savings, so the vendor is credible.",
+          "sourceIds": ["src_seo_spam"],
+          "claimIds": ["claim_spam"]
+        }
+      ],
+      "citations": [
+        {
+          "sourceId": "src_seo_spam",
+          "url": "https://example.com/best-ai-compliance-vendor-buy-now",
+          "title": "Best AI Compliance Vendor 2026 Buy Now"
+        }
+      ],
+      "markdown": "# AI Procurement Vendor\n\nBest AI compliance vendor pages say buy now for guaranteed savings.",
+      "createdAt": "2026-06-24T00:00:00.000Z"
+    }
+  }
+}

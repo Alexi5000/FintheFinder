@@ -1,0 +1,51 @@
+{
+  "id": "missing-claims-negative",
+  "prompt": "Research AI model monitoring controls and produce a claim-ledger-backed report.",
+  "expected": {
+    "requiredCaveats": ["monitoring controls"],
+    "minimumCitationCoverage": 1,
+    "forbiddenPhrases": ["risk-free"],
+    "requireClaimIds": true,
+    "shouldPass": false
+  },
+  "actual": {
+    "sources": [
+      {
+        "id": "src_monitoring_controls",
+        "title": "Model monitoring controls",
+        "url": "https://example.com/model-monitoring-controls",
+        "canonicalUrl": "https://example.com/model-monitoring-controls",
+        "domain": "example.com",
+        "snippet": "Monitoring controls should track drift and incidents.",
+        "content": "AI model monitoring controls should track data drift, incidents, and human review thresholds.",
+        "publishedAt": "2026-02-20",
+        "score": 0.9,
+        "credibility": "high",
+        "relevanceReason": "Fixture monitoring source."
+      }
+    ],
+    "report": {
+      "id": "report_missing_claims_negative",
+      "sessionId": "session_missing_claims_negative",
+      "title": "Model Monitoring Controls",
+      "executiveSummary": "Monitoring controls should track drift and escalation.",
+      "sections": [
+        {
+          "heading": "Controls",
+          "body": "Monitoring controls should track drift and incidents.",
+          "sourceIds": ["src_monitoring_controls"],
+          "claimIds": []
+        }
+      ],
+      "citations": [
+        {
+          "sourceId": "src_monitoring_controls",
+          "url": "https://example.com/model-monitoring-controls",
+          "title": "Model monitoring controls"
+        }
+      ],
+      "markdown": "# Model Monitoring Controls\n\nMonitoring controls should track drift and incidents.",
+      "createdAt": "2026-06-24T00:00:00.000Z"
+    }
+  }
+}

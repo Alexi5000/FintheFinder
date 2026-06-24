@@ -5,6 +5,7 @@
     "requiredCaveats": ["uncertainty"],
     "minimumCitationCoverage": 1,
     "forbiddenPhrases": ["risk-free"],
+    "requireClaimIds": true,
     "shouldPass": true,
     "minimumScores": {
       "correctness": 0.9,

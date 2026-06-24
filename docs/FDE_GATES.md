@@ -9,19 +9,19 @@ Fin is production-ready only when each public claim is implemented, tested, demo
 | Agent-legible procedural memory | Implemented | `AGENTS.md` | File review |
 | Skills vs tools distinction | Implemented | `AGENTS.md`, `docs/SKILLS_AND_TOOLS.md`, typed Mastra tools | File review |
 | Typed/versioned sprint contracts | Implemented | `docs/sprints/2026-06-24-fde-foundation.md` | File review |
-| Three-agent adversarial harness | Implemented offline seed | `src/server/evals/offline-eval.ts`, fixtures | `npm run evals` |
-| Four-axis grader | Implemented offline seed | `src/server/evals/offline-eval.ts` | `npm run evals` |
+| Three-agent adversarial harness | Implemented as deterministic three-role offline harness | `src/server/evals/offline-eval.ts`, 10 Zod-validated fixtures | `npm run evals` |
+| Four-axis grader | Implemented offline seed | `src/server/evals/offline-eval.ts`, `docs/benchmark/offline-eval-summary.json` | `npm run evals` |
 | Plateau scorer | Implemented pure module | `src/server/research/plateau-scorer.ts` | `npm run test` |
 | Notebook authoring surface | Implemented as non-runtime artifact | `notebooks/` | `npm run notebooks:check` |
 | Containerization | Implemented | `Dockerfile`, `docker-compose.yml` | `npm run container:build` |
 | FDE narrative README/About | Implemented | `README.md`, `docs/ABOUT.md`, `/about` | `npm run build`, Playwright |
-| Honest benchmark doc | Implemented | `docs/BENCHMARK.md`, `docs/benchmark/offline-eval-summary.json` | `npm run benchmark:check` |
+| Honest benchmark doc | Implemented | `docs/BENCHMARK.md`, 10-scenario `docs/benchmark/offline-eval-summary.json` | `npm run benchmark:check` |
 | Recorded live demo proof | Pending configured credentials | `docs/demo/live-demo.example.json`, `scripts/demo-record.mjs`, demo verifier tests | `npm run demo:record` and `npm run evals:live` after live run |
 | ADRs | Implemented | `docs/adr/` | File review |
 | Full test coverage for new surface | Implemented | Unit tests for contracts, repository adapters, demo verifier, hosted API routes, worker runtime, and coverage gate | `npm run test:coverage` |
 | Contract single source of truth | Implemented | `contracts/schema.json` | `npm run contracts:check` |
 | Dual runtime behind contract | Implemented | Pure worker runtime, worker queue, `/run` enqueue, hosted route tests, Docker web/worker commands | `npx vitest run tests/unit/research-worker.test.ts`, `npx vitest run tests/unit/hosted-api-routes.test.ts`, `npm run container:build` |
-| Eval regression detection | Implemented | Fixture score baselines, negative controls, CI eval artifact, eval API, checked benchmark artifact | `npm run evals`, `npm run benchmark:check`, `GET /api/research/evals` |
+| Eval regression detection | Implemented | Fixture score baselines, seven adversarial negative controls, CI eval artifact, eval API, checked benchmark artifact | `npm run evals`, `npm run benchmark:check`, `GET /api/research/evals` |
 | Persisted offline eval history | Implemented | Typed eval contracts, Supabase eval history migration/RPC, public history API | `npm run evals:persist`, `GET /api/research/evals/history` |
 | HITL approval state machine | Implemented | Research stage stops at approval; approval route tests cover critical-gap blocking, waiver notes, reject, follow-up, reporting enqueue, and `GET /api/research/sessions/:id/approvals` exposes decision history | `npm run test:coverage`, API review |
 | Structured run-events log | Implemented | Run-linked events, trace/correlation fields, cost events, post-mortem events, worker claim events, SSE route formatting | `npm run contracts:check`, `npx vitest run tests/unit/research-worker.test.ts`, `npx vitest run tests/unit/hosted-api-routes.test.ts` |

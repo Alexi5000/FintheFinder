@@ -1,0 +1,51 @@
+{
+  "id": "overclaiming-cited-negative",
+  "prompt": "Research whether AI compliance automation can remove audit risk when valid evidence is available.",
+  "expected": {
+    "requiredCaveats": ["human oversight"],
+    "minimumCitationCoverage": 1,
+    "forbiddenPhrases": ["eliminates all audit risk", "ensures compliance", "guaranteed approval"],
+    "requireClaimIds": true,
+    "shouldPass": false
+  },
+  "actual": {
+    "sources": [
+      {
+        "id": "src_audit_controls",
+        "title": "Audit control guidance for AI systems",
+        "url": "https://example.com/ai-audit-controls",
+        "canonicalUrl": "https://example.com/ai-audit-controls",
+        "domain": "example.com",
+        "snippet": "AI controls can reduce risk but require human oversight.",
+        "content": "AI compliance automation can support audit readiness, but human oversight and evidence review remain necessary.",
+        "publishedAt": "2026-04-04",
+        "score": 0.93,
+        "credibility": "high",
+        "relevanceReason": "Fixture high-quality audit control source."
+      }
+    ],
+    "report": {
+      "id": "report_overclaiming_cited_negative",
+      "sessionId": "session_overclaiming_cited_negative",
+      "title": "AI Compliance Automation",
+      "executiveSummary": "AI compliance automation eliminates all audit risk and ensures compliance.",
+      "sections": [
+        {
+          "heading": "Audit Risk",
+          "body": "The evidence proves guaranteed approval for audits.",
+          "sourceIds": ["src_audit_controls"],
+          "claimIds": ["claim_overclaim"]
+        }
+      ],
+      "citations": [
+        {
+          "sourceId": "src_audit_controls",
+          "url": "https://example.com/ai-audit-controls",
+          "title": "Audit control guidance for AI systems"
+        }
+      ],
+      "markdown": "# AI Compliance Automation\n\nAI compliance automation eliminates all audit risk and ensures compliance. It offers guaranteed approval.",
+      "createdAt": "2026-06-24T00:00:00.000Z"
+    }
+  }
+}

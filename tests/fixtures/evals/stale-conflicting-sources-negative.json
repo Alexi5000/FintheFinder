@@ -1,0 +1,65 @@
+{
+  "id": "stale-conflicting-sources-negative",
+  "prompt": "Research current regulatory posture for autonomous loan decisioning systems when sources conflict.",
+  "expected": {
+    "requiredCaveats": ["current guidance", "conflicting sources", "uncertainty"],
+    "minimumCitationCoverage": 1,
+    "forbiddenPhrases": ["final authority", "settled law"],
+    "forbiddenSourceIds": ["src_stale_2017"],
+    "requireClaimIds": true,
+    "shouldPass": false
+  },
+  "actual": {
+    "sources": [
+      {
+        "id": "src_stale_2017",
+        "title": "Archived informal guidance from 2017",
+        "url": "https://example.com/archive/2017-ai-loans",
+        "canonicalUrl": "https://example.com/archive/2017-ai-loans",
+        "domain": "example.com",
+        "snippet": "Old guidance says autonomous loan decisions are broadly acceptable.",
+        "content": "Archived 2017 guidance predates current AI governance requirements.",
+        "publishedAt": "2017-03-20",
+        "score": 0.24,
+        "credibility": "medium",
+        "relevanceReason": "Fixture stale source."
+      },
+      {
+        "id": "src_current_regulator",
+        "title": "Current regulator bulletin on AI credit decisions",
+        "url": "https://example.com/current/ai-credit-bulletin",
+        "canonicalUrl": "https://example.com/current/ai-credit-bulletin",
+        "domain": "example.com",
+        "snippet": "Current guidance requires human review, model governance, and uncertainty disclosure.",
+        "content": "Regulated lenders should preserve human review and document uncertainty for AI-supported credit decisions.",
+        "publishedAt": "2026-05-10",
+        "score": 0.96,
+        "credibility": "high",
+        "relevanceReason": "Fixture current primary source."
+      }
+    ],
+    "report": {
+      "id": "report_stale_conflicting_sources_negative",
+      "sessionId": "session_stale_conflicting_sources_negative",
+      "title": "Autonomous Loan Decisions",
+      "executiveSummary": "The 2017 source is final authority and the matter is settled law.",
+      "sections": [
+        {
+          "heading": "Regulatory Posture",
+          "body": "The old guidance controls and autonomous decisions can proceed without additional caveats.",
+          "sourceIds": ["src_stale_2017"],
+          "claimIds": ["claim_stale"]
+        }
+      ],
+      "citations": [
+        {
+          "sourceId": "src_stale_2017",
+          "url": "https://example.com/archive/2017-ai-loans",
+          "title": "Archived informal guidance from 2017"
+        }
+      ],
+      "markdown": "# Autonomous Loan Decisions\n\nThe 2017 source is final authority and the matter is settled law.",
+      "createdAt": "2026-06-24T00:00:00.000Z"
+    }
+  }
+}

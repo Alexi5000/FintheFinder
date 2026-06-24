@@ -1,0 +1,45 @@
+{
+  "id": "malformed-output-negative",
+  "prompt": "Research AI incident response readiness for financial services.",
+  "expected": {
+    "requiredCaveats": ["incident response", "human escalation"],
+    "minimumCitationCoverage": 1,
+    "forbiddenPhrases": ["n/a", "tbd", "lorem ipsum"],
+    "requireClaimIds": true,
+    "shouldPass": false
+  },
+  "actual": {
+    "sources": [
+      {
+        "id": "src_incident_response",
+        "title": "AI incident response control guidance",
+        "url": "https://example.com/ai-incident-response",
+        "canonicalUrl": "https://example.com/ai-incident-response",
+        "domain": "example.com",
+        "snippet": "Organizations should define escalation paths for AI incidents.",
+        "content": "AI incident response plans should include human escalation, severity triage, and recovery review.",
+        "publishedAt": "2026-03-12",
+        "score": 0.91,
+        "credibility": "high",
+        "relevanceReason": "Fixture incident response guidance."
+      }
+    ],
+    "report": {
+      "id": "report_malformed_output_negative",
+      "sessionId": "session_malformed_output_negative",
+      "title": "AI Incident Response",
+      "executiveSummary": "N/A",
+      "sections": [
+        {
+          "heading": "Findings",
+          "body": "TBD. Lorem ipsum.",
+          "sourceIds": [],
+          "claimIds": []
+        }
+      ],
+      "citations": [],
+      "markdown": "# AI Incident Response\n\nN/A\n\nTBD. Lorem ipsum.",
+      "createdAt": "2026-06-24T00:00:00.000Z"
+    }
+  }
+}

@@ -18,7 +18,7 @@ Fin should be evaluated like a research system, not only like a web app.
 Offline evals use a deterministic three-role adversarial harness:
 
 - Planner: converts each fixture into caveat, citation, forbidden-phrase, and score-baseline checks.
-- Generator: extracts citation coverage, unknown source IDs, missing caveats, and overclaiming signals from the actual report.
+- Generator: extracts citation coverage, unknown source IDs, missing caveats, blocked source IDs, blocked source credibility, missing claim IDs, and overclaiming signals from the actual report.
 - Evaluator: produces the four-axis score, compares it with fixture baselines, and flags regressions.
 
 ## Fixture Set
@@ -26,12 +26,28 @@ Offline evals use a deterministic three-role adversarial harness:
 Add fixtures under `tests/fixtures/evals/` with:
 
 - Prompt
-- Expected source characteristics
+- Expected source characteristics through optional blocked source IDs and blocked credibility levels
 - Required caveats
 - Minimum citation coverage
+- Required claim-ID coverage when the claim ledger is part of the acceptance rule
 - Expected pass/fail outcome
 - Minimum score baselines for passing fixtures
 - Report acceptance rubric
+
+Fixtures are Zod-validated before execution. Adversarial report candidates may intentionally include empty section citations so the deterministic harness can prove citation and malformed-output failures without bypassing fixture parsing.
+
+Current offline scenarios cover:
+
+- Passing regulatory-compliance synthesis with claim IDs and full citation coverage
+- Passing corrected citation coverage
+- Unknown citation/source ID mismatch
+- Placeholder or malformed report output
+- Missing claim IDs
+- Citation-free overclaiming
+- Cited but unsafe overclaiming
+- Prompt-injection text copied into a report
+- SEO-spam and low-credibility source laundering
+- Stale/conflicting source reliance
 
 ## Release Rule
 

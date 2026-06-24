@@ -1,0 +1,51 @@
+{
+  "id": "citation-mismatch-negative",
+  "prompt": "Research citation mismatch detection for an AI risk report.",
+  "expected": {
+    "requiredCaveats": ["uncertainty"],
+    "minimumCitationCoverage": 1,
+    "forbiddenPhrases": ["risk-free"],
+    "requireClaimIds": true,
+    "shouldPass": false
+  },
+  "actual": {
+    "sources": [
+      {
+        "id": "src_known_policy",
+        "title": "Known AI risk policy",
+        "url": "https://example.com/known-ai-risk-policy",
+        "canonicalUrl": "https://example.com/known-ai-risk-policy",
+        "domain": "example.com",
+        "snippet": "Known policy requires uncertainty disclosure.",
+        "content": "AI risk reports should disclose uncertainty and cite known policy sources.",
+        "publishedAt": "2026-01-18",
+        "score": 0.86,
+        "credibility": "high",
+        "relevanceReason": "Fixture known source."
+      }
+    ],
+    "report": {
+      "id": "report_citation_mismatch_negative",
+      "sessionId": "session_citation_mismatch_negative",
+      "title": "AI Risk Citation Mismatch",
+      "executiveSummary": "The report preserves uncertainty but cites an unknown source ID.",
+      "sections": [
+        {
+          "heading": "Finding",
+          "body": "This finding cites an ID that is not in the source set.",
+          "sourceIds": ["src_unknown_policy"],
+          "claimIds": ["claim_unknown_source"]
+        }
+      ],
+      "citations": [
+        {
+          "sourceId": "src_unknown_policy",
+          "url": "https://example.com/unknown-ai-risk-policy",
+          "title": "Unknown AI risk policy"
+        }
+      ],
+      "markdown": "# AI Risk Citation Mismatch\n\nThe report preserves uncertainty but cites an unknown source ID.",
+      "createdAt": "2026-06-24T00:00:00.000Z"
+    }
+  }
+}

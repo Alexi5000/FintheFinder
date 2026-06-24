@@ -42,7 +42,18 @@ type ExpectedTables =
   | 'research_run_costs'
   | 'research_memories';
 
-type ExpectedFunctions = 'claim_next_research_run' | 'extend_research_run_lease' | 'ensure_research_approval_owner' | 'record_eval_run';
+type ExpectedFunctions =
+  | 'claim_next_research_run'
+  | 'extend_research_run_lease'
+  | 'ensure_research_approval_owner'
+  | 'ensure_run_child_session_integrity'
+  | 'ensure_claim_evidence_session_integrity'
+  | 'ensure_claim_jsonb_graph_integrity'
+  | 'ensure_approval_jsonb_graph_integrity'
+  | 'ensure_memory_session_owner'
+  | 'prevent_research_parent_session_update'
+  | 'prevent_research_session_owner_update'
+  | 'record_eval_run';
 
 export type SupabaseDbParityAssertions = [
   Assert<Equal<keyof Database['public']['Tables'], ExpectedTables>>,

@@ -69,6 +69,8 @@ Worker terminal run updates require a successful ownership heartbeat. If ownersh
 
 Approval mutations must go through the hosted API routes. Direct authenticated Supabase writes to `research_approvals` are intentionally denied so critical-gap blocking, waiver notes, rejection, and follow-up transitions stay inside the audited HITL state machine.
 
+Service-role persistence must keep session-scoped graphs coherent. Cross-session constraints and trigger guards reject child rows whose `source_id`, `claim_id`, `run_id`, approval JSONB IDs, claim JSONB IDs, or memory `session_id` belongs to a different research session/user. Session ownership and parent `session_id` fields are intentionally immutable after insert.
+
 Scoped memory is explicit. The app writes user/session memories through `/api/research/memory`; worker summaries use the `run_summary` namespace and are best-effort after terminal run updates. Do not store raw prompts, secrets, or unredacted confidential source material in memory values.
 
 ## Generated Files

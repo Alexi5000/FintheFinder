@@ -359,7 +359,7 @@ export async function replaceResearchArtifacts(
         status: claim.status,
         severity: claim.severity,
         source_ids: toJson(claim.sourceIds),
-        evidence_ids: toJson(claim.evidenceIds),
+        evidence_ids: toJson([]),
         created_at: claim.createdAt,
       })),
     );
@@ -377,6 +377,16 @@ export async function replaceResearchArtifacts(
         created_at: evidence.createdAt,
       })),
     );
+    if (error) throw new Error(error.message);
+  }
+
+  const claimsWithEvidenceIds = artifacts.claims?.filter((claim) => claim.evidenceIds.length > 0) ?? [];
+  for (const claim of claimsWithEvidenceIds) {
+    const { error } = await supabase
+      .from('research_claims')
+      .update({ evidence_ids: toJson(claim.evidenceIds) })
+      .eq('id', claim.id)
+      .eq('session_id', sessionId);
     if (error) throw new Error(error.message);
   }
 

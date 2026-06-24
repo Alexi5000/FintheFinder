@@ -245,12 +245,17 @@ describe('research repository persistence helpers', () => {
         expect.objectContaining({
           table: 'research_claims',
           op: 'insert',
-          payload: [expect.objectContaining({ source_ids: ['src_1'], evidence_ids: ['evidence_1'] })],
+          payload: [expect.objectContaining({ source_ids: ['src_1'], evidence_ids: [] })],
         }),
         expect.objectContaining({
           table: 'claim_evidence',
           op: 'insert',
           payload: [expect.objectContaining({ claim_id: 'claim_1', source_id: 'src_1' })],
+        }),
+        expect.objectContaining({
+          table: 'research_claims',
+          op: 'update',
+          payload: expect.objectContaining({ evidence_ids: ['evidence_1'] }),
         }),
         expect.objectContaining({
           table: 'claim_gaps',

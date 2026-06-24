@@ -29,6 +29,7 @@ const migrations = [
   '006_eval_history_hardening.sql',
   '007_event_contract_hardening.sql',
   '008_approval_api_write_hardening.sql',
+  '009_cross_session_integrity.sql',
 ];
 
 function readMigration(name: string) {
@@ -301,6 +302,66 @@ describe('database migrations', () => {
 
     expect([...databaseTableNames].sort()).toEqual(migrationTables);
     expect([...databaseFunctionNames].sort()).toEqual(migrationFunctions);
+  });
+
+  it('enforces cross-session graph integrity for service-role persistence paths', () => {
+    const migration = readMigration('009_cross_session_integrity.sql');
+
+    for (const constraint of [
+      'research_sources_id_session_unique',
+      'research_claims_id_session_unique',
+      'research_runs_id_session_unique',
+    ]) {
+      expect(migration).toContain(`conname = '${constraint}'`);
+      expect(migration).toContain(`add constraint ${constraint} unique`);
+    }
+    expect(migration).toContain("conrelid = 'public.research_sources'::regclass");
+    expect(migration).toContain("conrelid = 'public.research_claims'::regclass");
+    expect(migration).toContain("conrelid = 'public.research_runs'::regclass");
+
+    expect(migration).toMatch(/source_evaluations_source_session_fkey[\s\S]*foreign key \(source_id, session_id\)[\s\S]*references public\.research_sources\(id, session_id\) on delete cascade/i);
+    expect(migration).toMatch(/research_learnings_source_session_fkey[\s\S]*foreign key \(source_id, session_id\)[\s\S]*references public\.research_sources\(id, session_id\) on delete cascade/i);
+    expect(migration).toMatch(/claim_gaps_claim_session_fkey[\s\S]*foreign key \(claim_id, session_id\)[\s\S]*references public\.research_claims\(id, session_id\) on delete cascade/i);
+    expect(migration).toMatch(/research_run_costs_run_session_fkey[\s\S]*foreign key \(run_id, session_id\)[\s\S]*references public\.research_runs\(id, session_id\) on delete cascade/i);
+
+    expect(migration).toContain('ensure_run_child_session_integrity');
+    expect(migration).toContain('ensure_claim_evidence_session_integrity');
+    expect(migration).toContain('ensure_claim_jsonb_graph_integrity');
+    expect(migration).toContain('ensure_approval_jsonb_graph_integrity');
+    expect(migration).toContain('ensure_memory_session_owner');
+    expect(migration).toContain('prevent_research_parent_session_update');
+    expect(migration).toContain('prevent_research_session_owner_update');
+    expect(migration).toContain('ensure_research_events_run_session');
+    expect(migration).toContain('ensure_research_audits_run_session');
+    expect(migration).toContain('ensure_research_post_mortems_run_session');
+    expect(migration).toContain('ensure_claim_evidence_source_session');
+    expect(migration).toContain('ensure_research_claims_jsonb_graph');
+    expect(migration).toContain('ensure_research_approvals_jsonb_graph');
+    expect(migration).toContain('ensure_research_memory_session_owner');
+    expect(migration).toContain('prevent_research_sources_session_reassignment');
+    expect(migration).toContain('prevent_research_claims_session_reassignment');
+    expect(migration).toContain('prevent_research_runs_session_reassignment');
+    expect(migration).toContain('prevent_research_sessions_owner_reassignment');
+    expect(migration).toContain('claim evidence source must belong to claim session');
+    expect(migration).toContain('claim source_ids must belong to claim session');
+    expect(migration).toContain('claim evidence_ids must belong to claim');
+    expect(migration).toContain('approval approved_source_ids must belong to approval session');
+    expect(migration).toContain('approval waived_gap_ids must belong to approval session');
+    expect(migration).toContain('memory user must own research session');
+    expect(migration).toContain('session_id cannot be reassigned for persisted research graph parents');
+    expect(migration).toContain('research session owner cannot be reassigned');
+
+    for (const signature of [
+      'public.ensure_run_child_session_integrity()',
+      'public.ensure_claim_evidence_session_integrity()',
+      'public.ensure_claim_jsonb_graph_integrity()',
+      'public.ensure_approval_jsonb_graph_integrity()',
+      'public.ensure_memory_session_owner()',
+      'public.prevent_research_parent_session_update()',
+      'public.prevent_research_session_owner_update()',
+    ]) {
+      expect(migration).toContain(`revoke execute on function ${signature} from public, anon, authenticated`);
+    }
   });
 
   it('keeps SQL check constraints aligned with exported Zod enums', () => {

@@ -293,6 +293,34 @@ export type Database = {
         Args: Record<string, never>;
         Returns: unknown;
       };
+      ensure_run_child_session_integrity: {
+        Args: Record<string, never>;
+        Returns: unknown;
+      };
+      ensure_claim_evidence_session_integrity: {
+        Args: Record<string, never>;
+        Returns: unknown;
+      };
+      ensure_claim_jsonb_graph_integrity: {
+        Args: Record<string, never>;
+        Returns: unknown;
+      };
+      ensure_approval_jsonb_graph_integrity: {
+        Args: Record<string, never>;
+        Returns: unknown;
+      };
+      ensure_memory_session_owner: {
+        Args: Record<string, never>;
+        Returns: unknown;
+      };
+      prevent_research_parent_session_update: {
+        Args: Record<string, never>;
+        Returns: unknown;
+      };
+      prevent_research_session_owner_update: {
+        Args: Record<string, never>;
+        Returns: unknown;
+      };
       record_eval_run: {
         Args: { p_id: string; p_suite: string; p_status: DbEvalRunStatus; p_summary: Json; p_results: Json; p_created_at: string };
         Returns: EvalRunsRow;
@@ -337,5 +365,12 @@ export const databaseFunctionNames = [
   'claim_next_research_run',
   'extend_research_run_lease',
   'ensure_research_approval_owner',
+  'ensure_run_child_session_integrity',
+  'ensure_claim_evidence_session_integrity',
+  'ensure_claim_jsonb_graph_integrity',
+  'ensure_approval_jsonb_graph_integrity',
+  'ensure_memory_session_owner',
+  'prevent_research_parent_session_update',
+  'prevent_research_session_owner_update',
   'record_eval_run',
 ] as const satisfies readonly DbFunctionName[];

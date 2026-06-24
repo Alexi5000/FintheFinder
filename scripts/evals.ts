@@ -1,30 +1,38 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
+import type { EvalSuiteSummary } from '../src/lib/schemas';
 import { runOfflineEvalSuite } from '../src/server/evals/eval-suite';
 
 const args = process.argv.slice(2);
 const outputFlagIndex = args.indexOf('--output');
 const manifestFlagIndex = args.indexOf('--manifest');
+const suiteFlagIndex = args.indexOf('--suite');
 const live = args.includes('--live');
+const persist = args.includes('--persist');
 const consumedFlagValueIndexes = new Set<number>();
 if (outputFlagIndex >= 0) consumedFlagValueIndexes.add(outputFlagIndex + 1);
 if (manifestFlagIndex >= 0) consumedFlagValueIndexes.add(manifestFlagIndex + 1);
+if (suiteFlagIndex >= 0) consumedFlagValueIndexes.add(suiteFlagIndex + 1);
 const positionalOutputPath = args.find((arg, index) => !arg.startsWith('--') && !consumedFlagValueIndexes.has(index));
 const outputPath = outputFlagIndex >= 0 ? flagValue('--output', outputFlagIndex) : positionalOutputPath;
 const manifestPath = manifestFlagIndex >= 0 ? flagValue('--manifest', manifestFlagIndex) : 'docs/demo/live-demo.json';
+const suite = suiteFlagIndex >= 0 ? flagValue('--suite', suiteFlagIndex) : live ? 'live' : 'offline';
 
 if (positionalOutputPath && live) throw new Error('Live eval proof uses --manifest; positional output is only supported for offline eval output.');
+if (persist && live) throw new Error('Persisted eval history currently records offline suite summaries. Live proof is captured by docs/demo/live-demo.json.');
 
-const summary = live ? runLiveEvalProofCheck(manifestPath) : runOfflineEvalSuite();
-
-if (outputPath) {
-  const absoluteOutputPath = resolvePath(outputPath);
-  mkdirSync(dirname(absoluteOutputPath), { recursive: true });
-  writeFileSync(absoluteOutputPath, `${JSON.stringify(summary, null, 2)}\n`);
+if (live) {
+  const summary = runLiveEvalProofCheck(manifestPath);
+  writeSummaryOutput(summary);
+  console.log(JSON.stringify(summary, null, 2));
+  if (!summary.passed) process.exit(1);
+} else {
+  const summary = runOfflineEvalSuite();
+  const persisted = persist ? await persistEvalSummary(suite, summary) : undefined;
+  writeSummaryOutput(summary);
+  console.log(JSON.stringify(persisted ? { ...summary, persistedEvalRun: persisted } : summary, null, 2));
+  if (!summary.passed) process.exit(1);
 }
-
-console.log(JSON.stringify(summary, null, 2));
-if (!summary.passed) process.exit(1);
 
 function runLiveEvalProofCheck(path: string) {
   const missingEnv = ['OPENAI_API_KEY', 'EXA_API_KEY', 'NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY'].filter(
@@ -78,4 +86,17 @@ function flagValue(flag: string, index: number) {
   const value = args[index + 1];
   if (!value || value.startsWith('--')) throw new Error(`Missing value after ${flag}.`);
   return value;
+}
+
+function writeSummaryOutput(summary: unknown) {
+  if (!outputPath) return;
+  const absoluteOutputPath = resolvePath(outputPath);
+  mkdirSync(dirname(absoluteOutputPath), { recursive: true });
+  writeFileSync(absoluteOutputPath, `${JSON.stringify(summary, null, 2)}\n`);
+}
+
+async function persistEvalSummary(suite: string, summary: EvalSuiteSummary) {
+  const { saveEvalRun } = await import('../src/server/evals/history');
+  const run = await saveEvalRun(suite, summary);
+  return { id: run.id, suite: run.suite, status: run.status, resultCount: run.results.length };
 }

@@ -157,6 +157,71 @@ export const runCostSchema = z.object({
   createdAt: z.string(),
 });
 
+export const evalScoresSchema = z.object({
+  correctness: z.number().min(0).max(1),
+  safety: z.number().min(0).max(1),
+  completeness: z.number().min(0).max(1),
+  quality: z.number().min(0).max(1),
+});
+
+export const evalResultSummarySchema = z.object({
+  id: z.string(),
+  passed: z.boolean(),
+  expectedPass: z.boolean(),
+  observedPass: z.boolean(),
+  scores: evalScoresSchema,
+  issues: z.array(z.string()).default([]),
+  regressions: z.array(z.string()).default([]),
+});
+
+export const evalSuiteSummarySchema = z.object({
+  passed: z.boolean(),
+  total: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+  results: z.array(evalResultSummarySchema),
+}).superRefine((summary, ctx) => {
+  if (summary.total !== summary.results.length) {
+    ctx.addIssue({ code: 'custom', path: ['total'], message: 'Eval summary total must match result count.' });
+  }
+  const failedCount = summary.results.filter((result) => !result.passed).length;
+  if (summary.failed !== failedCount) {
+    ctx.addIssue({ code: 'custom', path: ['failed'], message: 'Eval summary failed count must match failed results.' });
+  }
+});
+
+export const evalRunStatusSchema = z.enum(['passed', 'failed']);
+
+export const evalRunSchema = z.object({
+  id: z.string(),
+  suite: z.string().min(1),
+  status: evalRunStatusSchema,
+  summary: evalSuiteSummarySchema,
+  createdAt: z.string(),
+});
+
+export const evalResultSchema = z.object({
+  id: z.string(),
+  evalRunId: z.string(),
+  fixtureId: z.string().min(1),
+  passed: z.boolean(),
+  expectedPass: z.boolean(),
+  observedPass: z.boolean(),
+  scores: evalScoresSchema,
+  issues: z.array(z.string()).default([]),
+  regressions: z.array(z.string()).default([]),
+  createdAt: z.string(),
+});
+
+export const evalRunWithResultsSchema = evalRunSchema.extend({
+  results: z.array(evalResultSchema),
+});
+
+export const evalHistoryResponseSchema = z.object({
+  suite: z.string().min(1),
+  runs: z.array(evalRunSchema),
+  latest: evalRunWithResultsSchema.nullable(),
+});
+
 export const researchMemoryScopeSchema = z.enum(['user', 'session']);
 export const researchMemoryNamespaceSchema = z.enum(['preference', 'source_cache', 'procedure', 'run_summary']);
 
@@ -271,6 +336,14 @@ export type ResearchPostMortem = z.infer<typeof researchPostMortemSchema>;
 export type ModelUsage = z.infer<typeof modelUsageSchema>;
 export type RunUsage = z.infer<typeof runUsageSchema>;
 export type RunCost = z.infer<typeof runCostSchema>;
+export type EvalScores = z.infer<typeof evalScoresSchema>;
+export type EvalResultSummary = z.infer<typeof evalResultSummarySchema>;
+export type EvalSuiteSummary = z.infer<typeof evalSuiteSummarySchema>;
+export type EvalRunStatus = z.infer<typeof evalRunStatusSchema>;
+export type EvalRun = z.infer<typeof evalRunSchema>;
+export type EvalResult = z.infer<typeof evalResultSchema>;
+export type EvalRunWithResults = z.infer<typeof evalRunWithResultsSchema>;
+export type EvalHistoryResponse = z.infer<typeof evalHistoryResponseSchema>;
 export type ResearchMemoryScope = z.infer<typeof researchMemoryScopeSchema>;
 export type ResearchMemoryNamespace = z.infer<typeof researchMemoryNamespaceSchema>;
 export type ResearchMemory = z.infer<typeof researchMemorySchema>;

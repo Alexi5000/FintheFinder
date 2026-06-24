@@ -306,6 +306,1034 @@
       ],
       "additionalProperties": false
     },
+    "evalHistoryResponse": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "suite": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "suite": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "passed",
+                  "failed"
+                ]
+              },
+              "summary": {
+                "type": "object",
+                "properties": {
+                  "passed": {
+                    "type": "boolean"
+                  },
+                  "total": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "failed": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "results": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "passed": {
+                          "type": "boolean"
+                        },
+                        "expectedPass": {
+                          "type": "boolean"
+                        },
+                        "observedPass": {
+                          "type": "boolean"
+                        },
+                        "scores": {
+                          "type": "object",
+                          "properties": {
+                            "correctness": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "safety": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "completeness": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "quality": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            }
+                          },
+                          "required": [
+                            "correctness",
+                            "safety",
+                            "completeness",
+                            "quality"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "issues": {
+                          "default": [],
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "regressions": {
+                          "default": [],
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "passed",
+                        "expectedPass",
+                        "observedPass",
+                        "scores",
+                        "issues",
+                        "regressions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "passed",
+                  "total",
+                  "failed",
+                  "results"
+                ],
+                "additionalProperties": false
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "suite",
+              "status",
+              "summary",
+              "createdAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "latest": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "suite": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "passed",
+                    "failed"
+                  ]
+                },
+                "summary": {
+                  "type": "object",
+                  "properties": {
+                    "passed": {
+                      "type": "boolean"
+                    },
+                    "total": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "failed": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "passed": {
+                            "type": "boolean"
+                          },
+                          "expectedPass": {
+                            "type": "boolean"
+                          },
+                          "observedPass": {
+                            "type": "boolean"
+                          },
+                          "scores": {
+                            "type": "object",
+                            "properties": {
+                              "correctness": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              },
+                              "safety": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              },
+                              "completeness": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              },
+                              "quality": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              }
+                            },
+                            "required": [
+                              "correctness",
+                              "safety",
+                              "completeness",
+                              "quality"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "issues": {
+                            "default": [],
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "regressions": {
+                            "default": [],
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "passed",
+                          "expectedPass",
+                          "observedPass",
+                          "scores",
+                          "issues",
+                          "regressions"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "passed",
+                    "total",
+                    "failed",
+                    "results"
+                  ],
+                  "additionalProperties": false
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "results": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "evalRunId": {
+                        "type": "string"
+                      },
+                      "fixtureId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "passed": {
+                        "type": "boolean"
+                      },
+                      "expectedPass": {
+                        "type": "boolean"
+                      },
+                      "observedPass": {
+                        "type": "boolean"
+                      },
+                      "scores": {
+                        "type": "object",
+                        "properties": {
+                          "correctness": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "safety": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "completeness": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "quality": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          }
+                        },
+                        "required": [
+                          "correctness",
+                          "safety",
+                          "completeness",
+                          "quality"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "issues": {
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "regressions": {
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "createdAt": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "evalRunId",
+                      "fixtureId",
+                      "passed",
+                      "expectedPass",
+                      "observedPass",
+                      "scores",
+                      "issues",
+                      "regressions",
+                      "createdAt"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "suite",
+                "status",
+                "summary",
+                "createdAt",
+                "results"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "suite",
+        "runs",
+        "latest"
+      ],
+      "additionalProperties": false
+    },
+    "evalResult": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "evalRunId": {
+          "type": "string"
+        },
+        "fixtureId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "passed": {
+          "type": "boolean"
+        },
+        "expectedPass": {
+          "type": "boolean"
+        },
+        "observedPass": {
+          "type": "boolean"
+        },
+        "scores": {
+          "type": "object",
+          "properties": {
+            "correctness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "safety": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "completeness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "quality": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "correctness",
+            "safety",
+            "completeness",
+            "quality"
+          ],
+          "additionalProperties": false
+        },
+        "issues": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "regressions": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "evalRunId",
+        "fixtureId",
+        "passed",
+        "expectedPass",
+        "observedPass",
+        "scores",
+        "issues",
+        "regressions",
+        "createdAt"
+      ],
+      "additionalProperties": false
+    },
+    "evalResultSummary": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "passed": {
+          "type": "boolean"
+        },
+        "expectedPass": {
+          "type": "boolean"
+        },
+        "observedPass": {
+          "type": "boolean"
+        },
+        "scores": {
+          "type": "object",
+          "properties": {
+            "correctness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "safety": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "completeness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "quality": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "correctness",
+            "safety",
+            "completeness",
+            "quality"
+          ],
+          "additionalProperties": false
+        },
+        "issues": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "regressions": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "passed",
+        "expectedPass",
+        "observedPass",
+        "scores",
+        "issues",
+        "regressions"
+      ],
+      "additionalProperties": false
+    },
+    "evalRun": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "suite": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "passed",
+            "failed"
+          ]
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "passed": {
+              "type": "boolean"
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "failed": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "results": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "passed": {
+                    "type": "boolean"
+                  },
+                  "expectedPass": {
+                    "type": "boolean"
+                  },
+                  "observedPass": {
+                    "type": "boolean"
+                  },
+                  "scores": {
+                    "type": "object",
+                    "properties": {
+                      "correctness": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "safety": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "completeness": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "quality": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "correctness",
+                      "safety",
+                      "completeness",
+                      "quality"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "issues": {
+                    "default": [],
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "regressions": {
+                    "default": [],
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "passed",
+                  "expectedPass",
+                  "observedPass",
+                  "scores",
+                  "issues",
+                  "regressions"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "passed",
+            "total",
+            "failed",
+            "results"
+          ],
+          "additionalProperties": false
+        },
+        "createdAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "suite",
+        "status",
+        "summary",
+        "createdAt"
+      ],
+      "additionalProperties": false
+    },
+    "evalRunWithResults": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "suite": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "passed",
+            "failed"
+          ]
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "passed": {
+              "type": "boolean"
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "failed": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "results": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "passed": {
+                    "type": "boolean"
+                  },
+                  "expectedPass": {
+                    "type": "boolean"
+                  },
+                  "observedPass": {
+                    "type": "boolean"
+                  },
+                  "scores": {
+                    "type": "object",
+                    "properties": {
+                      "correctness": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "safety": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "completeness": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "quality": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "correctness",
+                      "safety",
+                      "completeness",
+                      "quality"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "issues": {
+                    "default": [],
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "regressions": {
+                    "default": [],
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "passed",
+                  "expectedPass",
+                  "observedPass",
+                  "scores",
+                  "issues",
+                  "regressions"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "passed",
+            "total",
+            "failed",
+            "results"
+          ],
+          "additionalProperties": false
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "evalRunId": {
+                "type": "string"
+              },
+              "fixtureId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "expectedPass": {
+                "type": "boolean"
+              },
+              "observedPass": {
+                "type": "boolean"
+              },
+              "scores": {
+                "type": "object",
+                "properties": {
+                  "correctness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "safety": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "completeness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "quality": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "required": [
+                  "correctness",
+                  "safety",
+                  "completeness",
+                  "quality"
+                ],
+                "additionalProperties": false
+              },
+              "issues": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "regressions": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "evalRunId",
+              "fixtureId",
+              "passed",
+              "expectedPass",
+              "observedPass",
+              "scores",
+              "issues",
+              "regressions",
+              "createdAt"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "id",
+        "suite",
+        "status",
+        "summary",
+        "createdAt",
+        "results"
+      ],
+      "additionalProperties": false
+    },
+    "evalScores": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "correctness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "safety": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "completeness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "quality": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "correctness",
+        "safety",
+        "completeness",
+        "quality"
+      ],
+      "additionalProperties": false
+    },
+    "evalSuiteSummary": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "passed": {
+          "type": "boolean"
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "expectedPass": {
+                "type": "boolean"
+              },
+              "observedPass": {
+                "type": "boolean"
+              },
+              "scores": {
+                "type": "object",
+                "properties": {
+                  "correctness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "safety": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "completeness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "quality": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "required": [
+                  "correctness",
+                  "safety",
+                  "completeness",
+                  "quality"
+                ],
+                "additionalProperties": false
+              },
+              "issues": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "regressions": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "passed",
+              "expectedPass",
+              "observedPass",
+              "scores",
+              "issues",
+              "regressions"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "passed",
+        "total",
+        "failed",
+        "results"
+      ],
+      "additionalProperties": false
+    },
     "researchApproval": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",

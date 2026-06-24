@@ -29,7 +29,7 @@ The goal is a serious engineering repo, not a demo claim. `docs/FDE_GATES.md` is
 - Next.js product shell with workspace, About, session history, session detail, report reader, settings, health, and API routes.
 - Cited markdown report export.
 - Structured logging with redaction for keys, tokens, prompts, and sensitive payloads.
-- Contract generation, offline evals, claim-ledger primitives, plateau scoring, persisted cost estimates, OpenTelemetry hooks, scoped memory, coverage gate, and audit-green dependency baseline.
+- Contract generation, offline evals, persisted eval history, claim-ledger primitives, plateau scoring, persisted cost estimates, OpenTelemetry hooks, scoped memory, coverage gate, and audit-green dependency baseline.
 
 ## Stack
 
@@ -86,6 +86,7 @@ SUPABASE_SERVICE_ROLE_KEY=""
 | `npm run contracts:sync` | Regenerate JSON Schema contracts |
 | `npm run contracts:check` | Verify committed contracts and drift hash |
 | `npm run evals` | Run deterministic offline eval fixtures |
+| `npm run evals:persist` | Record deterministic offline eval history in Supabase |
 | `npm run benchmark:check` | Verify checked-in expected-vs-actual benchmark evidence |
 | `npm run notebooks:check` | Validate authoring notebooks are non-runtime artifacts |
 | `npm run audit` | Run npm audit at moderate severity |

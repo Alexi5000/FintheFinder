@@ -18,8 +18,9 @@ Expected: `/` renders the workspace, provider status shows missing keys, `/setti
 2. Run Supabase migrations.
 3. Start the web service and worker.
 4. Sign in, create a session, enqueue a run, review sources/claims/events, approve, generate a report, export markdown.
-5. Record the run ID, trace ID, exported report, screenshots or video, eval summary, and cost row in `docs/BENCHMARK.md`.
-6. Copy `docs/demo/live-demo.example.json` to `docs/demo/live-demo.json`, fill it with the recorded evidence, and run:
+5. Run `npm run evals:persist` to record the offline eval proof history for the configured environment.
+6. Record the run ID, trace ID, exported report, screenshots or video, eval summary, persisted eval-history row, and cost row in `docs/BENCHMARK.md`.
+7. Copy `docs/demo/live-demo.example.json` to `docs/demo/live-demo.json`, fill it with the recorded evidence, and run:
 
 ```bash
 npm run demo:record

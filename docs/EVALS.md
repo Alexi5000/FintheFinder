@@ -39,8 +39,24 @@ Any model, prompt, or agent-role change should run against the fixture set befor
 
 Negative-control fixtures are allowed and expected to pass the harness only when the evaluator observes the intended failure.
 
+## Persisted Offline History
+
+`npm run evals:persist` records the deterministic offline suite in Supabase as one `eval_runs` row plus one `eval_results` row per fixture. The write path uses a service-role-only transaction function, so a proof run is not recorded unless its result rows are recorded with it.
+
+Required environment:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=""
+NEXT_PUBLIC_SUPABASE_ANON_KEY=""
+SUPABASE_SERVICE_ROLE_KEY=""
+```
+
+Use `npm run evals -- docs/benchmark/offline-eval-summary.json` when a checked file artifact is needed. Use `npm run evals:persist` when a release or demo needs durable run history. Persisted history is exposed at `GET /api/research/evals/history?suite=offline&limit=20`.
+
 ## Live Proof Mode
 
 `npm run evals:live` is fail-closed. It requires OpenAI, Exa, and Supabase environment variables plus `docs/demo/live-demo.json`. The manifest must point at an eval output artifact from the configured live run. Missing credentials or missing evidence should fail the command instead of silently passing offline fixtures.
 
-The offline eval summary is also exposed at `GET /api/research/evals` for inspection in deployed environments.
+Live eval proof is not persisted by `npm run evals:persist`; it remains tied to `docs/demo/live-demo.json`, the referenced eval output artifact, and `npm run evals:live`.
+
+The offline eval summary is also exposed at `GET /api/research/evals` for inspection in deployed environments. That endpoint recomputes fixtures and should not be described as historical proof.

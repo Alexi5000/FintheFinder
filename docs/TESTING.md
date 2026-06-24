@@ -52,4 +52,18 @@ Future eval fixtures should score:
 - Report completeness
 - Uncertainty labeling
 
-Every prompt or model change should be evaluated against the fixture set before release. Use `npm run evals -- --output artifacts/evals/offline-summary.json` when a persisted eval artifact is needed.
+Every prompt or model change should be evaluated against the fixture set before release.
+
+Use a positional output path when a checked JSON artifact is needed:
+
+```bash
+npm run evals -- artifacts/evals/offline-summary.json
+```
+
+Use Supabase-backed history when a release or demo needs durable proof rows:
+
+```bash
+npm run evals:persist
+```
+
+`npm run evals:persist` is offline-only and requires Supabase environment variables. `npm run evals:live` remains the fail-closed configured-live proof check.

@@ -116,7 +116,43 @@ Request:
 
 ### `GET /api/research/evals`
 
-Returns the deterministic offline eval regression summary used by CI. This is intentionally separate from configured live-demo proof.
+Returns the deterministic offline eval regression summary used by CI. This recomputes local fixtures on request and is intentionally separate from configured live-demo proof and persisted history.
+
+### `GET /api/research/evals/history`
+
+Returns persisted offline eval proof history from Supabase. This is a public read-only operational proof endpoint; it uses the server service role and returns only fixture IDs, pass/fail status, scores, issues, regressions, and timestamps.
+
+Query parameters:
+
+- `suite`: optional suite name, default `offline`
+- `limit`: optional recent run count, default `20`, maximum `50`
+
+Response:
+
+```json
+{
+  "suite": "offline",
+  "runs": [
+    {
+      "id": "eval_run_abc",
+      "suite": "offline",
+      "status": "passed",
+      "summary": { "passed": true, "total": 3, "failed": 0, "results": [] },
+      "createdAt": "2026-06-24T00:00:00.000Z"
+    }
+  ],
+  "latest": {
+    "id": "eval_run_abc",
+    "suite": "offline",
+    "status": "passed",
+    "summary": { "passed": true, "total": 3, "failed": 0, "results": [] },
+    "createdAt": "2026-06-24T00:00:00.000Z",
+    "results": []
+  }
+}
+```
+
+If Supabase is not configured, the endpoint returns `503 supabase_not_configured`. Empty history returns `200` with `runs: []` and `latest: null`.
 
 ## Reports
 

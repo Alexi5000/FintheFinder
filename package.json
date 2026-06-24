@@ -21,6 +21,7 @@
     "contracts:sync": "tsx scripts/contracts-sync.ts",
     "contracts:check": "tsx scripts/contracts-check.ts",
     "evals": "tsx scripts/evals.ts",
+    "evals:persist": "tsx scripts/evals.ts --persist",
     "evals:live": "tsx scripts/evals.ts --live",
     "benchmark:check": "tsx scripts/benchmark-check.ts",
     "notebooks:check": "tsx scripts/check-notebooks.ts",

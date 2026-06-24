@@ -22,6 +22,7 @@ Fin is production-ready only when each public claim is implemented, tested, demo
 | Contract single source of truth | Implemented | `contracts/schema.json` | `npm run contracts:check` |
 | Dual runtime behind contract | Implemented | Worker queue, `/run` enqueue, Docker web/worker commands | `npm run worker`, `npm run container:build` |
 | Eval regression detection | Implemented | Fixture score baselines, negative controls, CI eval artifact, eval API, checked benchmark artifact | `npm run evals`, `npm run benchmark:check`, `GET /api/research/evals` |
+| Persisted offline eval history | Implemented | Typed eval contracts, Supabase eval history migration/RPC, public history API | `npm run evals:persist`, `GET /api/research/evals/history` |
 | HITL approval state machine | Implemented | Research stage stops at approval; approvals block or waive critical gaps before reporting; `GET /api/research/sessions/:id/approvals` exposes decision history | `npm run typecheck`, API review |
 | Structured run-events log | Implemented | Run-linked events, trace/correlation fields, cost events, post-mortem events | `npm run contracts:check` |
 | Authenticated session UI loaders | Implemented | `/sessions`, `/sessions/[id]`, `/reports/[id]` client loaders | `npm run test:e2e` |

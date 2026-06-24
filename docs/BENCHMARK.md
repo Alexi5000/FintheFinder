@@ -2,7 +2,7 @@
 
 Last updated: 2026-06-24.
 
-This is the honest benchmark log. The current repo has an offline eval seed plus persisted run-cost rows; live benchmark rows must be filled from configured runs with real run IDs, exported reports, and measured usage.
+This is the honest benchmark log. The current repo has an offline eval seed, Supabase-backed offline eval history, and persisted run-cost rows; live benchmark rows must be filled from configured runs with real run IDs, exported reports, and measured usage.
 
 ## Offline Expected-Vs-Actual Scenarios
 
@@ -12,6 +12,8 @@ The checked artifact is `docs/benchmark/offline-eval-summary.json`. Regenerate i
 npm run evals -- docs/benchmark/offline-eval-summary.json
 npm run benchmark:check
 ```
+
+For release/demo proof history, run `npm run evals:persist` in a configured Supabase environment. Those rows are durable history, while the checked JSON file above remains the deterministic benchmark artifact reviewed in CI.
 
 | Scenario ID | Expected result | Actual result | Axis scores | Issues | Proof |
 | --- | --- | --- | --- | --- | --- |

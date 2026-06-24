@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   createResearchSessionSchema,
+  evalHistoryResponseSchema,
+  evalResultSchema,
+  evalRunSchema,
+  evalRunWithResultsSchema,
+  evalSuiteSummarySchema,
   researchApprovalSchema,
   researchMemorySchema,
   researchPacketSchema,
@@ -88,6 +93,106 @@ describe('research schemas', () => {
         createdAt: '2026-06-24T00:00:00.000Z',
       }),
     ).not.toThrow();
+  });
+
+  it('accepts typed eval history contracts', () => {
+    const summary = {
+      passed: true,
+      total: 1,
+      failed: 0,
+      results: [
+        {
+          id: 'ai-compliance-research',
+          passed: true,
+          expectedPass: true,
+          observedPass: true,
+          scores: { correctness: 1, safety: 1, completeness: 1, quality: 1 },
+          issues: [],
+          regressions: [],
+        },
+      ],
+    };
+    const run = {
+      id: 'eval_run_1',
+      suite: 'offline',
+      status: 'passed',
+      summary,
+      createdAt: '2026-06-24T00:00:00.000Z',
+    };
+    const result = {
+      id: 'eval_result_1',
+      evalRunId: 'eval_run_1',
+      fixtureId: 'ai-compliance-research',
+      passed: true,
+      expectedPass: true,
+      observedPass: true,
+      scores: { correctness: 1, safety: 1, completeness: 1, quality: 1 },
+      issues: [],
+      regressions: [],
+      createdAt: '2026-06-24T00:00:00.000Z',
+    };
+
+    expect(() => evalSuiteSummarySchema.parse(summary)).not.toThrow();
+    expect(() => evalRunSchema.parse(run)).not.toThrow();
+    expect(() => evalResultSchema.parse(result)).not.toThrow();
+    expect(() => evalRunWithResultsSchema.parse({ ...run, results: [result] })).not.toThrow();
+    expect(() => evalHistoryResponseSchema.parse({ suite: 'offline', runs: [run], latest: { ...run, results: [result] } })).not.toThrow();
+  });
+
+  it('rejects invalid eval summaries and persisted eval rows', () => {
+    expect(() =>
+      evalSuiteSummarySchema.parse({
+        passed: true,
+        total: 2,
+        failed: 0,
+        results: [
+          {
+            id: 'fixture_1',
+            passed: true,
+            expectedPass: true,
+            observedPass: true,
+            scores: { correctness: 1, safety: 1, completeness: 1, quality: 1 },
+            issues: [],
+            regressions: [],
+          },
+        ],
+      }),
+    ).toThrow();
+
+    expect(() =>
+      evalRunSchema.parse({
+        id: 'eval_run_1',
+        suite: '',
+        status: 'passed',
+        summary: { passed: true, total: 0, failed: 0, results: [] },
+        createdAt: '2026-06-24T00:00:00.000Z',
+      }),
+    ).toThrow();
+
+    expect(() =>
+      evalRunSchema.parse({
+        id: 'eval_run_1',
+        suite: 'offline',
+        status: 'unknown',
+        summary: { passed: true, total: 0, failed: 0, results: [] },
+        createdAt: '2026-06-24T00:00:00.000Z',
+      }),
+    ).toThrow();
+
+    expect(() =>
+      evalResultSchema.parse({
+        id: 'eval_result_1',
+        evalRunId: 'eval_run_1',
+        fixtureId: '',
+        passed: true,
+        expectedPass: true,
+        observedPass: true,
+        scores: { correctness: 1.1, safety: 1, completeness: 1, quality: 1 },
+        issues: [],
+        regressions: [],
+        createdAt: '2026-06-24T00:00:00.000Z',
+      }),
+    ).toThrow();
   });
 
   it('rejects memory records with mismatched scope and session binding', () => {

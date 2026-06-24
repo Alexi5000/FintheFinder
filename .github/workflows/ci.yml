@@ -17,8 +17,8 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.0
+      - uses: actions/setup-node@v6.4.0
         with:
           node-version: 24
           cache: npm
@@ -30,13 +30,13 @@ jobs:
       - run: npm run test:coverage
       - run: npm run evals -- artifacts/evals/offline-summary.json
       - run: npm run benchmark:check
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.1
         if: always()
         with:
           name: coverage
           path: coverage
           if-no-files-found: ignore
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.1
         if: always()
         with:
           name: evals
@@ -46,8 +46,8 @@ jobs:
   build-and-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.0
+      - uses: actions/setup-node@v6.4.0
         with:
           node-version: 24
           cache: npm
@@ -60,15 +60,15 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.0
+      - uses: actions/setup-node@v6.4.0
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.1
         if: always()
         with:
           name: playwright-report
@@ -78,5 +78,5 @@ jobs:
   container:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.0
       - run: docker build -t fin-the-finder .

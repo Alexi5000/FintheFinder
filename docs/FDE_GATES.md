@@ -31,7 +31,7 @@ Fin is production-ready only when each public claim is implemented, tested, demo
 | OpenTelemetry trace surface | Implemented | `src/server/telemetry.ts`, trace-linked run events | `npm run typecheck` |
 | Post-mortem generation | Implemented | Worker writes failed-run post-mortems only after lease ownership is proven; persisted root cause is sanitized | `npx vitest run tests/unit/research-worker.test.ts`, Worker/API review |
 | Memory surface | Implemented | Supabase memory table, `/api/research/memory`, session UI, best-effort worker run summaries, session ownership route tests | `npm run test:coverage`, `npx vitest run tests/unit/research-worker.test.ts` |
-| CI covering production gates | Implemented | `.github/workflows/ci.yml` | GitHub Actions |
+| CI covering production gates | Implemented | `.github/workflows/ci.yml` with Node 24 jobs and current first-party action majors | GitHub Actions |
 | Stale dependency PR cleanup | Implemented script | `scripts/close-stale-deps-prs.sh` | `npm run deps:close-stale-prs` |
 | Engineering blog posts | Implemented drafts | `docs/blog/` | File review |
 | Standard repo hygiene | Implemented | README, license, changelog, security, contributing, env example, issue templates, PR template | File review |

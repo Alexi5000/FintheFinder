@@ -59,6 +59,8 @@ Cost and trace defaults:
 
 Pino redacts keys, tokens, prompts, and sensitive fields. Do not log raw model prompts, service-role keys, bearer tokens, or user-provided confidential research material.
 
+API errors preserve validation details but scrub unexpected server exception messages before returning them to clients. Keep raw repository/provider errors in server logs or traces only after redaction review.
+
 OpenTelemetry is initialized lazily for API spans and during worker boot. Run events persist trace IDs when an active span exists and always carry a correlation ID for worker-claimed runs. Post-mortems emit `post_mortem_created` events and are visible from run/session APIs.
 
 Scoped memory is explicit. The app writes user/session memories through `/api/research/memory`; worker summaries use the `run_summary` namespace. Do not store raw prompts, secrets, or unredacted confidential source material in memory values.

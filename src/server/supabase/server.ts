@@ -28,7 +28,8 @@ export function createSupabaseBrowserClient() {
 
 export async function getUserFromRequest(request: Request) {
   const authHeader = request.headers.get('authorization');
-  const token = authHeader?.replace(/^Bearer\s+/i, '').trim();
+  const match = /^Bearer\s+(.+)$/i.exec(authHeader ?? '');
+  const token = match?.[1]?.trim();
 
   if (!token) {
     return null;

@@ -20,6 +20,7 @@ Current unit coverage includes:
 
 - Shared Zod schemas
 - Demo proof verifier CLI behavior
+- Hosted API route contracts for queueing runs, run status, SSE events, report export, claims, and memory ownership
 - Canonical URL normalization
 - Citation auditing
 - Missing Exa provider behavior

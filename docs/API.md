@@ -173,3 +173,5 @@ Errors use a consistent envelope:
   }
 }
 ```
+
+Validation errors include field-level details for client-correctable payloads. Internal server errors intentionally return the generic message `Unexpected server error.` so repository messages, tokens, user IDs, and report text are not leaked to clients.

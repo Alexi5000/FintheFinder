@@ -23,6 +23,8 @@ Expected: `/` renders the workspace, provider status shows missing keys, `/setti
 
 ```bash
 npm run demo:record
+npm run evals:live
 ```
 
 `npm run demo:record` fails closed until every evidence field is present and local artifact paths exist. Do not claim live demo proof from the example manifest.
+`npm run evals:live` also fails closed unless provider credentials and the recorded live eval artifact exist.

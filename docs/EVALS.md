@@ -38,3 +38,9 @@ Add fixtures under `tests/fixtures/evals/` with:
 Any model, prompt, or agent-role change should run against the fixture set before release. Failed evals should block promotion unless the rubric is intentionally updated.
 
 Negative-control fixtures are allowed and expected to pass the harness only when the evaluator observes the intended failure.
+
+## Live Proof Mode
+
+`npm run evals:live` is fail-closed. It requires OpenAI, Exa, and Supabase environment variables plus `docs/demo/live-demo.json`. The manifest must point at an eval output artifact from the configured live run. Missing credentials or missing evidence should fail the command instead of silently passing offline fixtures.
+
+The offline eval summary is also exposed at `GET /api/research/evals` for inspection in deployed environments.

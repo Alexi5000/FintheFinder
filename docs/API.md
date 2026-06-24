@@ -91,6 +91,10 @@ Request:
 }
 ```
 
+### `GET /api/research/evals`
+
+Returns the deterministic offline eval regression summary used by CI. This is intentionally separate from configured live-demo proof.
+
 ## Reports
 
 ### `GET /api/reports/:id/export.md`

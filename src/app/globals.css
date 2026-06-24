@@ -337,13 +337,102 @@ textarea {
 }
 
 .about-page {
-  max-width: 1040px;
+  max-width: 1120px;
 }
 
 .about-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.about-grid.three {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.about-grid.three .panel {
+  align-content: start;
+}
+
+.about-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  gap: 20px;
+  align-items: stretch;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 22px;
+}
+
+.about-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.version-panel {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+  margin: 0;
+}
+
+.version-row,
+.proof-row {
+  display: grid;
+  grid-template-columns: 94px 1fr;
+  gap: 10px;
+  align-items: start;
+  font-size: 14px;
+}
+
+.version-row dt,
+.proof-row dt {
+  color: var(--muted);
+}
+
+.version-row dd,
+.proof-row dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.workflow-diagram {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.workflow-step {
+  min-height: 132px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+  padding: 12px;
+}
+
+.workflow-step p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.step-index {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .feature-card {
@@ -383,6 +472,52 @@ textarea {
   padding: 8px;
 }
 
+.evidence-chain,
+.proof-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+}
+
+.evidence-edge {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfcfe;
+  list-style: none;
+}
+
+.evidence-edge div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.evidence-edge span {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.evidence-edge p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.proof-row {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+}
+
+.proof-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
 @media (max-width: 860px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -395,8 +530,11 @@ textarea {
   .workspace-grid,
   .metric-grid,
   .about-grid,
+  .about-grid.three,
   .two-column,
-  .flow {
+  .flow,
+  .about-hero,
+  .workflow-diagram {
     grid-template-columns: 1fr;
   }
 

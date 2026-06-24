@@ -10,6 +10,7 @@ This is the honest benchmark log. The current repo has an offline eval seed plus
 | --- | --- | --- |
 | AI compliance research | Includes regulatory uncertainty, human oversight, full citation coverage, and no unsafe certainty claims | `tests/fixtures/evals/ai-compliance-research.json`, `npm run evals` |
 | Citation coverage | Requires every material section to cite a known source | `tests/fixtures/evals/citation-mismatch.json`, `npm run evals` |
+| Negative overclaiming control | Fails unsafe certainty, missing citations, and missing human oversight caveat | `tests/fixtures/evals/negative-overclaiming.json`, `npm run evals` |
 
 ## Cost Formula
 

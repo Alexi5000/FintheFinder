@@ -19,6 +19,7 @@ npm run smoke
 Current unit coverage includes:
 
 - Shared Zod schemas
+- Demo proof verifier CLI behavior
 - Canonical URL normalization
 - Citation auditing
 - Missing Exa provider behavior
@@ -67,3 +68,12 @@ npm run evals:persist
 ```
 
 `npm run evals:persist` is offline-only and requires Supabase environment variables. `npm run evals:live` remains the fail-closed configured-live proof check.
+
+## Configured Live Proof
+
+`npm run verify` proves the local deterministic and build gates; it does not prove a configured live demo. Live proof requires real provider/Supabase credentials, `docs/demo/live-demo.json`, local report/eval/media artifacts, a benchmark row, and both:
+
+```bash
+npm run demo:record
+npm run evals:live
+```

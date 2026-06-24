@@ -1,17 +1,19 @@
 {
-  "date": "2026-06-24",
-  "prompt": "Research practical uses of AI agents in compliance-heavy financial services.",
+  "date": "PENDING_YYYY-MM-DD",
+  "prompt": "PENDING configured live research prompt",
   "runId": "00000000-0000-0000-0000-000000000000",
   "traceId": "00000000000000000000000000000000",
   "reportExport": "docs/demo/artifacts/report.md",
   "evalOutput": "docs/demo/artifacts/eval-summary.json",
+  "runExport": "docs/demo/artifacts/run.json",
+  "benchmarkDoc": "docs/BENCHMARK.md",
   "screenshotsOrVideo": [
     "docs/demo/artifacts/session-detail.png",
     "docs/demo/artifacts/report-reader.png"
   ],
   "cost": {
-    "totalUsd": 0.01,
+    "totalUsd": 0,
     "measurementMethod": "estimated",
-    "pricingEffectiveDate": "2026-06-24"
+    "pricingEffectiveDate": "PENDING_YYYY-MM-DD"
   }
 }

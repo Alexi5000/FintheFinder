@@ -27,5 +27,9 @@ npm run demo:record
 npm run evals:live
 ```
 
-`npm run demo:record` fails closed until every evidence field is present and local artifact paths exist. Do not claim live demo proof from the example manifest.
+`npm run demo:record` fails closed until every evidence field is finalized, internally consistent, and inspectable. The verifier rejects the example manifest, placeholder IDs, all-zero trace IDs, future dates, empty artifacts, missing benchmark references, failed live eval output, and nonpositive cost evidence.
+
+The manifest must point at local artifacts inside the repo for `reportExport`, `evalOutput`, `runExport`, screenshots/video files, and `benchmarkDoc`. The report must be nontrivial markdown with linked sources. The eval output must be JSON with `passed: true`, `mode: "live"`, `status: "ok"`, and the same `runId` and `traceId`. The run export must be JSON with the same `runId`, `traceId`, final status, and cost object. `docs/BENCHMARK.md` must include one real Live Run Log row that references the same manifest, run ID, report export, eval output, run export, screenshots/video, cost, model, searches, and tokens.
+
+Do not claim live demo proof from the example manifest.
 `npm run evals:live` also fails closed unless provider credentials and the recorded live eval artifact exist.

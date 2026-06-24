@@ -16,7 +16,7 @@ Fin is production-ready only when each public claim is implemented, tested, demo
 | Containerization | Implemented | `Dockerfile`, `docker-compose.yml` | `npm run container:build` |
 | FDE narrative README/About | Implemented | `README.md`, `docs/ABOUT.md`, `/about` | `npm run build`, Playwright |
 | Honest benchmark doc | Implemented | `docs/BENCHMARK.md`, `docs/benchmark/offline-eval-summary.json` | `npm run benchmark:check` |
-| Recorded live demo proof | Pending configured credentials | `docs/demo/live-demo.example.json`, `scripts/demo-record.mjs` | `npm run demo:record` after live run |
+| Recorded live demo proof | Pending configured credentials | `docs/demo/live-demo.example.json`, `scripts/demo-record.mjs`, demo verifier tests | `npm run demo:record` and `npm run evals:live` after live run |
 | ADRs | Implemented | `docs/adr/` | File review |
 | Full test coverage for new surface | Implemented | Unit tests and coverage gate | `npm run test:coverage` |
 | Contract single source of truth | Implemented | `contracts/schema.json` | `npm run contracts:check` |

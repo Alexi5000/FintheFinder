@@ -42,4 +42,4 @@ The deterministic estimator lives in `src/server/research/cost-model.ts` and use
 | --- | --- | --- | --- | ---: | ---: | ---: | --- | --- |
 | Pending | Configured live demo run | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
 
-No live measured cost-per-run claim is approved until this table has real usage. Demo rows must report the persisted measurement method and link the run JSON that contains the cost object.
+No live measured cost-per-run claim is approved until this table has real usage. Demo rows must report the persisted measurement method and link or name the same manifest, eval output, report export, run export, screenshot/video evidence, and cost object validated by `npm run demo:record`.

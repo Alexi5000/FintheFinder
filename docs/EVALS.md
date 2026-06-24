@@ -55,7 +55,7 @@ Use `npm run evals -- docs/benchmark/offline-eval-summary.json` when a checked f
 
 ## Live Proof Mode
 
-`npm run evals:live` is fail-closed. It requires OpenAI, Exa, and Supabase environment variables plus `docs/demo/live-demo.json`. The manifest must point at an eval output artifact from the configured live run. Missing credentials or missing evidence should fail the command instead of silently passing offline fixtures.
+`npm run evals:live` is fail-closed. It requires OpenAI, Exa, and Supabase environment variables plus `docs/demo/live-demo.json`. The manifest must point at an eval output artifact from the configured live run, and `npm run demo:record` must pass against the same manifest before the live proof can be treated as recorded evidence. Missing credentials or missing evidence should fail the command instead of silently passing offline fixtures.
 
 Live eval proof is not persisted by `npm run evals:persist`; it remains tied to `docs/demo/live-demo.json`, the referenced eval output artifact, and `npm run evals:live`.
 

@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
 import type { EvalSuiteSummary } from '../src/lib/schemas';
@@ -57,6 +58,16 @@ function runLiveEvalProofCheck(path: string) {
     };
   }
 
+  const demoRecordResult = validateRecordedDemo(path);
+  if (demoRecordResult) {
+    return {
+      passed: false,
+      mode: 'live',
+      status: 'invalid_demo_manifest',
+      errors: [demoRecordResult],
+    };
+  }
+
   const manifest = JSON.parse(readFileSync(absoluteManifestPath, 'utf8')) as { evalOutput?: string; runId?: string };
   if (!manifest.evalOutput || !existsSync(resolvePath(manifest.evalOutput))) {
     return {
@@ -99,4 +110,16 @@ async function persistEvalSummary(suite: string, summary: EvalSuiteSummary) {
   const { saveEvalRun } = await import('../src/server/evals/history');
   const run = await saveEvalRun(suite, summary);
   return { id: run.id, suite: run.suite, status: run.status, resultCount: run.results.length };
+}
+
+function validateRecordedDemo(path: string) {
+  try {
+    execFileSync(process.execPath, ['scripts/demo-record.mjs', path], { cwd: process.cwd(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    return null;
+  } catch (error) {
+    if (error && typeof error === 'object' && 'stderr' in error && typeof error.stderr === 'string' && error.stderr.trim()) {
+      return error.stderr.trim();
+    }
+    return error instanceof Error ? error.message : 'Demo evidence manifest failed demo:record validation.';
+  }
 }

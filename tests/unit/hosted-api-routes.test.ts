@@ -436,6 +436,33 @@ describe('hosted research API routes', () => {
     expect(routeHarness.enqueueResearchRun).not.toHaveBeenCalled();
   });
 
+  it('rejects all approval decisions outside the awaiting approval state before writing side effects', async () => {
+    routeHarness.getSessionDetail.mockResolvedValue({ ...session, status: 'queued', phase: 'planning' });
+    const { POST } = await import('@/app/api/research/sessions/[id]/approval/route');
+
+    for (const action of ['approve', 'reject', 'follow_up'] as const) {
+      const response = await POST(
+        new Request('http://localhost/api/research/sessions/session_1/approval', {
+          method: 'POST',
+          body: JSON.stringify({ action, notes: 'Looks ready.', approvedSourceIds: [], waivedGapIds: [] }),
+        }),
+        params('session_1'),
+      );
+      const payload = await response.json();
+
+      expect(response.status).toBe(409);
+      expect(payload.error.code).toBe('approval_not_available');
+      expect(payload.error.details).toEqual({ currentStatus: 'queued', requestedAction: action });
+    }
+
+    expect(routeHarness.getOpenCriticalGaps).not.toHaveBeenCalled();
+    expect(routeHarness.waiveClaimGaps).not.toHaveBeenCalled();
+    expect(routeHarness.addApproval).not.toHaveBeenCalled();
+    expect(routeHarness.addEvent).not.toHaveBeenCalled();
+    expect(routeHarness.updateSessionState).not.toHaveBeenCalled();
+    expect(routeHarness.enqueueResearchRun).not.toHaveBeenCalled();
+  });
+
   it('records approval waivers and queues reporting work', async () => {
     routeHarness.getOpenCriticalGaps.mockResolvedValue([{ id: 'gap_critical', severity: 'critical', status: 'open' }]);
     routeHarness.enqueueResearchRun.mockResolvedValue({ ...run, id: 'run_reporting', metadata: { stage: 'reporting' } });

@@ -26,7 +26,7 @@ Current unit coverage includes:
 - Shared Zod schemas
 - Container runtime config for non-root image execution, Docker healthcheck, compose healthchecks, and restart policy
 - Demo proof verifier CLI behavior
-- Hosted API route contracts for queueing runs, run status, SSE events, report export, claims, and memory ownership
+- Hosted API route contracts for queueing runs, run status, SSE events, report export, claims, memory ownership, and stale HITL approval-state rejection
 - Canonical URL normalization
 - Citation auditing
 - Logger redaction for nested credentials, prompts, queries, and secret-like error messages

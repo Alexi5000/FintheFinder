@@ -12,7 +12,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!user) return apiError('unauthorized', 'Sign in to approve research.', 401);
 
     const { id } = await context.params;
-    await getSessionDetail(user.id, id);
+    const session = await getSessionDetail(user.id, id);
     const input = approvalRequestSchema.parse(await request.json());
 
     return await withSpan(
@@ -23,6 +23,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         'research.waived_gap_count': input.waivedGapIds.length,
       },
       async () => {
+        if (session.status !== 'awaiting_approval') {
+          return apiError('approval_not_available', 'Research decisions can only be recorded while the session is awaiting approval.', 409, {
+            currentStatus: session.status,
+            requestedAction: input.action,
+          });
+        }
+
         if (input.action === 'approve') {
           const openCriticalGaps = await getOpenCriticalGaps(id);
           const waived = new Set(input.waivedGapIds);

@@ -65,7 +65,7 @@ Request:
 }
 ```
 
-An approval queues a reporting-stage run and returns `202 { "runId": "...", "status": "queued" }`. Unresolved critical gaps return `409 critical_gaps_unresolved` unless every critical gap is explicitly listed in `waivedGapIds` with reviewer notes.
+Approval, rejection, and follow-up requests are accepted only while the owned session is `awaiting_approval`; stale clients receive `409 approval_not_available` before any approval, event, state, gap-waiver, or run-enqueue side effect. An approval queues a reporting-stage run and returns `202 { "runId": "...", "status": "queued" }`. Unresolved critical gaps return `409 critical_gaps_unresolved` unless every critical gap is explicitly listed in `waivedGapIds` with reviewer notes.
 
 ### `GET /api/research/sessions/:id/approvals`
 

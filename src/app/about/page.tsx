@@ -46,25 +46,25 @@ const dataModel = [
 const proofSurfaces = [
   {
     label: 'Contracts',
-    status: 'Verified',
+    status: 'CI verified',
     value: 'Zod + JSON Schema drift hash',
     detail: 'CI fails when the generated contract artifact drifts.',
   },
   {
     label: 'Runtime',
-    status: 'Verified',
+    status: 'Unit verified',
     value: 'Next API plus queued worker',
     detail: 'Hosted routes enqueue durable work and the worker owns long-running execution.',
   },
   {
     label: 'Persistence',
-    status: 'Verified',
+    status: 'Migration verified',
     value: 'Supabase tables, RLS, leases',
     detail: 'Migration and repository tests cover ownership, claims, approvals, and graph integrity.',
   },
   {
     label: 'Observability',
-    status: 'Verified',
+    status: 'Contract verified',
     value: 'Events, trace IDs, cost rows',
     detail: 'Run events and cost records stay correlated to sessions, runs, and failure post-mortems.',
   },
@@ -82,7 +82,7 @@ const proofSurfaces = [
   },
   {
     label: 'Deployment',
-    status: 'Configured',
+    status: 'CI/Docker configured',
     value: 'CI, Docker, audit, smoke gates',
     detail: 'Local verification and GitHub Actions are wired to exercise build, tests, container, audit, and smoke checks.',
   },

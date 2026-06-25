@@ -54,7 +54,7 @@ for (const result of parsed.results) {
 }
 
 if (rowErrors.length) {
-  throw new Error(`docs/BENCHMARK.md expected-vs-actual drift detected: ${rowErrors.join('; ')}`);
+  throw new Error(`docs/BENCHMARK.md expected-vs-evaluation drift detected: ${rowErrors.join('; ')}`);
 }
 
 console.log(

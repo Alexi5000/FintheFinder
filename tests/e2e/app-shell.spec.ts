@@ -26,7 +26,12 @@ test('about page exposes product architecture and proof status', async ({ page }
   await expect(page.getByLabel('Product status')).toContainText(/Live Proof\s*Pending configured credentials/);
   await expect(page.getByLabel('Research Workflow')).toContainText('Claim Audit');
   await expect(page.getByRole('heading', { name: 'Evidence model' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Proof surfaces' })).toBeVisible();
+  const proofSurfaces = page.getByRole('article', { name: 'Proof surfaces' });
+  await expect(proofSurfaces.getByRole('heading', { name: 'Proof surfaces' })).toBeVisible();
+  await expect(proofSurfaces).toContainText('CI verified');
+  await expect(proofSurfaces).toContainText('Unit verified');
+  await expect(proofSurfaces).toContainText('Migration verified');
+  await expect(proofSurfaces).toContainText('CI/Docker configured');
   await expect(page.getByText('Pending configured credentials').first()).toBeVisible();
   await expect(page.getByText(/Configured-live benchmark rows and recorded demo evidence are intentionally pending real provider credentials/)).toBeVisible();
 });

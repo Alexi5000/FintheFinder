@@ -20,6 +20,12 @@ Research tools often stop at search results or a long model answer. Fin is desig
 
 The goal is a serious engineering repo, not a demo claim. `docs/FDE_GATES.md` is the source of truth for what is implemented, partially built, or still planned.
 
+## Proof Tier
+
+Current status: **offline-gated**. The repo proves deterministic contracts, tests, lint, audit, Docker build, smoke checks, offline evals, and benchmark drift locally and in CI.
+
+Configured-provider research is implemented behind OpenAI, Exa, and Supabase credentials, but recorded live proof is still pending. Do not treat Fin as having a measured live demo or cost-per-run claim until `docs/demo/live-demo.json`, `npm run demo:record`, `npm run evals:live`, and the Live Run Log in `docs/BENCHMARK.md` all reference the same real run artifacts.
+
 ## Product Capabilities
 
 - Mastra agent stack for planner, source evaluator, extractor, contradiction checker, citation auditor, report writer, and final reviewer roles; full hosted-path wiring is tracked in the FDE gates.
@@ -87,7 +93,7 @@ SUPABASE_SERVICE_ROLE_KEY=""
 | `npm run contracts:check` | Verify committed contracts and drift hash |
 | `npm run evals` | Run deterministic offline eval fixtures |
 | `npm run evals:persist` | Record deterministic offline eval history in Supabase |
-| `npm run benchmark:check` | Verify checked-in expected-vs-actual benchmark evidence |
+| `npm run benchmark:check` | Verify checked-in fixture expected-vs-evaluation benchmark evidence |
 | `npm run notebooks:check` | Validate authoring notebooks are non-runtime artifacts |
 | `npm run audit` | Run npm audit at moderate severity |
 | `npm run smoke` | Run repository and contract smoke checks |

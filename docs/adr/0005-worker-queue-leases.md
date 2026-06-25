@@ -12,7 +12,7 @@ Research runs can outlive a short API request. The hosted path therefore uses a 
 
 ## Decision
 
-Use Supabase/Postgres as the durable queue source of truth. The queue claim RPC marks one run as leased with `for update skip locked`, records the owning `worker_id`, writes `research_job_leases`, and creates a durable `research_run_attempts` row. While the worker is active it heartbeats through `extend_research_run_lease` with the current attempt token; expired leases cannot be revived by the old worker. Terminal status updates, failure artifacts, and worker-owned pipeline persistence are written only after the worker proves ownership with a successful heartbeat and matching attempt token.
+Use Supabase/Postgres as the durable queue source of truth. The queue claim RPC marks one run as leased with `for update skip locked`, records the owning `worker_id`, writes `research_job_leases`, and creates a durable `research_run_attempts` row. While the worker is active it heartbeats through `extend_research_run_lease` with the current attempt token; expired leases cannot be revived by the old worker. Terminal status updates, failure artifacts, and worker-owned pipeline persistence are written only after the worker proves ownership with a successful heartbeat and matching attempt token. Full artifact replacement goes through `replace_research_artifacts`, a service-role-only RPC that locks the run and attempt rows, verifies the current worker lease, and rebuilds the research artifact graph in one transaction.
 
 The queue RPCs are `security definer` functions but execution is revoked from `public`, `anon`, and `authenticated`, and granted to the service-role runtime only.
 

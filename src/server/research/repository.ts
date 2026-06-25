@@ -37,6 +37,23 @@ function requireRow<T>(row: T | null, error: { message: string } | null) {
   return row;
 }
 
+type ResearchArtifactGraph = {
+  sources: ResearchSource[];
+  evaluations: SourceEvaluation[];
+  learnings: ResearchLearning[];
+  claims?: ResearchClaim[];
+  claimEvidence?: ClaimEvidence[];
+  claimGaps?: ClaimGap[];
+  audits?: Array<{ runId?: string; auditType: string; audit: ClaimAudit | { ok: boolean; issues: string[] } }>;
+  report?: ResearchReport;
+};
+
+type ResearchArtifactReplacementFence = {
+  runId: string;
+  attemptId: string;
+  workerId: string;
+};
+
 export async function createSession(userId: string, query: string): Promise<ResearchSession> {
   const supabase = createSupabaseAdmin();
   const now = nowIso();
@@ -294,18 +311,24 @@ export async function saveRunCost(
 
 export async function replaceResearchArtifacts(
   sessionId: string,
-  artifacts: {
-    sources: ResearchSource[];
-    evaluations: SourceEvaluation[];
-    learnings: ResearchLearning[];
-    claims?: ResearchClaim[];
-    claimEvidence?: ClaimEvidence[];
-    claimGaps?: ClaimGap[];
-    audits?: Array<{ runId?: string; auditType: string; audit: ClaimAudit | { ok: boolean; issues: string[] } }>;
-    report?: ResearchReport;
-  },
+  artifacts: ResearchArtifactGraph,
+  fence?: ResearchArtifactReplacementFence,
 ) {
   const supabase = createSupabaseAdmin();
+  const payload = researchArtifactReplacementPayload(artifacts);
+
+  if (fence) {
+    const { error } = await supabase.rpc('replace_research_artifacts', {
+      p_session_id: sessionId,
+      p_run_id: fence.runId,
+      p_attempt_id: fence.attemptId,
+      p_worker_id: fence.workerId,
+      p_payload: payload,
+    });
+    if (error) throw new Error(error.message);
+    return;
+  }
+
   await Promise.all([
     supabase.from('research_audits').delete().eq('session_id', sessionId),
     supabase.from('claim_gaps').delete().eq('session_id', sessionId),
@@ -441,6 +464,90 @@ export async function replaceResearchArtifacts(
   if (artifacts.report) {
     await saveReport(artifacts.report);
   }
+}
+
+function researchArtifactReplacementPayload(artifacts: ResearchArtifactGraph): Json {
+  const createdAt = nowIso();
+  const payload: Record<string, Json | undefined> = {
+    sources: artifacts.sources.map((source) => ({
+      id: source.id,
+      title: source.title,
+      url: source.url,
+      canonical_url: source.canonicalUrl,
+      domain: source.domain,
+      snippet: source.snippet,
+      content: source.content,
+      published_at: source.publishedAt ?? null,
+      score: source.score,
+      credibility: source.credibility,
+      relevance_reason: source.relevanceReason,
+    })),
+    evaluations: artifacts.evaluations.map((evaluation) => ({
+      id: crypto.randomUUID(),
+      source_id: evaluation.sourceId,
+      is_relevant: evaluation.isRelevant,
+      score: evaluation.score,
+      credibility: evaluation.credibility,
+      reason: evaluation.reason,
+      risks: toJson(evaluation.risks),
+    })),
+    learnings: artifacts.learnings.map((learning) => ({
+      id: learning.id,
+      source_id: learning.sourceId,
+      claim: learning.claim,
+      evidence: learning.evidence,
+      follow_up_questions: toJson(learning.followUpQuestions),
+    })),
+    claims: (artifacts.claims ?? []).map((claim) => ({
+      id: claim.id,
+      text: claim.text,
+      status: claim.status,
+      severity: claim.severity,
+      source_ids: toJson(claim.sourceIds),
+      evidence_ids: toJson(claim.evidenceIds),
+      created_at: claim.createdAt,
+    })),
+    claim_evidence: (artifacts.claimEvidence ?? []).map((evidence) => ({
+      id: evidence.id,
+      claim_id: evidence.claimId,
+      source_id: evidence.sourceId,
+      quote: evidence.quote,
+      confidence: evidence.confidence,
+      created_at: evidence.createdAt,
+    })),
+    claim_gaps: (artifacts.claimGaps ?? []).map((gap) => ({
+      id: gap.id,
+      claim_id: gap.claimId ?? null,
+      description: gap.description,
+      severity: gap.severity,
+      status: gap.status,
+      resolution: gap.resolution ?? null,
+      created_at: gap.createdAt,
+      resolved_at: gap.resolvedAt ?? null,
+    })),
+    audits: (artifacts.audits ?? []).map(({ runId, auditType, audit }) => ({
+      id: crypto.randomUUID(),
+      run_id: runId ?? null,
+      audit_type: auditType,
+      ok: audit.ok,
+      issues: toJson('issues' in audit ? audit.issues : audit.openGaps),
+      created_at: createdAt,
+    })),
+  };
+
+  if (artifacts.report) {
+    payload.report = {
+      id: artifacts.report.id,
+      title: artifacts.report.title,
+      executive_summary: artifacts.report.executiveSummary,
+      sections: toJson(artifacts.report.sections),
+      citations: toJson(artifacts.report.citations),
+      markdown: artifacts.report.markdown,
+      created_at: artifacts.report.createdAt,
+    };
+  }
+
+  return toJson(payload);
 }
 
 export async function saveReport(report: ResearchReport) {

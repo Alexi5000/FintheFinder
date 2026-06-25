@@ -121,6 +121,7 @@ describe('research pipeline', () => {
         status: 'running',
         attempt: 1,
         metadata: { stage: 'research' },
+        workerId: 'worker_1',
         createdAt: '2026-06-24T00:00:00.000Z',
         updatedAt: '2026-06-24T00:00:00.000Z',
       },
@@ -146,6 +147,7 @@ describe('research pipeline', () => {
         claimEvidence: expect.any(Array),
         audits: expect.any(Array),
       }),
+      { runId: 'run_1', attemptId: 'attempt_1', workerId: 'worker_1' },
     );
   });
 

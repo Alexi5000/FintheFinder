@@ -104,6 +104,11 @@ function persistenceFor(options: PipelineOptions) {
   return { mutate, event };
 }
 
+function artifactReplacementFence(options: PipelineOptions) {
+  if (!options.run?.id || !options.attemptId || !options.run.workerId) return undefined;
+  return { runId: options.run.id, attemptId: options.attemptId, workerId: options.run.workerId };
+}
+
 export async function runResearchSession(sessionId: string, query: string, options: PipelineOptions = {}): Promise<PipelineStageResult> {
   const persistence = persistenceFor(options);
   const status = getProviderStatus();
@@ -182,7 +187,7 @@ export async function runResearchSession(sessionId: string, query: string, optio
       { runId: options.run?.id, auditType: 'claim_gap', audit: { ...claimAudit, openGaps: allGaps, openCriticalGaps: allGaps.filter((gap) => gap.severity === 'critical') } satisfies ClaimAudit },
       { runId: options.run?.id, auditType: 'contradiction', audit: contradictionReview },
     ],
-  }));
+  }, artifactReplacementFence(options)));
 
   const researchModelUsage = [plannerUsage, ...evaluatedSources.usage, ...extractedLearnings.usage, contradictionResult.usage];
   await recordRunCost(sessionId, options, 'reviewing', measurementMethodFor(researchModelUsage), {

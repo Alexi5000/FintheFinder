@@ -53,6 +53,7 @@ const supabaseHarness = vi.hoisted(() => {
         const rpcBuilder = {
           maybeSingle: vi.fn(async () => rpcMaybeSingleResponses.shift() ?? { data: null, error: null }),
           single: vi.fn(async () => rpcSingleResponses.shift() ?? { data: null, error: null }),
+          then: (resolve: (value: { data: unknown; error: null | { message: string } }) => void) => resolve({ data: null, error: null }),
         };
         return rpcBuilder;
       }),
@@ -408,6 +409,133 @@ describe('research repository persistence helpers', () => {
           payload: expect.objectContaining({ executive_summary: 'Summary', sections: expect.any(Array), citations: expect.any(Array) }),
         }),
       ]),
+    );
+  });
+
+  it('uses the attempt-fenced artifact replacement RPC for worker-owned writes', async () => {
+    const { replaceResearchArtifacts } = await import('@/server/research/repository');
+
+    await replaceResearchArtifacts(
+      'session_1',
+      {
+        sources: [
+          {
+            id: 'src_1',
+            title: 'Primary source',
+            url: 'https://example.com/source',
+            canonicalUrl: 'https://example.com/source',
+            domain: 'example.com',
+            snippet: 'Evidence snippet',
+            content: 'Evidence content',
+            publishedAt: null,
+            score: 0.92,
+            credibility: 'high',
+            relevanceReason: 'Primary evidence',
+          },
+        ],
+        evaluations: [
+          {
+            sourceId: 'src_1',
+            isRelevant: true,
+            score: 0.92,
+            credibility: 'high',
+            reason: 'Directly answers the query.',
+            risks: ['none'],
+          },
+        ],
+        learnings: [
+          {
+            id: 'learning_1',
+            sourceId: 'src_1',
+            claim: 'AI systems need review.',
+            evidence: 'The source says review is required.',
+            followUpQuestions: ['What controls are required?'],
+          },
+        ],
+        claims: [
+          {
+            id: 'claim_1',
+            sessionId: 'session_1',
+            text: 'AI systems need review.',
+            status: 'supported',
+            severity: 'high',
+            sourceIds: ['src_1'],
+            evidenceIds: ['evidence_1'],
+            createdAt: '2026-06-24T00:00:00.000Z',
+          },
+        ],
+        claimEvidence: [
+          {
+            id: 'evidence_1',
+            claimId: 'claim_1',
+            sourceId: 'src_1',
+            quote: 'Review is required.',
+            confidence: 0.95,
+            createdAt: '2026-06-24T00:00:00.000Z',
+          },
+        ],
+        claimGaps: [
+          {
+            id: 'gap_1',
+            sessionId: 'session_1',
+            claimId: 'claim_1',
+            description: 'Need implementation detail.',
+            severity: 'medium',
+            status: 'open',
+            createdAt: '2026-06-24T00:00:00.000Z',
+          },
+        ],
+        audits: [{ runId: 'run_1', auditType: 'claim', audit: { ok: true, openGaps: [], openCriticalGaps: [], unsupportedClaimIds: [] } }],
+        report: {
+          id: 'report_1',
+          sessionId: 'session_1',
+          title: 'Report',
+          executiveSummary: 'Summary',
+          sections: [{ heading: 'Finding', body: 'AI systems need review.', sourceIds: ['src_1'], claimIds: ['claim_1'] }],
+          citations: [{ sourceId: 'src_1', url: 'https://example.com/source', title: 'Primary source' }],
+          markdown: '# Report',
+          createdAt: '2026-06-24T00:00:00.000Z',
+        },
+      },
+      { runId: 'run_1', attemptId: 'attempt_1', workerId: 'worker_1' },
+    );
+
+    expect(supabaseHarness.calls).toEqual([]);
+    expect(supabaseHarness.rpcCalls).toHaveLength(1);
+    const rpcCall = supabaseHarness.rpcCalls[0] as {
+      functionName: string;
+      args: {
+        p_session_id: string;
+        p_run_id: string;
+        p_attempt_id: string;
+        p_worker_id: string;
+        p_payload: Record<string, unknown>;
+      };
+    };
+    expect(rpcCall.functionName).toBe('replace_research_artifacts');
+    expect(rpcCall.args).toEqual(
+      expect.objectContaining({
+        p_session_id: 'session_1',
+        p_run_id: 'run_1',
+        p_attempt_id: 'attempt_1',
+        p_worker_id: 'worker_1',
+      }),
+    );
+    expect(rpcCall.args.p_payload.sources).toEqual([
+      expect.objectContaining({ id: 'src_1', canonical_url: 'https://example.com/source', relevance_reason: 'Primary evidence' }),
+    ]);
+    expect(rpcCall.args.p_payload.evaluations).toEqual([
+      expect.objectContaining({ source_id: 'src_1', is_relevant: true, risks: ['none'] }),
+    ]);
+    expect(rpcCall.args.p_payload.claims).toEqual([
+      expect.objectContaining({ id: 'claim_1', source_ids: ['src_1'], evidence_ids: ['evidence_1'] }),
+    ]);
+    expect(rpcCall.args.p_payload.claim_evidence).toEqual([
+      expect.objectContaining({ id: 'evidence_1', claim_id: 'claim_1', source_id: 'src_1' }),
+    ]);
+    expect(rpcCall.args.p_payload.audits).toEqual([expect.objectContaining({ run_id: 'run_1', audit_type: 'claim', ok: true })]);
+    expect(rpcCall.args.p_payload.report).toEqual(
+      expect.objectContaining({ id: 'report_1', executive_summary: 'Summary', sections: expect.any(Array), citations: expect.any(Array) }),
     );
   });
 

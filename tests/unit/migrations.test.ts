@@ -32,6 +32,7 @@ const migrations = [
   '009_cross_session_integrity.sql',
   '010_expired_lease_heartbeat_guard.sql',
   '011_durable_run_attempt_fencing.sql',
+  '012_fenced_artifact_replacement.sql',
 ];
 
 function readMigration(name: string) {
@@ -451,6 +452,7 @@ describe('database migrations', () => {
       'public.claim_next_research_run(text, integer)',
       'public.extend_research_run_lease(uuid, uuid, text, integer)',
       'public.transition_research_run(uuid, uuid, text, text, text, timestamptz, timestamptz)',
+      'public.replace_research_artifacts(uuid, uuid, uuid, text, jsonb)',
       'public.record_eval_run(uuid, text, text, jsonb, jsonb, timestamptz)',
     ]) {
       expect(sql).toMatch(new RegExp(`revoke (all|execute) on function ${escapeRegex(signature)} from public, anon, authenticated`, 'i'));
@@ -493,6 +495,31 @@ describe('database migrations', () => {
     expect(migration).toMatch(/r\.current_attempt_id = p_attempt_id[\s\S]*r\.worker_id = p_worker_id[\s\S]*r\.lease_expires_at > now\(\)/i);
     expect(migration).toContain('revoke execute on function public.transition_research_run(uuid, uuid, text, text, text, timestamptz, timestamptz) from public, anon, authenticated');
     expect(migration).toContain('grant execute on function public.transition_research_run(uuid, uuid, text, text, text, timestamptz, timestamptz) to service_role');
+  });
+
+  it('adds an attempt-fenced transactional artifact replacement RPC', () => {
+    const migration = readMigration('012_fenced_artifact_replacement.sql');
+
+    expect(migration).toContain('create or replace function public.replace_research_artifacts');
+    expect(migration).toContain('p_session_id uuid');
+    expect(migration).toContain('p_run_id uuid');
+    expect(migration).toContain('p_attempt_id uuid');
+    expect(migration).toContain('p_worker_id text');
+    expect(migration).toContain('p_payload jsonb');
+    expect(migration).toContain('security definer');
+    expect(migration).toContain("foreach payload_key in array array['sources', 'evaluations', 'learnings', 'claims', 'claim_evidence', 'claim_gaps', 'audits']");
+    expect(migration).toMatch(/r\.current_attempt_id = p_attempt_id[\s\S]*r\.worker_id = p_worker_id[\s\S]*r\.lease_expires_at > now\(\)/i);
+    expect(migration).toMatch(/a\.id = p_attempt_id[\s\S]*a\.worker_id = p_worker_id[\s\S]*a\.lease_expires_at > now\(\)/i);
+    expect(migration).toContain('for update of r, a');
+    expect(migration).toContain('artifact replacement audits must reference the fenced run');
+    expect(migration).toMatch(/delete from public\.claim_evidence e[\s\S]*using public\.research_claims c[\s\S]*c\.session_id = p_session_id/i);
+    expect(migration).toMatch(/insert into public\.research_claims[\s\S]*'\[\]'::jsonb/i);
+    expect(migration).toMatch(/insert into public\.claim_evidence[\s\S]*jsonb_to_recordset\(coalesce\(p_payload -> 'claim_evidence'/i);
+    expect(migration).toMatch(/update public\.research_claims c[\s\S]*set evidence_ids = coalesce\(claim\.evidence_ids, '\[\]'::jsonb\)/i);
+    expect(migration).toContain('from jsonb_to_recordset(coalesce(p_payload -> \'sources\', \'[]\'::jsonb))');
+    expect(migration).toContain('from jsonb_to_record(p_payload -> \'report\')');
+    expect(migration).toContain('revoke execute on function public.replace_research_artifacts(uuid, uuid, uuid, text, jsonb) from public, anon, authenticated');
+    expect(migration).toContain('grant execute on function public.replace_research_artifacts(uuid, uuid, uuid, text, jsonb) to service_role');
   });
 });
 

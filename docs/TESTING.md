@@ -4,6 +4,8 @@
 
 `npm run typecheck` runs the app compiler plus `tsconfig.type-tests.json`, which includes compile-only Supabase DB parity assertions under `tests/type/`.
 
+`npm run test:coverage` instruments first-party contract/server code and enforces the current production baseline: 70% statements, 55% branches, 75% functions, and 75% lines. Raise the baseline as the authenticated UI and hosted adapters gain deeper tests.
+
 ```bash
 npm run typecheck
 npm run lint
@@ -25,6 +27,7 @@ Current unit coverage includes:
 
 - Shared Zod schemas
 - Container runtime config for non-root image execution, Docker healthcheck, compose healthchecks, worker healthcheck fail-closed behavior, and restart policy
+- Coverage gate configuration for first-party contract/server code
 - Demo proof verifier CLI behavior
 - Hosted API route contracts for queueing runs, run status, SSE events, report export, claims, memory ownership, and transactional HITL approval-decision mapping
 - Canonical URL normalization

@@ -70,8 +70,12 @@ function runLiveEvalProofCheck(path: string) {
   }
 
   const manifest = JSON.parse(readFileSync(absoluteManifestPath, 'utf8')) as {
+    approvalId?: string;
     evalOutput?: string;
     runId?: string;
+    sessionId?: string;
+    researchRunId?: string;
+    reportingRunId?: string;
     traceId?: string;
     cost?: { totalUsd?: number; measurementMethod?: string; pricingEffectiveDate?: string };
   };
@@ -95,6 +99,10 @@ function runLiveEvalProofCheck(path: string) {
     passed: evalOutput.passed === true,
     mode: 'live',
     status: evalOutput.passed === true ? 'ok' : 'failed_eval_output',
+    sessionId: manifest.sessionId,
+    researchRunId: manifest.researchRunId,
+    reportingRunId: manifest.reportingRunId,
+    approvalId: manifest.approvalId,
     runId: manifest.runId,
     traceId: manifest.traceId,
     manifest: path,

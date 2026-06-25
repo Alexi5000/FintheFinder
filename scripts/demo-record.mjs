@@ -8,7 +8,7 @@ const absoluteManifestPath = resolvePath(manifestPath);
 if (!existsSync(absoluteManifestPath)) {
   fail(`Demo evidence manifest not found: ${manifestPath}`, [
     'Copy docs/demo/live-demo.example.json to docs/demo/live-demo.json after recording a configured run.',
-    'Fill runId, traceId, report export, run export, screenshot or video, eval output, benchmark row, and cost evidence.',
+    'Fill sessionId, researchRunId, reportingRunId, approvalId, traces, report export, run export, screenshot or video, eval output, benchmark row, and cost evidence.',
   ]);
 }
 
@@ -28,6 +28,10 @@ console.log(
     {
       status: 'ok',
       manifest: manifestPath,
+      sessionId: manifest.sessionId,
+      researchRunId: manifest.researchRunId,
+      reportingRunId: manifest.reportingRunId,
+      approvalId: manifest.approvalId,
       runId: manifest.runId,
       report: manifest.reportExport,
       costUsd: manifest.cost.totalUsd,
@@ -53,14 +57,47 @@ function validateManifest(value) {
   if (typeof value.date === 'string' && isFutureDate(value.date)) errors.push('date must not be in the future.');
 
   requireString(value.prompt, 'prompt', errors, { minLength: 20 });
+  requireString(value.sessionId, 'sessionId', errors, {
+    pattern: uuidPattern(),
+    placeholder: zeroUuidPattern(),
+  });
+  requireString(value.researchRunId, 'researchRunId', errors, {
+    pattern: uuidPattern(),
+    placeholder: zeroUuidPattern(),
+  });
+  requireString(value.reportingRunId, 'reportingRunId', errors, {
+    pattern: uuidPattern(),
+    placeholder: zeroUuidPattern(),
+  });
   requireString(value.runId, 'runId', errors, {
-    pattern: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-    placeholder: /^0{8}-0{4}-0{4}-0{4}-0{12}$/i,
+    pattern: uuidPattern(),
+    placeholder: zeroUuidPattern(),
+  });
+  if (typeof value.runId === 'string' && typeof value.reportingRunId === 'string' && value.runId !== value.reportingRunId) {
+    errors.push('runId must match reportingRunId so legacy live-eval output points at the final reporting run.');
+  }
+  if (typeof value.researchRunId === 'string' && typeof value.reportingRunId === 'string' && value.researchRunId === value.reportingRunId) {
+    errors.push('researchRunId and reportingRunId must be distinct runs from the same demo session.');
+  }
+  requireString(value.approvalId, 'approvalId', errors, {
+    pattern: uuidPattern(),
+    placeholder: zeroUuidPattern(),
+  });
+  requireString(value.researchTraceId, 'researchTraceId', errors, {
+    pattern: tracePattern(),
+    placeholder: zeroTracePattern(),
+  });
+  requireString(value.reportingTraceId, 'reportingTraceId', errors, {
+    pattern: tracePattern(),
+    placeholder: zeroTracePattern(),
   });
   requireString(value.traceId, 'traceId', errors, {
-    pattern: /^[0-9a-f]{32}$/i,
-    placeholder: /^0{32}$/i,
+    pattern: tracePattern(),
+    placeholder: zeroTracePattern(),
   });
+  if (typeof value.traceId === 'string' && typeof value.reportingTraceId === 'string' && value.traceId !== value.reportingTraceId) {
+    errors.push('traceId must match reportingTraceId so legacy live-eval output points at the final reporting run.');
+  }
   requireString(value.reportExport, 'reportExport', errors);
   requireString(value.evalOutput, 'evalOutput', errors);
   requireString(value.runExport, 'runExport', errors);
@@ -69,7 +106,7 @@ function validateManifest(value) {
   if (reportPath) validateReportArtifact(reportPath, errors);
 
   const evalOutputPath = requireLocalArtifact(value.evalOutput, 'evalOutput', errors);
-  if (evalOutputPath) validateEvalOutput(evalOutputPath, value.runId, value.traceId, errors);
+  if (evalOutputPath) validateEvalOutput(evalOutputPath, value, errors);
 
   const runExportPath = requireLocalArtifact(value.runExport, 'runExport', errors);
   if (runExportPath) validateRunExport(runExportPath, value, errors);
@@ -86,16 +123,7 @@ function validateManifest(value) {
   if (!value.cost || typeof value.cost !== 'object') {
     errors.push('cost object is required.');
   } else {
-    if (typeof value.cost.totalUsd !== 'number' || !Number.isFinite(value.cost.totalUsd) || value.cost.totalUsd <= 0) {
-      errors.push('cost.totalUsd must be a positive finite number from the recorded run.');
-    }
-    if (!['estimated', 'provider_usage'].includes(value.cost.measurementMethod)) {
-      errors.push('cost.measurementMethod must be estimated or provider_usage.');
-    }
-    requireString(value.cost.pricingEffectiveDate, 'cost.pricingEffectiveDate', errors, { pattern: /^\d{4}-\d{2}-\d{2}$/ });
-    if (typeof value.cost.pricingEffectiveDate === 'string' && !isValidIsoDate(value.cost.pricingEffectiveDate)) {
-      errors.push('cost.pricingEffectiveDate must be a valid ISO calendar date.');
-    }
+    validateCostEvidence(value.cost, 'cost', errors, { requireUsage: true, requireStages: true, manifest: value });
   }
 
   validateBenchmarkEvidence(value.benchmarkDoc ?? 'docs/BENCHMARK.md', value, errors);
@@ -174,7 +202,7 @@ function validateReportArtifact(path, errors) {
   if (!/\]\(https?:\/\//i.test(report)) errors.push('reportExport must include linked source citations.');
 }
 
-function validateEvalOutput(path, runId, traceId, errors) {
+function validateEvalOutput(path, manifest, errors) {
   let evalOutput;
   try {
     evalOutput = JSON.parse(readFileSync(path, 'utf8'));
@@ -192,9 +220,9 @@ function validateEvalOutput(path, runId, traceId, errors) {
   if (evalOutput.mode !== 'live') errors.push('evalOutput must come from live proof mode.');
   if (evalOutput.status !== 'ok') errors.push('evalOutput status must be ok.');
   if (!evalOutput.runId) errors.push('evalOutput runId is required.');
-  if (evalOutput.runId && evalOutput.runId !== runId) errors.push('evalOutput runId must match manifest runId.');
+  if (evalOutput.runId && evalOutput.runId !== manifest.reportingRunId) errors.push('evalOutput runId must match manifest reportingRunId.');
   if (!evalOutput.traceId) errors.push('evalOutput traceId is required.');
-  if (evalOutput.traceId && evalOutput.traceId !== traceId) errors.push('evalOutput traceId must match manifest traceId.');
+  if (evalOutput.traceId && evalOutput.traceId !== manifest.reportingTraceId) errors.push('evalOutput traceId must match manifest reportingTraceId.');
   if (evalOutput.manifestSha256 && evalOutput.manifestSha256 !== manifestHash()) {
     errors.push('evalOutput manifestSha256 must match the current manifest file.');
   }
@@ -214,22 +242,42 @@ function validateRunExport(path, manifest, errors) {
     return;
   }
   if (/TODO|PENDING|TBD/i.test(JSON.stringify(runExport))) errors.push('runExport must not contain placeholder markers.');
-  if (runExport.runId !== manifest.runId) errors.push('runExport runId must match manifest runId.');
-  if (runExport.traceId !== manifest.traceId) errors.push('runExport traceId must match manifest traceId.');
+  if (runExport.sessionId !== manifest.sessionId) errors.push('runExport sessionId must match manifest sessionId.');
   if (!['report_ready', 'completed'].includes(runExport.status)) {
     errors.push('runExport status must be report_ready or completed.');
+  }
+  if (!runExport.researchRun || typeof runExport.researchRun !== 'object') {
+    errors.push('runExport researchRun object is required.');
+  } else {
+    if (runExport.researchRun.runId !== manifest.researchRunId) errors.push('runExport researchRun.runId must match manifest researchRunId.');
+    if (runExport.researchRun.traceId !== manifest.researchTraceId) errors.push('runExport researchRun.traceId must match manifest researchTraceId.');
+    if (!['awaiting_approval', 'completed'].includes(runExport.researchRun.status)) {
+      errors.push('runExport researchRun.status must be awaiting_approval or completed.');
+    }
+  }
+  if (!runExport.reportingRun || typeof runExport.reportingRun !== 'object') {
+    errors.push('runExport reportingRun object is required.');
+  } else {
+    if (runExport.reportingRun.runId !== manifest.reportingRunId) errors.push('runExport reportingRun.runId must match manifest reportingRunId.');
+    if (runExport.reportingRun.traceId !== manifest.reportingTraceId) errors.push('runExport reportingRun.traceId must match manifest reportingTraceId.');
+    if (!['completed', 'report_ready'].includes(runExport.reportingRun.status)) {
+      errors.push('runExport reportingRun.status must be completed or report_ready.');
+    }
+  }
+  if (!runExport.approval || typeof runExport.approval !== 'object') {
+    errors.push('runExport approval object is required.');
+  } else {
+    if (runExport.approval.id !== manifest.approvalId) errors.push('runExport approval.id must match manifest approvalId.');
+    if (runExport.approval.action !== 'approve') errors.push('runExport approval.action must be approve.');
   }
   if (!runExport.cost || typeof runExport.cost !== 'object') {
     errors.push('runExport cost object is required.');
     return;
   }
-  if (runExport.cost.totalUsd !== manifest.cost?.totalUsd) errors.push('runExport cost.totalUsd must match manifest cost.totalUsd.');
-  if (runExport.cost.measurementMethod !== manifest.cost?.measurementMethod) {
-    errors.push('runExport cost.measurementMethod must match manifest cost.measurementMethod.');
-  }
-  if (runExport.cost.pricingEffectiveDate !== manifest.cost?.pricingEffectiveDate) {
-    errors.push('runExport cost.pricingEffectiveDate must match manifest cost.pricingEffectiveDate.');
-  }
+  validateCostEvidence(runExport.cost, 'runExport cost', errors, { requireUsage: true, requireStages: true, manifest });
+  compareCostEvidence(runExport.cost, manifest.cost, 'runExport cost', 'manifest cost', errors);
+  compareCostEvidence(runExport.researchRun?.cost, manifest.cost?.stages?.research, 'runExport researchRun.cost', 'manifest cost.stages.research', errors);
+  compareCostEvidence(runExport.reportingRun?.cost, manifest.cost?.stages?.reporting, 'runExport reportingRun.cost', 'manifest cost.stages.reporting', errors);
 }
 
 function validateMediaArtifact(path, errors) {
@@ -259,9 +307,9 @@ function validateBenchmarkEvidence(path, manifest, errors) {
 
   const benchmark = readFileSync(benchmarkPath, 'utf8');
   const rows = liveRunRows(benchmark);
-  const matchingRow = rows.find((row) => row.raw.includes(manifest.runId));
+  const matchingRow = rows.find((row) => row.raw.includes(manifest.reportingRunId));
   if (!matchingRow) {
-    errors.push('benchmarkDoc Live Run Log must include one row for the recorded runId.');
+    errors.push('benchmarkDoc Live Run Log must include one row for the recorded reportingRunId.');
     return;
   }
   if (/TODO|PENDING|TBD/i.test(matchingRow.raw)) {
@@ -272,7 +320,10 @@ function validateBenchmarkEvidence(path, manifest, errors) {
   const manifestPath = normalizeRelativePath(absoluteManifestPath);
   const requiredReferences = [
     manifest.date,
-    manifest.runId,
+    manifest.sessionId,
+    manifest.researchRunId,
+    manifest.reportingRunId,
+    manifest.approvalId,
     manifest.reportExport,
     manifest.evalOutput,
     manifest.runExport,
@@ -287,12 +338,31 @@ function validateBenchmarkEvidence(path, manifest, errors) {
   }
 
   if (matchingRow.cells.length < 9) {
-    errors.push('benchmarkDoc live demo row must include date, prompt, run ID, models, Exa searches, tokens, cost, eval, and report cells.');
+    errors.push('benchmarkDoc live demo row must include date, prompt, session/run IDs, models, Exa searches, tokens, cost, eval, and report cells.');
     return;
   }
   if (!matchingRow.cells[3] || /pending/i.test(matchingRow.cells[3])) errors.push('benchmarkDoc live demo row must include model names.');
-  if (!positiveIntegerCell(matchingRow.cells[4])) errors.push('benchmarkDoc live demo row must include positive Exa search count.');
-  if (!positiveIntegerCell(matchingRow.cells[5])) errors.push('benchmarkDoc live demo row must include positive token count.');
+  if (!positiveIntegerCell(matchingRow.cells[4])) {
+    errors.push('benchmarkDoc live demo row must include positive Exa search count.');
+  } else if (Number(matchingRow.cells[4].replace(/,/g, '')) !== usageExaSearches(manifest.cost?.usage)) {
+    errors.push('benchmarkDoc Exa search count must match manifest cost.usage.exaSearches.');
+  }
+  if (!positiveIntegerCell(matchingRow.cells[5])) {
+    errors.push('benchmarkDoc live demo row must include positive token count.');
+  } else if (Number(matchingRow.cells[5].replace(/,/g, '')) !== usageTotalTokens(manifest.cost?.usage)) {
+    errors.push('benchmarkDoc token count must match manifest cost.usage model tokens.');
+  }
+  const expectedModels = usageModels(manifest.cost?.usage);
+  for (const model of expectedModels) {
+    if (!matchingRow.cells[3].includes(model)) errors.push(`benchmarkDoc model cell must include ${model}.`);
+  }
+  const benchmarkCost = numberFromCell(matchingRow.cells[6]);
+  if (benchmarkCost === null || benchmarkCost !== manifest.cost?.totalUsd) {
+    errors.push('benchmarkDoc cost cell must match manifest cost.totalUsd.');
+  }
+  if (!matchingRow.cells[6].includes(manifest.cost?.measurementMethod ?? '')) {
+    errors.push('benchmarkDoc cost cell must include manifest cost.measurementMethod.');
+  }
 }
 
 function isValidIsoDate(value) {
@@ -345,6 +415,141 @@ function liveRunRows(markdown) {
 function positiveIntegerCell(value) {
   const normalized = String(value ?? '').replace(/,/g, '').trim();
   return /^\d+$/.test(normalized) && Number(normalized) > 0;
+}
+
+function uuidPattern() {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+}
+
+function zeroUuidPattern() {
+  return /^0{8}-0{4}-0{4}-0{4}-0{12}$/i;
+}
+
+function tracePattern() {
+  return /^[0-9a-f]{32}$/i;
+}
+
+function zeroTracePattern() {
+  return /^0{32}$/i;
+}
+
+function validateCostEvidence(cost, name, errors, options = {}) {
+  if (!cost || typeof cost !== 'object' || Array.isArray(cost)) {
+    errors.push(`${name} must be an object.`);
+    return;
+  }
+  if (typeof cost.totalUsd !== 'number' || !Number.isFinite(cost.totalUsd) || cost.totalUsd <= 0) {
+    errors.push(`${name}.totalUsd must be a positive finite number from the recorded run.`);
+  }
+  if (!['estimated', 'provider_usage'].includes(cost.measurementMethod)) {
+    errors.push(`${name}.measurementMethod must be estimated or provider_usage.`);
+  }
+  requireString(cost.pricingEffectiveDate, `${name}.pricingEffectiveDate`, errors, { pattern: /^\d{4}-\d{2}-\d{2}$/ });
+  if (typeof cost.pricingEffectiveDate === 'string' && !isValidIsoDate(cost.pricingEffectiveDate)) {
+    errors.push(`${name}.pricingEffectiveDate must be a valid ISO calendar date.`);
+  }
+  if (options.requireUsage) validateUsage(cost.usage, `${name}.usage`, errors);
+  if (options.requireStages) validateStageCosts(cost, name, options.manifest, errors);
+}
+
+function validateUsage(usage, name, errors) {
+  if (!usage || typeof usage !== 'object' || Array.isArray(usage)) {
+    errors.push(`${name} object is required.`);
+    return;
+  }
+  if (!Number.isInteger(usage.exaSearches) || usage.exaSearches < 0) {
+    errors.push(`${name}.exaSearches must be a nonnegative integer.`);
+  }
+  if (!Array.isArray(usage.modelCalls) || usage.modelCalls.length === 0) {
+    errors.push(`${name}.modelCalls must include at least one model call.`);
+    return;
+  }
+  usage.modelCalls.forEach((call, index) => {
+    const prefix = `${name}.modelCalls[${index}]`;
+    if (!call || typeof call !== 'object' || Array.isArray(call)) {
+      errors.push(`${prefix} must be an object.`);
+      return;
+    }
+    requireString(call.model, `${prefix}.model`, errors);
+    if (!Number.isInteger(call.inputTokens) || call.inputTokens < 0) errors.push(`${prefix}.inputTokens must be a nonnegative integer.`);
+    if (!Number.isInteger(call.outputTokens) || call.outputTokens < 0) errors.push(`${prefix}.outputTokens must be a nonnegative integer.`);
+    if ((call.inputTokens ?? 0) + (call.outputTokens ?? 0) <= 0) errors.push(`${prefix} must include positive token usage.`);
+  });
+}
+
+function validateStageCosts(cost, name, manifest, errors) {
+  if (!cost.stages || typeof cost.stages !== 'object' || Array.isArray(cost.stages)) {
+    errors.push(`${name}.stages object is required.`);
+    return;
+  }
+  const stages = [
+    ['research', manifest?.researchRunId, manifest?.researchTraceId],
+    ['reporting', manifest?.reportingRunId, manifest?.reportingTraceId],
+  ];
+  for (const [stage, expectedRunId, expectedTraceId] of stages) {
+    const stageCost = cost.stages[stage];
+    if (!stageCost || typeof stageCost !== 'object' || Array.isArray(stageCost)) {
+      errors.push(`${name}.stages.${stage} object is required.`);
+      continue;
+    }
+    if (stageCost.runId !== expectedRunId) errors.push(`${name}.stages.${stage}.runId must match manifest ${stage} run ID.`);
+    if (stageCost.traceId !== expectedTraceId) errors.push(`${name}.stages.${stage}.traceId must match manifest ${stage} trace ID.`);
+    validateCostEvidence(stageCost, `${name}.stages.${stage}`, errors, { requireUsage: true });
+  }
+
+  const stageTotalUsd = roundMoney((cost.stages.research?.totalUsd ?? 0) + (cost.stages.reporting?.totalUsd ?? 0));
+  if (Number.isFinite(cost.totalUsd) && roundMoney(cost.totalUsd) !== stageTotalUsd) {
+    errors.push(`${name}.totalUsd must equal research plus reporting stage costs.`);
+  }
+  const aggregateUsage = combineUsage([cost.stages.research?.usage, cost.stages.reporting?.usage]);
+  if (cost.usage && usageExaSearches(cost.usage) !== aggregateUsage.exaSearches) {
+    errors.push(`${name}.usage.exaSearches must equal research plus reporting stage searches.`);
+  }
+  if (cost.usage && usageTotalTokens(cost.usage) !== usageTotalTokens(aggregateUsage)) {
+    errors.push(`${name}.usage model tokens must equal research plus reporting stage tokens.`);
+  }
+}
+
+function compareCostEvidence(left, right, leftName, rightName, errors) {
+  if (!left || !right) {
+    errors.push(`${leftName} must match ${rightName}.`);
+    return;
+  }
+  if (left.totalUsd !== right.totalUsd) errors.push(`${leftName}.totalUsd must match ${rightName}.totalUsd.`);
+  if (left.measurementMethod !== right.measurementMethod) errors.push(`${leftName}.measurementMethod must match ${rightName}.measurementMethod.`);
+  if (left.pricingEffectiveDate !== right.pricingEffectiveDate) errors.push(`${leftName}.pricingEffectiveDate must match ${rightName}.pricingEffectiveDate.`);
+  if (usageExaSearches(left.usage) !== usageExaSearches(right.usage)) errors.push(`${leftName}.usage.exaSearches must match ${rightName}.usage.exaSearches.`);
+  if (usageTotalTokens(left.usage) !== usageTotalTokens(right.usage)) errors.push(`${leftName}.usage model tokens must match ${rightName}.usage model tokens.`);
+}
+
+function usageExaSearches(usage) {
+  return Number.isInteger(usage?.exaSearches) ? usage.exaSearches : 0;
+}
+
+function usageTotalTokens(usage) {
+  if (!usage || !Array.isArray(usage.modelCalls)) return 0;
+  return usage.modelCalls.reduce((total, call) => total + (Number(call?.inputTokens) || 0) + (Number(call?.outputTokens) || 0), 0);
+}
+
+function usageModels(usage) {
+  if (!usage || !Array.isArray(usage.modelCalls)) return [];
+  return [...new Set(usage.modelCalls.map((call) => call?.model).filter((model) => typeof model === 'string' && model.length > 0))];
+}
+
+function combineUsage(usages) {
+  return {
+    exaSearches: usages.reduce((total, usage) => total + usageExaSearches(usage), 0),
+    modelCalls: usages.flatMap((usage) => (Array.isArray(usage?.modelCalls) ? usage.modelCalls : [])),
+  };
+}
+
+function roundMoney(value) {
+  return Math.round(value * 1_000_000) / 1_000_000;
+}
+
+function numberFromCell(value) {
+  const match = String(value ?? '').replace(/,/g, '').match(/-?\d+(?:\.\d+)?/);
+  return match ? Number(match[0]) : null;
 }
 
 function fail(message, details) {

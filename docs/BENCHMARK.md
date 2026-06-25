@@ -2,7 +2,7 @@
 
 Last updated: 2026-06-24.
 
-This is the honest benchmark log. The current repo has a 10-scenario offline fixture eval suite, Supabase-backed offline eval history, and persisted run-cost rows; live benchmark rows must be filled from configured runs with real run IDs, exported reports, and measured usage.
+This is the honest benchmark log. The current repo has a 10-scenario offline fixture eval suite, Supabase-backed offline eval history, and persisted run-cost rows; live benchmark rows must be filled from configured sessions with real session IDs, research and reporting run IDs, approval IDs, exported reports, and measured usage.
 
 ## Offline Fixture Expected-Vs-Evaluation Scenarios
 
@@ -45,8 +45,8 @@ The deterministic estimator lives in `src/server/research/cost-model.ts` and use
 
 ## Live Run Log
 
-| Date | Prompt | Run ID | Model(s) | Exa searches | Tokens | Cost / method | Eval result | Report |
+| Date | Prompt | Session / Runs | Model(s) | Exa searches | Tokens | Cost / method | Eval result | Report |
 | --- | --- | --- | --- | ---: | ---: | ---: | --- | --- |
 | Pending | Configured live demo run | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
 
-No live measured cost-per-run claim is approved until this table has real usage. Demo rows must report the persisted measurement method and link or name the same manifest, eval output, report export, run export, screenshot/video evidence, and cost object validated by `npm run demo:record`.
+No live measured cost-per-run claim is approved until this table has real usage. Demo rows must report the persisted measurement method and link or name the same manifest, eval output, report export, session-level run export, screenshot/video evidence, approval ID, per-stage cost evidence, aggregate cost object, model calls, token count, and Exa search count validated by `npm run demo:record`.

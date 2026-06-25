@@ -4,8 +4,14 @@ import { join, relative } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const workspace = process.cwd();
-const runId = '123e4567-e89b-12d3-a456-426614174000';
-const traceId = '123e4567e89b12d3a456426614174000';
+const sessionId = '123e4567-e89b-12d3-a456-426614174100';
+const researchRunId = '123e4567-e89b-12d3-a456-426614174200';
+const reportingRunId = '123e4567-e89b-12d3-a456-426614174300';
+const approvalId = '123e4567-e89b-12d3-a456-426614174400';
+const runId = reportingRunId;
+const researchTraceId = '123e4567e89b12d3a456426614174200';
+const reportingTraceId = '123e4567e89b12d3a456426614174300';
+const traceId = reportingTraceId;
 
 let testDir = '';
 
@@ -37,6 +43,10 @@ describe('demo-record script', () => {
     expect(payload).toEqual(
       expect.objectContaining({
         status: 'ok',
+        sessionId,
+        researchRunId,
+        reportingRunId,
+        approvalId,
         runId,
         costUsd: 0.42,
         measurementMethod: 'provider_usage',
@@ -63,7 +73,7 @@ describe('demo-record script', () => {
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('evalOutput must contain passed: true');
     expect(result.stderr).toContain('evalOutput status must be ok');
-    expect(result.stderr).toContain('evalOutput runId must match manifest runId');
+    expect(result.stderr).toContain('evalOutput runId must match manifest reportingRunId');
   });
 
   it('makes evals:live reject manifests that fail demo-record validation', () => {
@@ -105,11 +115,15 @@ describe('demo-record script', () => {
         status: 'ok',
         runId,
         traceId,
+        sessionId,
+        researchRunId,
+        reportingRunId,
+        approvalId,
         manifest: manifestPath,
         fixtureCount: 10,
         issues: [],
         regressions: [],
-        cost: { totalUsd: 0.42, measurementMethod: 'provider_usage', pricingEffectiveDate: '2026-06-24' },
+        cost: costEvidence(),
       }),
     );
     expect(payload.manifestSha256).toMatch(/^[a-f0-9]{64}$/);
@@ -119,7 +133,7 @@ describe('demo-record script', () => {
     const manifestPath = writeDemoBundle({
       benchmark: '| Pending | Configured live demo run | Pending |',
       manifest: {
-        cost: { totalUsd: 0, measurementMethod: 'guessed', pricingEffectiveDate: '2026-99-99' },
+        cost: { totalUsd: 0, measurementMethod: 'guessed', pricingEffectiveDate: '2026-99-99', usage: { exaSearches: 0, modelCalls: [] }, stages: {} },
         screenshotsOrVideo: ['test-results/demo-record-missing.png'],
       },
     });
@@ -130,8 +144,30 @@ describe('demo-record script', () => {
     expect(result.stderr).toContain('cost.totalUsd must be a positive finite number');
     expect(result.stderr).toContain('cost.measurementMethod must be estimated or provider_usage');
     expect(result.stderr).toContain('cost.pricingEffectiveDate must be a valid ISO calendar date');
-    expect(result.stderr).toContain('Live Run Log must include one row for the recorded runId');
+    expect(result.stderr).toContain('Live Run Log must include one row for the recorded reportingRunId');
     expect(result.stderr).toContain('screenshotsOrVideo artifact does not exist');
+  });
+
+  it('rejects benchmark usage that disagrees with structured run cost evidence', () => {
+    const manifestPath = writeDemoBundle({
+      benchmark: [
+        '# Benchmark',
+        '',
+        '## Live Run Log',
+        '',
+        '| Date | Prompt | Session / Runs | Model(s) | Exa searches | Tokens | Cost / method | Eval result | Report |',
+        '| --- | --- | --- | --- | ---: | ---: | ---: | --- | --- |',
+        `| ${today()} | Demo prompt | session ${sessionId}; research ${researchRunId}; reporting ${reportingRunId}; approval ${approvalId} | gpt-5.5 | 2 | 999 | 0.41 provider_usage | eval | report |`,
+        '',
+      ].join('\n'),
+    });
+
+    const result = runDemoRecord(manifestPath);
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('benchmarkDoc Exa search count must match manifest cost.usage.exaSearches');
+    expect(result.stderr).toContain('benchmarkDoc token count must match manifest cost.usage model tokens');
+    expect(result.stderr).toContain('benchmarkDoc cost cell must match manifest cost.totalUsd');
   });
 });
 
@@ -188,10 +224,26 @@ function writeDemoBundle(options: {
     runExportPath,
     `${JSON.stringify(
       {
-        runId,
-        traceId,
+        sessionId,
         status: 'report_ready',
-        cost: { totalUsd: 0.42, measurementMethod: 'provider_usage', pricingEffectiveDate: '2026-06-24' },
+        researchRun: {
+          runId: researchRunId,
+          traceId: researchTraceId,
+          status: 'awaiting_approval',
+          cost: costEvidence().stages.research,
+        },
+        reportingRun: {
+          runId: reportingRunId,
+          traceId: reportingTraceId,
+          status: 'completed',
+          cost: costEvidence().stages.reporting,
+        },
+        approval: {
+          id: approvalId,
+          action: 'approve',
+          waivedGapIds: [],
+        },
+        cost: costEvidence(),
       },
       null,
       2,
@@ -206,9 +258,9 @@ function writeDemoBundle(options: {
         '',
         '## Live Run Log',
         '',
-        '| Date | Prompt | Run ID | Model(s) | Exa searches | Tokens | Cost / method | Eval result | Report |',
+        '| Date | Prompt | Session / Runs | Model(s) | Exa searches | Tokens | Cost / method | Eval result | Report |',
         '| --- | --- | --- | --- | ---: | ---: | ---: | --- | --- |',
-        `| ${today()} | Demo prompt | ${runId} | gpt-5.5 | 3 | 1000 | 0.42 provider_usage | ${rel(evalOutputPath)} ${rel(manifestPath)} | ${rel(reportPath)} ${rel(runExportPath)} ${rel(screenshotPath)} |`,
+        `| ${today()} | Demo prompt | session ${sessionId}; research ${researchRunId}; reporting ${reportingRunId}; approval ${approvalId} | gpt-5.5 | 3 | 1000 | 0.42 provider_usage | ${rel(evalOutputPath)} ${rel(manifestPath)} | ${rel(reportPath)} ${rel(runExportPath)} ${rel(screenshotPath)} |`,
         '',
       ].join('\n'),
   );
@@ -216,6 +268,12 @@ function writeDemoBundle(options: {
   const manifest = {
     date: today(),
     prompt: 'Research practical uses of AI agents in compliance-heavy financial services.',
+    sessionId,
+    researchRunId,
+    researchTraceId,
+    reportingRunId,
+    reportingTraceId,
+    approvalId,
     runId,
     traceId,
     reportExport: rel(reportPath),
@@ -223,11 +281,7 @@ function writeDemoBundle(options: {
     runExport: rel(runExportPath),
     screenshotsOrVideo: [rel(screenshotPath)],
     benchmarkDoc: rel(benchmarkPath),
-    cost: {
-      totalUsd: 0.42,
-      measurementMethod: 'provider_usage',
-      pricingEffectiveDate: '2026-06-24',
-    },
+    cost: costEvidence(),
     ...options.manifest,
   };
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
@@ -240,4 +294,37 @@ function rel(path: string) {
 
 function today() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function costEvidence() {
+  return {
+    totalUsd: 0.42,
+    measurementMethod: 'provider_usage',
+    pricingEffectiveDate: '2026-06-24',
+    usage: {
+      exaSearches: 3,
+      modelCalls: [
+        { model: 'gpt-5.5', inputTokens: 400, outputTokens: 200 },
+        { model: 'gpt-5.5', inputTokens: 250, outputTokens: 150 },
+      ],
+    },
+    stages: {
+      research: {
+        runId: researchRunId,
+        traceId: researchTraceId,
+        totalUsd: 0.25,
+        measurementMethod: 'provider_usage',
+        pricingEffectiveDate: '2026-06-24',
+        usage: { exaSearches: 3, modelCalls: [{ model: 'gpt-5.5', inputTokens: 400, outputTokens: 200 }] },
+      },
+      reporting: {
+        runId: reportingRunId,
+        traceId: reportingTraceId,
+        totalUsd: 0.17,
+        measurementMethod: 'provider_usage',
+        pricingEffectiveDate: '2026-06-24',
+        usage: { exaSearches: 0, modelCalls: [{ model: 'gpt-5.5', inputTokens: 250, outputTokens: 150 }] },
+      },
+    },
+  };
 }

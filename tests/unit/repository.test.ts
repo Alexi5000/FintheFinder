@@ -657,7 +657,7 @@ describe('research repository persistence helpers', () => {
     expect(supabaseHarness.calls).toEqual([]);
   });
 
-  it('keeps run attribution on non-fenced report publication fallback writes', async () => {
+  it('keeps run attribution on test-only non-fenced report publication fallback writes', async () => {
     const { publishReport } = await import('@/server/research/repository');
 
     await publishReport(
@@ -691,6 +691,41 @@ describe('research repository persistence helpers', () => {
         }),
       ]),
     );
+  });
+
+  it('rejects non-fenced report publication outside tests before direct table writes', async () => {
+    const { publishReport } = await import('@/server/research/repository');
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+
+    try {
+      await expect(
+        publishReport(
+          'session_1',
+          {
+            id: 'report_1',
+            sessionId: 'session_1',
+            title: 'Report',
+            executiveSummary: 'Summary',
+            sections: [{ heading: 'Finding', body: 'AI systems need review.', sourceIds: ['src_1'], claimIds: ['claim_1'] }],
+            citations: [{ sourceId: 'src_1', url: 'https://example.com/source', title: 'Primary source' }],
+            markdown: '# Report',
+            createdAt: '2026-06-24T00:00:00.000Z',
+          },
+          { ok: true, issues: [] },
+          { runId: 'run_1', attemptId: 'attempt_1', correlationId: 'corr_1' },
+        ),
+      ).rejects.toThrow('Report publication requires attempt-fenced worker context.');
+    } finally {
+      if (originalNodeEnv === undefined) {
+        delete process.env.NODE_ENV;
+      } else {
+        process.env.NODE_ENV = originalNodeEnv;
+      }
+    }
+
+    expect(supabaseHarness.rpcCalls).toEqual([]);
+    expect(supabaseHarness.calls).toEqual([]);
   });
 
   it('persists structured run-event columns for tracing and SSE replay', async () => {

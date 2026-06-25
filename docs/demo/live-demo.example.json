@@ -1,6 +1,12 @@
 {
   "date": "PENDING_YYYY-MM-DD",
   "prompt": "PENDING configured live research prompt",
+  "sessionId": "00000000-0000-0000-0000-000000000000",
+  "researchRunId": "00000000-0000-0000-0000-000000000000",
+  "researchTraceId": "00000000000000000000000000000000",
+  "reportingRunId": "00000000-0000-0000-0000-000000000000",
+  "reportingTraceId": "00000000000000000000000000000000",
+  "approvalId": "00000000-0000-0000-0000-000000000000",
   "runId": "00000000-0000-0000-0000-000000000000",
   "traceId": "00000000000000000000000000000000",
   "reportExport": "docs/demo/artifacts/report.md",
@@ -14,6 +20,52 @@
   "cost": {
     "totalUsd": 0,
     "measurementMethod": "estimated",
-    "pricingEffectiveDate": "PENDING_YYYY-MM-DD"
+    "pricingEffectiveDate": "PENDING_YYYY-MM-DD",
+    "usage": {
+      "exaSearches": 0,
+      "modelCalls": [
+        {
+          "model": "PENDING_MODEL",
+          "inputTokens": 0,
+          "outputTokens": 0
+        }
+      ]
+    },
+    "stages": {
+      "research": {
+        "runId": "00000000-0000-0000-0000-000000000000",
+        "traceId": "00000000000000000000000000000000",
+        "totalUsd": 0,
+        "measurementMethod": "estimated",
+        "pricingEffectiveDate": "PENDING_YYYY-MM-DD",
+        "usage": {
+          "exaSearches": 0,
+          "modelCalls": [
+            {
+              "model": "PENDING_MODEL",
+              "inputTokens": 0,
+              "outputTokens": 0
+            }
+          ]
+        }
+      },
+      "reporting": {
+        "runId": "00000000-0000-0000-0000-000000000000",
+        "traceId": "00000000000000000000000000000000",
+        "totalUsd": 0,
+        "measurementMethod": "estimated",
+        "pricingEffectiveDate": "PENDING_YYYY-MM-DD",
+        "usage": {
+          "exaSearches": 0,
+          "modelCalls": [
+            {
+              "model": "PENDING_MODEL",
+              "inputTokens": 0,
+              "outputTokens": 0
+            }
+          ]
+        }
+      }
+    }
   }
 }

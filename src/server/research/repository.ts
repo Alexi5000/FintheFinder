@@ -625,6 +625,10 @@ export async function publishReport(
     return mapReportPublicationResult(data);
   }
 
+  if (!allowsUnfencedReportPublication()) {
+    throw new Error('Report publication requires attempt-fenced worker context.');
+  }
+
   await saveResearchAudit(sessionId, 'final_review', finalAudit, context?.runId);
   await saveReport(report);
   await updateSessionState(sessionId, 'report_ready', 'complete');
@@ -641,6 +645,10 @@ export async function publishReport(
 
 function hasReportPublicationFence(context: ReportPublicationContext | undefined): context is Required<Pick<ReportPublicationContext, 'runId' | 'attemptId' | 'workerId'>> & ReportPublicationContext {
   return Boolean(context?.runId && context.attemptId && context.workerId);
+}
+
+function allowsUnfencedReportPublication() {
+  return process.env.NODE_ENV === 'test';
 }
 
 function reportPublicationPayload(report: ResearchReport): Json {

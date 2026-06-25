@@ -34,6 +34,21 @@ describe('plateau scorer', () => {
     expect(decision.shouldContinue).toBe(false);
     expect(decision.reasons).toContain('marginal_gain_plateau');
   });
+
+  it('stops when the research budget is exhausted', () => {
+    const decision = scoreResearchPlateau({
+      iteration: 2,
+      supportedClaims: 4,
+      previousSupportedClaims: 3,
+      openCriticalGaps: 1,
+      uniqueDomains: 4,
+      contradictionCount: 0,
+      citationCoverage: 1,
+      budgetRemainingUsd: 0,
+    });
+    expect(decision.shouldContinue).toBe(false);
+    expect(decision.reasons).toContain('budget_exhausted');
+  });
 });
 
 describe('cost model', () => {

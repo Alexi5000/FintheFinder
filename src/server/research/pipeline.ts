@@ -6,11 +6,13 @@ import {
   learningSchema,
   reportSchema,
   sourceEvaluationSchema,
+  type ClaimGap,
   type ClaimAudit,
   type ResearchLearning,
   type ResearchReport,
   type ResearchRun,
   type ResearchSource,
+  type RunCost,
   type ModelUsage,
   type RunUsage,
   type ResearchRunEvent,
@@ -79,6 +81,12 @@ type MeasuredModelCall = {
 type PipelineEventOptions = Partial<
   Pick<ResearchRunEvent, 'eventType' | 'severity' | 'actor' | 'stepId' | 'durationMs' | 'traceId' | 'correlationId'>
 >;
+
+type RecordedRunCost = {
+  cost: RunCost;
+  budgetExceeded: boolean;
+  budgetRemainingUsd: number;
+};
 
 function persistenceFor(options: PipelineOptions) {
   const mutate = async <T>(operation: string, phase: ResearchPhase, stepId: string, action: () => Promise<T>) => {
@@ -196,12 +204,13 @@ export async function runResearchSession(sessionId: string, query: string, optio
   }, artifactReplacementFence(options)));
 
   const researchModelUsage = [plannerUsage, ...evaluatedSources.usage, ...extractedLearnings.usage, contradictionResult.usage];
-  await recordRunCost(sessionId, options, 'reviewing', measurementMethodFor(researchModelUsage), {
+  const researchCost = await recordRunCost(sessionId, options, 'reviewing', measurementMethodFor(researchModelUsage), {
     exaSearches: plan.queries.length,
     modelCalls: [
       ...researchModelUsage.map((usage) => usage.call),
     ],
   });
+  await emitBudgetCriticalGapEvent(sessionId, options, 'reviewing', researchCost, openCriticalGaps(allGaps));
 
   await persistence.mutate('update_session_state', 'reviewing', 'awaiting_approval', () => updateSessionState(sessionId, 'awaiting_approval', 'reviewing'));
   await persistence.event(
@@ -277,10 +286,19 @@ export async function runApprovedReportSession(sessionId: string, query: string,
     return { status: 'awaiting_approval' };
   }
 
-  await recordRunCost(sessionId, options, 'complete', measurementMethodFor(reportingModelUsage), {
+  const reportingCost = await recordRunCost(sessionId, options, 'complete', measurementMethodFor(reportingModelUsage), {
     exaSearches: 0,
     modelCalls: reportingModelUsage.map((usage) => usage.call),
   });
+  if (reportingCost?.budgetExceeded) {
+    const currentArtifacts = await getResearchArtifacts(sessionId);
+    const currentCriticalGaps = openCriticalGaps(currentArtifacts.gaps);
+    if (currentCriticalGaps.length > 0) {
+      await persistence.mutate('update_session_state', 'reviewing', 'budget_gate', () => updateSessionState(sessionId, 'awaiting_approval', 'reviewing'));
+      await emitBudgetCriticalGapEvent(sessionId, options, 'reviewing', reportingCost, currentCriticalGaps);
+      return { status: 'awaiting_approval' };
+    }
+  }
   const publicationContext = reportPublicationContext(options);
   const publicationFenced = Boolean(publicationContext?.runId && publicationContext.attemptId && publicationContext.workerId);
   const publication = await persistence.mutate('publish_report', 'complete', 'report_ready', () =>
@@ -476,13 +494,15 @@ async function recordRunCost(
   phase: ResearchPhase,
   measurementMethod: 'estimated' | 'provider_usage',
   usage: RunUsage,
-) {
+): Promise<RecordedRunCost | null> {
   const runId = options.run?.id;
   if (!runId) return null;
 
   const persistence = persistenceFor(options);
   const estimate = estimateRunCost(usage);
   const cost = await persistence.mutate('save_run_cost', phase, 'cost_estimator', () => saveRunCost(runId, sessionId, usage, estimate, measurementMethod));
+  const budgetRemainingUsd = roundBudgetUsd(env.RUN_BUDGET_USD - cost.totalUsd);
+  const budgetExceeded = budgetRemainingUsd < 0;
   await persistence.event(
     sessionId,
     phase,
@@ -491,17 +511,53 @@ async function recordRunCost(
       usage,
       budgetUsd: env.RUN_BUDGET_USD,
       estimatedCostUsd: cost.totalUsd,
+      budgetExceeded,
+      budgetRemainingUsd,
       measurementMethod: cost.measurementMethod,
       pricingEffectiveDate: cost.pricingEffectiveDate,
     },
     {
       eventType: 'tool_completed',
-      severity: cost.totalUsd > env.RUN_BUDGET_USD ? 'warn' : 'info',
+      severity: budgetExceeded ? 'warn' : 'info',
       actor: 'system',
       stepId: 'cost_estimator',
     },
   );
-  return cost;
+  return { cost, budgetExceeded, budgetRemainingUsd };
+}
+
+async function emitBudgetCriticalGapEvent(
+  sessionId: string,
+  options: PipelineOptions,
+  phase: ResearchPhase,
+  recordedCost: RecordedRunCost | null,
+  criticalGaps: ClaimGap[],
+) {
+  if (!recordedCost?.budgetExceeded || criticalGaps.length === 0) return;
+  const persistence = persistenceFor(options);
+  await persistence.event(
+    sessionId,
+    phase,
+    'Run budget exceeded while critical claim gaps remain; human approval required before continuing.',
+    {
+      budgetUsd: env.RUN_BUDGET_USD,
+      totalUsd: recordedCost.cost.totalUsd,
+      budgetExceeded: true,
+      budgetRemainingUsd: recordedCost.budgetRemainingUsd,
+      measurementMethod: recordedCost.cost.measurementMethod,
+      pricingEffectiveDate: recordedCost.cost.pricingEffectiveDate,
+      openCriticalGapIds: criticalGaps.map((gap) => gap.id),
+    },
+    { eventType: 'claim_gap_opened', severity: 'warn', actor: 'system', stepId: 'budget_gate' },
+  );
+}
+
+function openCriticalGaps(gaps: ClaimGap[]) {
+  return gaps.filter((gap) => gap.severity === 'critical' && gap.status === 'open');
+}
+
+function roundBudgetUsd(value: number) {
+  return Math.round(value * 100_000) / 100_000;
 }
 
 function measurementMethodFor(calls: MeasuredModelCall[]): 'estimated' | 'provider_usage' {

@@ -64,6 +64,7 @@ const repositoryMock = vi.hoisted(() => ({
 const agentState = vi.hoisted(() => ({
   citationOk: true,
   finalApproved: true,
+  contradictionCriticalGaps: [] as string[],
   useProviderUsage: false,
 }));
 
@@ -86,7 +87,7 @@ vi.mock('@/mastra', () => ({
         if (name === 'plannerAgent') return output({ queries: ['agent compliance', 'agent controls'], successCriteria: ['Human oversight is required.'] });
         if (name === 'evaluationAgent') return output(evaluation);
         if (name === 'learningExtractionAgent') return output(learning);
-        if (name === 'contradictionAgent') return output({ ok: true, issues: [], criticalGaps: [] });
+        if (name === 'contradictionAgent') return output({ ok: agentState.contradictionCriticalGaps.length === 0, issues: [], criticalGaps: agentState.contradictionCriticalGaps });
         if (name === 'reportAgent') return output(reportDraft);
         if (name === 'citationAuditorAgent') return output({ ok: agentState.citationOk, issues: agentState.citationOk ? [] : ['missing citation'] });
         if (name === 'finalReviewerAgent') return output({ approved: agentState.finalApproved, issues: agentState.finalApproved ? [] : ['needs caveat'], summary: 'ready' });
@@ -101,6 +102,7 @@ describe('research pipeline', () => {
     vi.clearAllMocks();
     agentState.citationOk = true;
     agentState.finalApproved = true;
+    agentState.contradictionCriticalGaps = [];
     agentState.useProviderUsage = false;
     repositoryMock.getResearchArtifacts.mockResolvedValue({
       sources: [source],
@@ -197,6 +199,60 @@ describe('research pipeline', () => {
     expect(repositoryMock.saveRunCost).toHaveBeenCalledWith('run_usage', 'session_1', expect.any(Object), expect.any(Object), 'provider_usage');
   });
 
+  it('records budget metadata and warns when research stops with critical gaps over budget', async () => {
+    agentState.contradictionCriticalGaps = ['Primary evidence is missing.'];
+    repositoryMock.saveRunCost.mockResolvedValueOnce({
+      id: 'cost_budget',
+      runId: 'run_budget',
+      sessionId: 'session_1',
+      usage: { modelCalls: [], exaSearches: 2 },
+      modelCostUsd: 5,
+      searchCostUsd: 1,
+      totalUsd: 6,
+      pricingEffectiveDate: '2026-06-24',
+      measurementMethod: 'estimated',
+      createdAt: '2026-06-24T00:00:00.000Z',
+    });
+    const { runResearchSession } = await import('@/server/research/pipeline');
+
+    const result = await runResearchSession('session_1', 'Research AI compliance', {
+      run: {
+        id: 'run_budget',
+        sessionId: 'session_1',
+        status: 'running',
+        attempt: 1,
+        metadata: { stage: 'research' },
+        createdAt: '2026-06-24T00:00:00.000Z',
+        updatedAt: '2026-06-24T00:00:00.000Z',
+      },
+    });
+
+    expect(result.status).toBe('awaiting_approval');
+    expect(repositoryMock.addEvent).toHaveBeenCalledWith(
+      'session_1',
+      'reviewing',
+      'Run cost estimate recorded.',
+      expect.objectContaining({
+        budgetExceeded: true,
+        budgetRemainingUsd: -1,
+        budgetUsd: 5,
+        estimatedCostUsd: 6,
+      }),
+      expect.objectContaining({ severity: 'warn', stepId: 'cost_estimator' }),
+    );
+    expect(repositoryMock.addEvent).toHaveBeenCalledWith(
+      'session_1',
+      'reviewing',
+      'Run budget exceeded while critical claim gaps remain; human approval required before continuing.',
+      expect.objectContaining({
+        budgetExceeded: true,
+        budgetRemainingUsd: -1,
+        openCriticalGapIds: expect.arrayContaining([expect.stringMatching(/^gap_/)]),
+      }),
+      expect.objectContaining({ eventType: 'claim_gap_opened', severity: 'warn', stepId: 'budget_gate' }),
+    );
+  });
+
   it('runs approved reporting through citation audit and final review', async () => {
     const { runApprovedReportSession } = await import('@/server/research/pipeline');
     const result = await runApprovedReportSession('session_1', 'Research AI compliance', {
@@ -232,6 +288,108 @@ describe('research pipeline', () => {
       expect.any(Object),
       expect.objectContaining({ eventType: 'report_ready' }),
     );
+  });
+
+  it('still publishes an over-budget report when no critical gaps are open', async () => {
+    repositoryMock.saveRunCost.mockResolvedValueOnce({
+      id: 'cost_reporting_budget',
+      runId: 'run_reporting_budget',
+      sessionId: 'session_1',
+      usage: { modelCalls: [], exaSearches: 0 },
+      modelCostUsd: 6,
+      searchCostUsd: 0,
+      totalUsd: 6,
+      pricingEffectiveDate: '2026-06-24',
+      measurementMethod: 'estimated',
+      createdAt: '2026-06-24T00:00:00.000Z',
+    });
+    const { runApprovedReportSession } = await import('@/server/research/pipeline');
+
+    const result = await runApprovedReportSession('session_1', 'Research AI compliance', {
+      run: {
+        id: 'run_reporting_budget',
+        sessionId: 'session_1',
+        status: 'running',
+        attempt: 1,
+        metadata: { stage: 'reporting' },
+        createdAt: '2026-06-24T00:00:00.000Z',
+        updatedAt: '2026-06-24T00:00:00.000Z',
+      },
+    });
+
+    expect(result.status).toBe('completed');
+    expect(repositoryMock.getResearchArtifacts).toHaveBeenCalledTimes(2);
+    expect(repositoryMock.publishReport).toHaveBeenCalled();
+  });
+
+  it('blocks over-budget report publication when critical gaps reopen before publish', async () => {
+    repositoryMock.saveRunCost.mockResolvedValueOnce({
+      id: 'cost_reporting_block',
+      runId: 'run_reporting_block',
+      sessionId: 'session_1',
+      usage: { modelCalls: [], exaSearches: 0 },
+      modelCostUsd: 6,
+      searchCostUsd: 0,
+      totalUsd: 6,
+      pricingEffectiveDate: '2026-06-24',
+      measurementMethod: 'estimated',
+      createdAt: '2026-06-24T00:00:00.000Z',
+    });
+    repositoryMock.getResearchArtifacts
+      .mockResolvedValueOnce({
+        sources: [source],
+        evaluations: [evaluation],
+        learnings: [learning],
+        events: [],
+        report: null,
+        claims: [],
+        gaps: [],
+      })
+      .mockResolvedValueOnce({
+        sources: [source],
+        evaluations: [evaluation],
+        learnings: [learning],
+        events: [],
+        report: null,
+        claims: [],
+        gaps: [
+          {
+            id: 'gap_reopened',
+            sessionId: 'session_1',
+            description: 'Critical claim reopened after approval.',
+            severity: 'critical',
+            status: 'open',
+            createdAt: '2026-06-24T00:00:00.000Z',
+          },
+        ],
+      });
+    const { runApprovedReportSession } = await import('@/server/research/pipeline');
+
+    const result = await runApprovedReportSession('session_1', 'Research AI compliance', {
+      run: {
+        id: 'run_reporting_block',
+        sessionId: 'session_1',
+        status: 'running',
+        attempt: 1,
+        metadata: { stage: 'reporting' },
+        createdAt: '2026-06-24T00:00:00.000Z',
+        updatedAt: '2026-06-24T00:00:00.000Z',
+      },
+    });
+
+    expect(result.status).toBe('awaiting_approval');
+    expect(repositoryMock.updateSessionState).toHaveBeenCalledWith('session_1', 'awaiting_approval', 'reviewing');
+    expect(repositoryMock.addEvent).toHaveBeenCalledWith(
+      'session_1',
+      'reviewing',
+      'Run budget exceeded while critical claim gaps remain; human approval required before continuing.',
+      expect.objectContaining({
+        budgetExceeded: true,
+        openCriticalGapIds: ['gap_reopened'],
+      }),
+      expect.objectContaining({ eventType: 'claim_gap_opened', severity: 'warn', stepId: 'budget_gate' }),
+    );
+    expect(repositoryMock.publishReport).not.toHaveBeenCalled();
   });
 
   it('returns to approval when transactional report publication finds reopened critical gaps', async () => {

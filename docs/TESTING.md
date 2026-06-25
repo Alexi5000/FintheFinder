@@ -31,7 +31,7 @@ Current unit coverage includes:
 - Citation auditing
 - Logger redaction for nested credentials, prompts, queries, and secret-like error messages
 - Exa provider behavior with mocked missing-key, success mapping, canonical duplicate filtering, provider error wrapping, and timeout coverage
-- Pipeline HITL/cost behavior
+- Pipeline HITL/cost behavior, including budget metadata, over-budget warnings, and critical-gap budget gates
 - Persisted eval history with public-safe column projection and summary sanitization
 - Rate-limit window, reset, and per-key isolation behavior
 - Production boundary checks that keep hosted run requests enqueue-only and prevent pipeline report readiness from bypassing transactional publication

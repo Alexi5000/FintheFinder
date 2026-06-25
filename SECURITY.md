@@ -32,8 +32,9 @@ Memory writes and notebook authoring artifacts are scanned for obvious secret-li
 ## App Security Baseline
 
 - API routes require Supabase bearer tokens for user-owned data.
-- Supabase row-level security isolates user sessions and reports.
+- Supabase row-level security isolates user sessions and reports. Authenticated clients have ownership-scoped reads; session state, approval, and memory mutations go through hosted API/service-role paths.
 - Server logs redact keys, tokens, prompts, and sensitive payloads; `tests/unit/logger.test.ts` covers nested fields and secret-like error messages.
 - Memory and notebook validation rejects obvious secret-like content before repository writes or benchmark authoring artifacts are accepted.
+- Run-event payloads are immutable after insert, and direct event deletes are blocked outside parent session cascade cleanup.
 - Research report claims are checked against source IDs and URLs.
 - Rate limiting is applied to session creation and research runs; `tests/unit/rate-limit.test.ts` covers budget exhaustion, reset windows, and per-key isolation.

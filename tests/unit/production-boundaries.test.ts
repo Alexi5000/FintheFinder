@@ -24,4 +24,17 @@ describe('production research boundaries', () => {
     expect(pipeline).not.toMatch(/import\s+\{[^}]*saveReport[^}]*\}\s+from\s+['"]\.\/repository['"]/);
     expect(pipeline).not.toMatch(/updateSessionState\(sessionId,\s*['"]report_ready['"],\s*['"]complete['"]\)/);
   });
+
+  it('keeps client table writes behind hosted API and immutable event guards', () => {
+    const writeHardening = readRepoFile('supabase/migrations/018_api_only_session_memory_writes.sql');
+    const eventHardening = readRepoFile('supabase/migrations/017_research_event_immutability.sql');
+
+    expect(writeHardening).toContain('drop policy if exists "Users can manage own sessions"');
+    expect(writeHardening).toContain('create policy "Users can read own sessions"');
+    expect(writeHardening).toContain('drop policy if exists "Users can insert own research memories"');
+    expect(writeHardening).toContain('drop policy if exists "Users can update own research memories"');
+    expect(writeHardening).toContain('drop policy if exists "Users can delete own research memories"');
+    expect(eventHardening).toContain('prevent_research_event_payload_update');
+    expect(eventHardening).toContain('prevent_research_event_delete');
+  });
 });

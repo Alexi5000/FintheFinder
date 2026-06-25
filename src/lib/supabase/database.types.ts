@@ -380,6 +380,14 @@ export type Database = {
         Args: Record<string, never>;
         Returns: unknown;
       };
+      prevent_research_event_payload_update: {
+        Args: Record<string, never>;
+        Returns: unknown;
+      };
+      prevent_research_event_delete: {
+        Args: Record<string, never>;
+        Returns: unknown;
+      };
       record_eval_run: {
         Args: { p_id: string; p_suite: string; p_status: DbEvalRunStatus; p_summary: Json; p_results: Json; p_created_at: string };
         Returns: EvalRunsRow;
@@ -436,5 +444,7 @@ export const databaseFunctionNames = [
   'ensure_memory_session_owner',
   'prevent_research_parent_session_update',
   'prevent_research_session_owner_update',
+  'prevent_research_event_payload_update',
+  'prevent_research_event_delete',
   'record_eval_run',
 ] as const satisfies readonly DbFunctionName[];

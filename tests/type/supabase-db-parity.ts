@@ -59,6 +59,8 @@ type ExpectedFunctions =
   | 'ensure_memory_session_owner'
   | 'prevent_research_parent_session_update'
   | 'prevent_research_session_owner_update'
+  | 'prevent_research_event_payload_update'
+  | 'prevent_research_event_delete'
   | 'record_eval_run';
 
 export type SupabaseDbParityAssertions = [

@@ -37,6 +37,8 @@ const migrations = [
   '014_fenced_report_publication.sql',
   '015_terminal_run_lease_cleanup.sql',
   '016_exact_report_publication_replay.sql',
+  '017_research_event_immutability.sql',
+  '018_api_only_session_memory_writes.sql',
 ];
 
 function readMigration(name: string) {
@@ -623,6 +625,37 @@ describe('database migrations', () => {
     expect(migration).toContain("'idempotent', true");
     expect(migration).toMatch(/delete from public\.research_job_leases[\s\S]*where run_id = p_run_id[\s\S]*worker_id = p_worker_id/i);
     expect(migration).toContain('grant execute on function public.publish_research_report_for_attempt(uuid, uuid, uuid, text, jsonb, jsonb, text, text) to service_role');
+  });
+
+  it('makes research run events immutable after insert', () => {
+    const migration = readMigration('017_research_event_immutability.sql');
+
+    expect(migration).toContain('create or replace function public.prevent_research_event_payload_update');
+    expect(migration).toContain('create or replace function public.prevent_research_event_delete');
+    expect(migration).toContain('research events are immutable after insert');
+    expect(migration).toContain('research events may only be deleted by parent session cascade');
+    expect(migration).toContain('drop trigger if exists prevent_research_event_payload_update on public.research_events');
+    expect(migration).toContain('create trigger prevent_research_event_payload_update');
+    expect(migration).toMatch(/before update[\s\S]*on public\.research_events[\s\S]*execute function public\.prevent_research_event_payload_update\(\)/i);
+    expect(migration).toMatch(/before delete[\s\S]*on public\.research_events[\s\S]*execute function public\.prevent_research_event_delete\(\)/i);
+    expect(migration).toMatch(/old\.run_id is not null[\s\S]*new\.run_id is null/i);
+    expect(migration).toContain('pg_trigger_depth() > 1');
+    expect(migration).toContain('new.metadata is not distinct from old.metadata');
+    expect(migration).toContain('new.created_at is not distinct from old.created_at');
+    expect(migration).toContain('revoke execute on function public.prevent_research_event_payload_update() from public, anon, authenticated');
+    expect(migration).toContain('revoke execute on function public.prevent_research_event_delete() from public, anon, authenticated');
+  });
+
+  it('forces session and memory mutations through hosted API boundaries', () => {
+    const migration = readMigration('018_api_only_session_memory_writes.sql');
+
+    expect(migration).toContain('drop policy if exists "Users can manage own sessions" on public.research_sessions');
+    expect(migration).toMatch(/create policy "Users can read own sessions"[\s\S]*on public\.research_sessions[\s\S]*for select[\s\S]*auth\.uid\(\) = user_id/i);
+    expect(migration).toContain('drop policy if exists "Users can insert own research memories" on public.research_memories');
+    expect(migration).toContain('drop policy if exists "Users can update own research memories" on public.research_memories');
+    expect(migration).toContain('drop policy if exists "Users can delete own research memories" on public.research_memories');
+    expect(migration).not.toMatch(/for\s+(all|insert|update|delete)/i);
+    expect(migration).toContain('Session and memory mutations must go through hosted API routes');
   });
 });
 

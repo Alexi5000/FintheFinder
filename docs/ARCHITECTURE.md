@@ -65,7 +65,7 @@ Supabase stores:
 - `eval_results`
 - `pricing_snapshots`
 
-All user-owned tables have row-level security. Server routes use Supabase Auth bearer tokens to resolve the current user and enforce ownership before reading or mutating data.
+All user-owned tables have row-level security. Authenticated clients receive ownership-scoped read access, while session state, approval decisions, and memory mutations go through hosted API routes backed by service-role persistence. Server routes use Supabase Auth bearer tokens to resolve the current user and enforce ownership before mutating data.
 
 ## Runtime Notes
 
@@ -78,3 +78,5 @@ Worker-owned artifact replacement is transaction-fenced in Supabase. The worker 
 Final report publication is also a Supabase-owned transaction. The reporting worker calls `publish_research_report_for_attempt`, which validates the report payload, treats exact replay after a committed publish as idempotent success, locks the current run/attempt/session, rechecks open critical gaps, and either returns the session/run to approval or commits the final audit, report row, `report_ready` event, session completion, run completion, attempt completion, and job-lease cleanup atomically. `016_exact_report_publication_replay.sql` upgrades committed retries so the replayed report fields and final-review audit issues must match the stored rows before idempotent success is returned. Non-test callers without the run/attempt/worker fence fail before direct report writes.
 
 Human approval decisions are also transaction-owned by Supabase. The hosted approval route validates auth and request shape, then calls `record_research_approval_decision`, which locks the owned session, rechecks `awaiting_approval`, applies critical-gap rules, records the approval event, and either queues the next run or rejects the session atomically.
+
+Run events are append-only product evidence within the session lifecycle. The application inserts events through the repository and Supabase prevents payload updates or direct deletes after insert, while still allowing foreign-key cleanup paths that set `run_id` to `null` if a referenced run is deleted or remove events during parent session cascade.

@@ -20,26 +20,28 @@ test('settings exposes provider and model status', async ({ page }) => {
 
 test('about page exposes product architecture and proof status', async ({ page }) => {
   await page.goto('/about');
-  await expect(page.getByRole('heading', { name: 'Deep research that leaves an evidence trail.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mastra-based research that leaves an evidence trail.' })).toBeVisible();
   await expect(page.getByLabel('Product status')).toContainText(new RegExp(`Version\\s*${escapedVersion}`));
+  await expect(page.getByLabel('Product status')).toContainText(/Mastra\s*1\.x/);
   await expect(page.getByLabel('Product status')).toContainText(/Proof Tier\s*Offline-gated/);
-  await expect(page.getByLabel('Product status')).toContainText(/Live Proof\s*Pending configured credentials/);
-  await expect(page.getByLabel('Research Workflow')).toContainText('Claim Audit');
+  await expect(page.getByLabel('Product status')).toContainText(/Live Proof\s*Pending credentials/);
+  await expect(page.getByLabel('Mastra Workflow')).toContainText('Audit');
+  await expect(page.getByRole('heading', { name: 'Template lineage, production surface.' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Evidence model' })).toBeVisible();
   const proofSurfaces = page.getByRole('article', { name: 'Proof surfaces' });
   await expect(proofSurfaces.getByRole('heading', { name: 'Proof surfaces' })).toBeVisible();
   await expect(proofSurfaces).toContainText('CI verified');
   await expect(proofSurfaces).toContainText('Unit verified');
   await expect(proofSurfaces).toContainText('Migration verified');
-  await expect(proofSurfaces).toContainText('CI/Docker configured');
+  await expect(proofSurfaces).toContainText('CI and Docker configured');
   await expect(page.getByText('Pending configured credentials').first()).toBeVisible();
-  await expect(page.getByText(/Configured-live benchmark rows and recorded demo evidence are intentionally pending real provider credentials/)).toBeVisible();
+  await expect(page.getByText(/Configured-live benchmark rows and recorded demo evidence remain intentionally pending real provider credentials/)).toBeVisible();
 });
 
 test('about page avoids horizontal overflow on narrow desktop', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 900 });
   await page.goto('/about');
-  await expect(page.getByRole('heading', { name: 'Deep research that leaves an evidence trail.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mastra-based research that leaves an evidence trail.' })).toBeVisible();
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);

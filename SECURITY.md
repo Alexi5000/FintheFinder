@@ -31,6 +31,6 @@ Use `.env` locally and deployment environment variables in hosted environments.
 
 - API routes require Supabase bearer tokens for user-owned data.
 - Supabase row-level security isolates user sessions and reports.
-- Server logs redact keys, tokens, prompts, and sensitive payloads.
+- Server logs redact keys, tokens, prompts, and sensitive payloads; `tests/unit/logger.test.ts` covers nested fields and secret-like error messages.
 - Research report claims are checked against source IDs and URLs.
-- Rate limiting is applied to session creation and research runs.
+- Rate limiting is applied to session creation and research runs; `tests/unit/rate-limit.test.ts` covers budget exhaustion, reset windows, and per-key isolation.

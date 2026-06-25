@@ -17,6 +17,8 @@ npm run audit
 npm run smoke
 ```
 
+CI also starts the built Next.js server and runs `SMOKE_URL=http://127.0.0.1:3000 npm run smoke` against `/api/health`.
+
 ## Unit Tests
 
 Current unit coverage includes:
@@ -26,10 +28,13 @@ Current unit coverage includes:
 - Hosted API route contracts for queueing runs, run status, SSE events, report export, claims, and memory ownership
 - Canonical URL normalization
 - Citation auditing
+- Logger redaction for nested credentials, prompts, queries, and secret-like error messages
 - Missing Exa provider behavior
 - Pipeline HITL/cost behavior
 - Persisted eval history with public-safe column projection and summary sanitization
+- Rate-limit window, reset, and per-key isolation behavior
 - Repository persistence mapping for costs, memories, and post-mortems
+- Smoke-script hosted health contract and secret-leak rejection
 - Worker runtime config parsing, no-work paths, lease heartbeats, lease-loss terminal-write blocking, reporting dispatch, sanitized failure artifacts, and best-effort run-summary memory
 - Supabase migration parity for table columns, SQL/Zod enum checks, event constraints, RLS, cross-session graph integrity, service-role RPCs, API-only approval writes, and repository artifact/event payload shape
 - Supabase DB type parity with a committed migration-derived snapshot, typed clients, RPC/table union checks, and migration inventory tests

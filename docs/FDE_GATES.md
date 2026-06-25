@@ -18,7 +18,7 @@ Fin is production-ready only when each public claim is implemented, tested, demo
 | Honest benchmark doc | Implemented | `docs/BENCHMARK.md`, 10-scenario `docs/benchmark/offline-eval-summary.json` | `npm run benchmark:check` |
 | Recorded live demo proof | Pending configured credentials | `docs/demo/live-demo.example.json`, `scripts/demo-record.mjs`, demo verifier tests | `npm run demo:record` and `npm run evals:live` after live run |
 | ADRs | Implemented | `docs/adr/` | File review |
-| Full test coverage for new surface | Implemented | Unit tests for contracts, repository adapters, Supabase schema/type parity, demo verifier, hosted API routes, worker runtime, and coverage gate | `npm run test:coverage` |
+| Full test coverage for new surface | Implemented baseline; expansion in progress | Unit tests for contracts, repository adapters, Supabase schema/type parity, demo verifier, hosted API routes, worker runtime, logger redaction, rate limiting, smoke health secrecy, and coverage gate | `npm run test:coverage` |
 | Contract single source of truth | Implemented | `contracts/schema.json` | `npm run contracts:check` |
 | Supabase schema/RLS parity | Implemented | Migration tests cover table columns, SQL/Zod enum checks, event constraints, RLS enablement, ownership policies, API-only approval writes, cross-session graph integrity, service-role RPC grants, active-run uniqueness, and lease uniqueness; repository tests cover artifact/event DB payload shape | `npx vitest run tests/unit/migrations.test.ts tests/unit/repository.test.ts` |
 | Supabase DB type parity | Implemented with committed migration-derived snapshot | `src/lib/supabase/database.types.ts`, typed Supabase clients, compile-only DB parity assertions, migration inventory test | `npm run typecheck`, `npx vitest run tests/unit/migrations.test.ts` |
@@ -31,7 +31,7 @@ Fin is production-ready only when each public claim is implemented, tested, demo
 | OpenTelemetry trace surface | Implemented | `src/server/telemetry.ts`, trace-linked run events | `npm run typecheck` |
 | Post-mortem generation | Implemented | Worker writes failed-run post-mortems only after lease ownership is proven; persisted root cause is sanitized | `npx vitest run tests/unit/research-worker.test.ts`, Worker/API review |
 | Memory surface | Implemented | Supabase memory table, `/api/research/memory`, session UI, best-effort worker run summaries, session ownership route tests | `npm run test:coverage`, `npx vitest run tests/unit/research-worker.test.ts` |
-| CI covering production gates | Implemented | `.github/workflows/ci.yml` with Node 24 jobs and current first-party action majors | GitHub Actions |
+| CI covering production gates | Implemented | `.github/workflows/ci.yml` with Node 24 jobs, current first-party action majors, and hosted `/api/health` smoke after `next start` | GitHub Actions |
 | Stale dependency PR cleanup | Implemented script | `scripts/close-stale-deps-prs.sh` | `npm run deps:close-stale-prs` |
 | Engineering blog posts | Implemented drafts | `docs/blog/` | File review |
 | Standard repo hygiene | Implemented | README, license, changelog, security, contributing, env example, issue templates, PR template | File review |

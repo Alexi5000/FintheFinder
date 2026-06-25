@@ -36,7 +36,8 @@ Hosted smoke:
 SMOKE_URL="https://your-host.example" npm run smoke
 ```
 
-The hosted smoke checks `/api/health` and must not expose secrets.
+The hosted smoke parses `/api/health`, requires provider states to be only `configured` or `missing`, checks the health contract version, and fails if the payload exposes secret-looking keys, bearer tokens, or JWT-like values.
+CI runs the same hosted smoke against `next start` after the production build.
 
 ## Rollback
 

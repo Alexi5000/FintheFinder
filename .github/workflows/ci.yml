@@ -56,6 +56,13 @@ jobs:
       - run: npm run build
       - run: npm run audit
       - run: npm run smoke
+      - name: Run hosted health smoke
+        shell: bash
+        run: |
+          npm run start -- --hostname 127.0.0.1 > /tmp/fin-the-finder-next.log 2>&1 &
+          server_pid=$!
+          trap "kill $server_pid" EXIT
+          SMOKE_URL=http://127.0.0.1:3000 npm run smoke
 
   e2e:
     runs-on: ubuntu-latest

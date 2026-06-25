@@ -11,11 +11,19 @@ One Docker image supports two commands:
 - `npm run start` for the Next.js web/API service.
 - `npm run start:worker` for queued research runs.
 
+The runtime image runs as the non-root `node` user. The image healthcheck validates the web `/api/health` contract, while compose gives the worker a role-specific process healthcheck and restart policy.
+
 ## Build
 
 ```bash
 npm run verify
 npm run container:build
+```
+
+Local compose:
+
+```bash
+docker compose up web worker
 ```
 
 ## Environment

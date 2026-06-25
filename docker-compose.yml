@@ -2,12 +2,30 @@ services:
   web:
     build: .
     command: npm run start
+    restart: unless-stopped
+    environment:
+      CONTAINER_HEALTHCHECK: web
     ports:
       - "3000:3000"
     env_file:
       - .env
+    healthcheck:
+      test: ["CMD", "node", "scripts/container-healthcheck.mjs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
   worker:
     build: .
     command: npm run start:worker
+    restart: unless-stopped
+    environment:
+      CONTAINER_HEALTHCHECK: worker
     env_file:
       - .env
+    healthcheck:
+      test: ["CMD", "node", "scripts/container-healthcheck.mjs", "worker"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

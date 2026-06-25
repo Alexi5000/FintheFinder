@@ -660,7 +660,7 @@ function recordApprovalDecision(store: ReplayStore, userId: string, sessionId: s
     status: 'queued',
     attempt: 1,
     currentAttemptId: null,
-    metadata: { stage: 'reporting' },
+    metadata: { stage: 'reporting', approvalId: ids.approval, sourceResearchRunId: ids.researchRun },
     workerId: null,
     leaseExpiresAt: null,
     startedAt: null,
@@ -681,7 +681,7 @@ function recordApprovalDecision(store: ReplayStore, userId: string, sessionId: s
     actor: 'user',
     stepId: 'approval_recorded',
     message: 'Replay approval queued reporting work.',
-    metadata: { approvedSourceIds: input.approvedSourceIds },
+    metadata: { approvalId: ids.approval, sourceResearchRunId: ids.researchRun, approvedSourceIds: input.approvedSourceIds },
     createdAt: fixedNow,
   });
   return { ok: true as const, action: approval.action, run: reportingRun, runId: reportingRun.id, status: reportingRun.status };
@@ -844,11 +844,13 @@ function buildAssertions(
     ),
     assertion(
       'approval_queues_distinct_reporting_run',
-      context.approvalDecision.ok &&
+        context.approvalDecision.ok &&
         context.approvalDecision.runId === ids.reportingRun &&
         context.approvalDecision.run?.metadata.stage === 'reporting' &&
+        context.approvalDecision.run?.metadata.approvalId === ids.approval &&
+        context.approvalDecision.run?.metadata.sourceResearchRunId === ids.researchRun &&
         context.approvalDecision.runId !== ids.researchRun,
-      'Approval should queue a distinct reporting run.',
+      'Approval should queue a distinct reporting run with approval and source research lineage.',
     ),
     assertion('reporting_worker_processed', context.reportingProcessed, 'processNextRun should process the queued reporting run.'),
     assertion(

@@ -53,4 +53,4 @@ Rollback should redeploy the previous known-good Git commit or host deployment. 
 
 ## Owner Notes
 
-Deployment is not portfolio-ready until `docs/DEMO.md` and `docs/BENCHMARK.md` contain a real session ID, research run ID, reporting run ID, approval ID, exported report, eval result, screenshots or video, and measured session-level cost row.
+Deployment is not portfolio-ready until `docs/DEMO.md` and `docs/BENCHMARK.md` contain a real Supabase-exported session ID, research run ID, reporting run ID, approval ID, final audit, exported report, three-scenario live eval result, screenshots or video, and measured session-level cost row.

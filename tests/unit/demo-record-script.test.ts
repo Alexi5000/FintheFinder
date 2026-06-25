@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -99,20 +100,18 @@ describe('demo-record script', () => {
     expect(result.stdout).toContain('runId must not be a placeholder value');
   });
 
-  it('makes evals:live emit run, trace, and cost proof for a complete manifest', () => {
-    const manifestPath = writeDemoBundle({
-      evalOutput: { passed: true, mode: 'live', status: 'ok', runId, traceId, fixtureCount: 10, issues: [], regressions: [] },
-    });
+  it('makes evals:live reject local-only proof that is not Supabase-exported', () => {
+    const manifestPath = writeDemoBundle();
 
     const result = runLiveEval(manifestPath);
     const payload = JSON.parse(result.stdout);
 
-    expect(result.status).toBe(0);
+    expect(result.status).toBe(1);
     expect(payload).toEqual(
       expect.objectContaining({
-        passed: true,
+        passed: false,
         mode: 'live',
-        status: 'ok',
+        status: 'supabase_mismatch',
         runId,
         traceId,
         sessionId,
@@ -120,13 +119,11 @@ describe('demo-record script', () => {
         reportingRunId,
         approvalId,
         manifest: manifestPath,
-        fixtureCount: 10,
-        issues: [],
-        regressions: [],
         cost: costEvidence(),
       }),
     );
     expect(payload.manifestSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.errors).toContain('Live manifest provenance.source must be supabase_export.');
   });
 
   it('rejects missing media, weak cost evidence, and pending benchmark rows', () => {
@@ -168,6 +165,50 @@ describe('demo-record script', () => {
     expect(result.stderr).toContain('benchmarkDoc Exa search count must match manifest cost.usage.exaSearches');
     expect(result.stderr).toContain('benchmarkDoc token count must match manifest cost.usage model tokens');
     expect(result.stderr).toContain('benchmarkDoc cost cell must match manifest cost.totalUsd');
+  });
+
+  it('rejects stale provenance artifact hashes', () => {
+    const manifestPath = writeDemoBundle();
+    const manifest = JSON.parse(readFileSync(join(workspace, manifestPath), 'utf8'));
+    manifest.provenance = {
+      source: 'supabase_export',
+      exporter: 'scripts/demo-export.ts',
+      exportedAt: '2026-06-24T00:00:00.000Z',
+      reportingRunId,
+      sessionId,
+      artifactHashes: {
+        [manifest.reportExport]: '0'.repeat(64),
+      },
+    };
+    writeFileSync(join(workspace, manifestPath), `${JSON.stringify(manifest, null, 2)}\n`);
+
+    const result = runDemoRecord(manifestPath);
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('provenance artifact hash mismatch');
+  });
+
+  it('rejects provenance hashes that omit referenced media artifacts', () => {
+    const manifestPath = writeDemoBundle();
+    const manifest = JSON.parse(readFileSync(join(workspace, manifestPath), 'utf8'));
+    manifest.provenance = {
+      source: 'supabase_export',
+      exporter: 'scripts/demo-export.ts',
+      exportedAt: '2026-06-24T00:00:00.000Z',
+      reportingRunId,
+      sessionId,
+      artifactHashes: {
+        [manifest.reportExport]: sha256(join(workspace, manifest.reportExport)),
+        [manifest.evalOutput]: sha256(join(workspace, manifest.evalOutput)),
+        [manifest.runExport]: sha256(join(workspace, manifest.runExport)),
+      },
+    };
+    writeFileSync(join(workspace, manifestPath), `${JSON.stringify(manifest, null, 2)}\n`);
+
+    const result = runDemoRecord(manifestPath);
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain(`provenance.artifactHashes must include ${manifest.screenshotsOrVideo[0]}`);
   });
 });
 
@@ -219,7 +260,7 @@ function writeDemoBundle(options: {
       '',
     ].join('\n'),
   );
-  writeFileSync(evalOutputPath, `${JSON.stringify(options.evalOutput ?? { passed: true, mode: 'live', status: 'ok', runId, traceId }, null, 2)}\n`);
+  writeFileSync(evalOutputPath, `${JSON.stringify(options.evalOutput ?? liveEvalOutput(), null, 2)}\n`);
   writeFileSync(
     runExportPath,
     `${JSON.stringify(
@@ -260,7 +301,7 @@ function writeDemoBundle(options: {
         '',
         '| Date | Prompt | Session / Runs | Model(s) | Exa searches | Tokens | Cost / method | Eval result | Report |',
         '| --- | --- | --- | --- | ---: | ---: | ---: | --- | --- |',
-        `| ${today()} | Demo prompt | session ${sessionId}; research ${researchRunId}; reporting ${reportingRunId}; approval ${approvalId} | gpt-5.5 | 3 | 1000 | 0.42 provider_usage | ${rel(evalOutputPath)} ${rel(manifestPath)} | ${rel(reportPath)} ${rel(runExportPath)} ${rel(screenshotPath)} |`,
+        `| ${today()} | Research practical uses of AI agents in compliance-heavy financial services. | session ${sessionId}; research ${researchRunId}; reporting ${reportingRunId}; approval ${approvalId} | gpt-5.5 | 3 | 1000 | 0.42 provider_usage | ${rel(evalOutputPath)} ${rel(manifestPath)} | ${rel(reportPath)} ${rel(runExportPath)} ${rel(screenshotPath)} |`,
         '',
       ].join('\n'),
   );
@@ -294,6 +335,43 @@ function rel(path: string) {
 
 function today() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function liveEvalOutput() {
+  const results = ['live-citation-integrity', 'live-claim-traceability', 'live-safety-language'].map((id) => ({
+    id,
+    passed: true,
+    expectedPass: true,
+    observedPass: true,
+    scores: { correctness: 1, safety: 1, completeness: 1, quality: 1 },
+    issues: [],
+    regressions: [],
+  }));
+  return {
+    passed: true,
+    mode: 'live',
+    status: 'ok',
+    runId,
+    traceId,
+    scenarioCount: results.length,
+    suite: {
+      passed: true,
+      total: results.length,
+      failed: 0,
+      results,
+    },
+    scenarios: results.map((result) => ({
+      id: result.id,
+      expected: { shouldPass: true, requirement: `${result.id} requirement` },
+      actual: { observedPass: true, scores: result.scores, issues: [], regressions: [] },
+    })),
+    issues: [],
+    regressions: [],
+  };
+}
+
+function sha256(path: string) {
+  return createHash('sha256').update(readFileSync(path)).digest('hex');
 }
 
 function costEvidence() {

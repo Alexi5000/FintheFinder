@@ -24,7 +24,7 @@ The goal is a serious engineering repo, not a demo claim. `docs/FDE_GATES.md` is
 
 Current status: **offline-gated**. The repo is gated by deterministic contracts, tests, lint, audit, Docker build, smoke checks, offline evals, credential-free orchestration replay, and benchmark drift locally and in CI.
 
-Configured-provider research is implemented behind OpenAI, Exa, and Supabase credentials, but recorded live proof is still pending. Do not treat Fin as having a measured live demo or cost-per-run claim until `docs/demo/live-demo.json`, `npm run demo:record`, `npm run evals:live`, and the Live Run Log in `docs/BENCHMARK.md` all reference the same real session, research run, reporting run, approval, usage, and report artifacts.
+Configured-provider research is implemented behind OpenAI, Exa, and Supabase credentials, but recorded live proof is still pending. Do not treat Fin as having a measured live demo or cost-per-run claim until `npm run demo:export -- --reporting-run-id <id> --media <path>`, `docs/demo/live-demo.json`, `npm run demo:record`, `npm run evals:live`, and the Live Run Log in `docs/BENCHMARK.md` all reference the same real session, research run, reporting run, approval, usage, report artifacts, and recorded media.
 
 ## Product Capabilities
 
@@ -99,6 +99,8 @@ SUPABASE_SERVICE_ROLE_KEY=""
 | `npm run notebooks:check` | Validate authoring notebooks are non-runtime artifacts |
 | `npm run audit` | Run npm audit at moderate severity |
 | `npm run smoke` | Run repository and contract smoke checks |
+| `npm run demo:export` | Export configured-live proof artifacts from Supabase by reporting run ID and recorded media |
+| `npm run demo:record` | Validate configured-live proof manifest and local artifacts |
 | `npm run verify` | Run the main local verification suite |
 
 ## Repository Map

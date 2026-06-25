@@ -24,7 +24,7 @@ if (positionalOutputPath && live) throw new Error('Live eval proof uses --manife
 if (persist && live) throw new Error('Persisted eval history currently records offline suite summaries. Live proof is captured by docs/demo/live-demo.json.');
 
 if (live) {
-  const summary = runLiveEvalProofCheck(manifestPath);
+  const summary = await runLiveEvalProofCheck(manifestPath);
   writeSummaryOutput(summary);
   console.log(JSON.stringify(summary, null, 2));
   if (!summary.passed) process.exit(1);
@@ -36,7 +36,7 @@ if (live) {
   if (!summary.passed) process.exit(1);
 }
 
-function runLiveEvalProofCheck(path: string) {
+async function runLiveEvalProofCheck(path: string) {
   const missingEnv = ['OPENAI_API_KEY', 'EXA_API_KEY', 'NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY'].filter(
     (key) => !process.env[key],
   );
@@ -92,9 +92,31 @@ function runLiveEvalProofCheck(path: string) {
     passed?: boolean;
     fixtureCount?: number;
     scenarioCount?: number;
+    scenarios?: unknown;
+    suite?: unknown;
     issues?: unknown;
     regressions?: unknown;
   };
+  const { verifyLiveProofManifestFromSupabase } = await import('../src/server/demo/live-proof');
+  const supabaseProof = await verifyLiveProofManifestFromSupabase(path);
+  if (!supabaseProof.ok) {
+    return {
+      passed: false,
+      mode: 'live',
+      status: 'supabase_mismatch',
+      errors: supabaseProof.errors,
+      sessionId: manifest.sessionId,
+      researchRunId: manifest.researchRunId,
+      reportingRunId: manifest.reportingRunId,
+      approvalId: manifest.approvalId,
+      runId: manifest.runId,
+      traceId: manifest.traceId,
+      manifest: path,
+      manifestSha256: createHash('sha256').update(readFileSync(absoluteManifestPath)).digest('hex'),
+      evalOutput: manifest.evalOutput,
+      cost: manifest.cost,
+    };
+  }
   return {
     passed: evalOutput.passed === true,
     mode: 'live',
@@ -108,7 +130,9 @@ function runLiveEvalProofCheck(path: string) {
     manifest: path,
     manifestSha256: createHash('sha256').update(readFileSync(absoluteManifestPath)).digest('hex'),
     evalOutput: manifest.evalOutput,
-    fixtureCount: evalOutput.fixtureCount ?? evalOutput.scenarioCount,
+    scenarioCount: evalOutput.scenarioCount ?? evalOutput.fixtureCount,
+    scenarios: Array.isArray(evalOutput.scenarios) ? evalOutput.scenarios : [],
+    suite: evalOutput.suite,
     issues: Array.isArray(evalOutput.issues) ? evalOutput.issues : [],
     regressions: Array.isArray(evalOutput.regressions) ? evalOutput.regressions : [],
     cost: manifest.cost,

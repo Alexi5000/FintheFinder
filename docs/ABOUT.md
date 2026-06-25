@@ -29,4 +29,4 @@ Fin treats research artifacts as product data: sessions, sources, evaluations, l
 
 Fin is offline-gated today: deterministic contracts, unit coverage, Playwright, Docker build, smoke checks, audit, offline evals, credential-free orchestration replay, and benchmark drift checks are the current release gate.
 
-Configured-provider research is supported when OpenAI, Exa, and Supabase credentials are present. Measured live benchmark rows and recorded live demo evidence are not claimed until the same real session, research run, reporting run, approval, and cost evidence pass `npm run demo:record`, `npm run evals:live`, and the Live Run Log in `docs/BENCHMARK.md`.
+Configured-provider research is supported when OpenAI, Exa, and Supabase credentials are present. Measured live benchmark rows and recorded live demo evidence are not claimed until `npm run demo:export -- --reporting-run-id <id> --media <path>` creates a Supabase-derived proof bundle and the same real session, research run, reporting run, approval, final audit, media, scenario eval, and cost evidence pass `npm run demo:record`, `npm run evals:live`, and the Live Run Log in `docs/BENCHMARK.md`.

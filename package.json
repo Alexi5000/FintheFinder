@@ -27,6 +27,7 @@
     "benchmark:check": "tsx scripts/benchmark-check.ts",
     "notebooks:check": "tsx scripts/check-notebooks.ts",
     "demo:record": "node scripts/demo-record.mjs",
+    "demo:export": "tsx scripts/demo-export.ts",
     "container:build": "docker build -t fin-the-finder .",
     "container:run": "docker compose up web worker",
     "deps:close-stale-prs": "bash scripts/close-stale-deps-prs.sh",

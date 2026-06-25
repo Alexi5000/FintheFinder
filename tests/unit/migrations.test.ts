@@ -657,6 +657,18 @@ describe('database migrations', () => {
     expect(migration).not.toMatch(/for\s+(all|insert|update|delete)/i);
     expect(migration).toContain('Session and memory mutations must go through hosted API routes');
   });
+
+  it('stamps reporting runs with approval and source research lineage', () => {
+    const migration = readMigration('019_reporting_run_approval_lineage.sql');
+
+    expect(migration).toContain('create or replace function public.record_research_approval_decision');
+    expect(migration).toContain('source_research_run public.research_runs%rowtype');
+    expect(migration).toMatch(/select \*[\s\S]*into source_research_run[\s\S]*status in \('awaiting_approval','completed'\)[\s\S]*coalesce\(metadata ->> 'stage', 'research'\) <> 'reporting'/i);
+    expect(migration).toContain("'approvalId', approval_id");
+    expect(migration).toContain("'sourceResearchRunId', source_research_run.id");
+    expect(migration).toContain("'reason', 'source_research_run_missing'");
+    expect(migration).toContain('grant execute on function public.record_research_approval_decision(uuid, uuid, text, text, jsonb, jsonb, text, text) to service_role');
+  });
 });
 
 function columnDeclarationRegex(table: string, column: string, type: string) {

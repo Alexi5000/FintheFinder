@@ -127,6 +127,7 @@ function validateManifest(value) {
   }
 
   validateBenchmarkEvidence(value.benchmarkDoc ?? 'docs/BENCHMARK.md', value, errors);
+  validateProvenance(value.provenance, value, errors);
 
   return errors;
 }
@@ -223,6 +224,46 @@ function validateEvalOutput(path, manifest, errors) {
   if (evalOutput.runId && evalOutput.runId !== manifest.reportingRunId) errors.push('evalOutput runId must match manifest reportingRunId.');
   if (!evalOutput.traceId) errors.push('evalOutput traceId is required.');
   if (evalOutput.traceId && evalOutput.traceId !== manifest.reportingTraceId) errors.push('evalOutput traceId must match manifest reportingTraceId.');
+  const scenarioCount = evalOutput.scenarioCount ?? evalOutput.fixtureCount;
+  if (!Number.isInteger(scenarioCount) || scenarioCount < 3) {
+    errors.push('evalOutput scenarioCount must include at least three expected-vs-actual live scenarios.');
+  }
+  if (!evalOutput.suite || typeof evalOutput.suite !== 'object' || Array.isArray(evalOutput.suite)) {
+    errors.push('evalOutput suite object is required.');
+  } else {
+    if (evalOutput.suite.passed !== true) errors.push('evalOutput suite must contain passed: true.');
+    if (evalOutput.suite.total !== scenarioCount) errors.push('evalOutput suite.total must match scenarioCount.');
+    if (!Array.isArray(evalOutput.suite.results) || evalOutput.suite.results.length !== scenarioCount) {
+      errors.push('evalOutput suite.results must include one result per live scenario.');
+    }
+  }
+  if (!Array.isArray(evalOutput.scenarios) || evalOutput.scenarios.length !== scenarioCount) {
+    errors.push('evalOutput scenarios must include one expected-vs-actual entry per live scenario.');
+  } else {
+    for (const [index, scenario] of evalOutput.scenarios.entries()) {
+      if (!scenario || typeof scenario !== 'object' || Array.isArray(scenario)) {
+        errors.push(`evalOutput scenarios[${index}] must be an object.`);
+        continue;
+      }
+      requireString(scenario.id, `evalOutput scenarios[${index}].id`, errors);
+      if (!scenario.expected || typeof scenario.expected !== 'object' || Array.isArray(scenario.expected)) {
+        errors.push(`evalOutput scenarios[${index}].expected object is required.`);
+      } else {
+        if (scenario.expected.shouldPass !== true) errors.push(`evalOutput scenarios[${index}].expected.shouldPass must be true.`);
+        requireString(scenario.expected.requirement, `evalOutput scenarios[${index}].expected.requirement`, errors);
+      }
+      if (!scenario.actual || typeof scenario.actual !== 'object' || Array.isArray(scenario.actual)) {
+        errors.push(`evalOutput scenarios[${index}].actual object is required.`);
+      } else {
+        if (typeof scenario.actual.observedPass !== 'boolean') errors.push(`evalOutput scenarios[${index}].actual.observedPass must be boolean.`);
+        if (!scenario.actual.scores || typeof scenario.actual.scores !== 'object' || Array.isArray(scenario.actual.scores)) {
+          errors.push(`evalOutput scenarios[${index}].actual.scores object is required.`);
+        }
+        if (!Array.isArray(scenario.actual.issues)) errors.push(`evalOutput scenarios[${index}].actual.issues must be an array.`);
+        if (!Array.isArray(scenario.actual.regressions)) errors.push(`evalOutput scenarios[${index}].actual.regressions must be an array.`);
+      }
+    }
+  }
   if (evalOutput.manifestSha256 && evalOutput.manifestSha256 !== manifestHash()) {
     errors.push('evalOutput manifestSha256 must match the current manifest file.');
   }
@@ -320,6 +361,7 @@ function validateBenchmarkEvidence(path, manifest, errors) {
   const manifestPath = normalizeRelativePath(absoluteManifestPath);
   const requiredReferences = [
     manifest.date,
+    markdownTableCell(manifest.prompt),
     manifest.sessionId,
     manifest.researchRunId,
     manifest.reportingRunId,
@@ -363,6 +405,48 @@ function validateBenchmarkEvidence(path, manifest, errors) {
   if (!matchingRow.cells[6].includes(manifest.cost?.measurementMethod ?? '')) {
     errors.push('benchmarkDoc cost cell must include manifest cost.measurementMethod.');
   }
+}
+
+function validateProvenance(provenance, manifest, errors) {
+  if (provenance === undefined) return;
+  if (!provenance || typeof provenance !== 'object' || Array.isArray(provenance)) {
+    errors.push('provenance must be an object when present.');
+    return;
+  }
+  if (provenance.source !== 'supabase_export') errors.push('provenance.source must be supabase_export.');
+  if (provenance.exporter !== 'scripts/demo-export.ts') errors.push('provenance.exporter must be scripts/demo-export.ts.');
+  requireString(provenance.exportedAt, 'provenance.exportedAt', errors);
+  if (!provenance.artifactHashes || typeof provenance.artifactHashes !== 'object' || Array.isArray(provenance.artifactHashes)) {
+    errors.push('provenance.artifactHashes object is required when provenance is present.');
+    return;
+  }
+  const requiredArtifacts = new Set([
+    manifest.reportExport,
+    manifest.evalOutput,
+    manifest.runExport,
+    ...(Array.isArray(manifest.screenshotsOrVideo) ? manifest.screenshotsOrVideo : []),
+  ].filter((artifact) => typeof artifact === 'string' && artifact.length > 0));
+  const hashedArtifacts = new Set(Object.keys(provenance.artifactHashes));
+  for (const artifactPath of requiredArtifacts) {
+    if (!hashedArtifacts.has(artifactPath)) errors.push(`provenance.artifactHashes must include ${artifactPath}.`);
+  }
+  for (const artifactPath of hashedArtifacts) {
+    if (!requiredArtifacts.has(artifactPath)) errors.push(`provenance.artifactHashes must not include unreferenced artifact ${artifactPath}.`);
+  }
+  for (const [artifactPath, expectedHash] of Object.entries(provenance.artifactHashes)) {
+    if (!/^[a-f0-9]{64}$/i.test(String(expectedHash))) {
+      errors.push(`provenance artifact hash for ${artifactPath} must be a SHA-256 hex digest.`);
+      continue;
+    }
+    const realPath = requireLocalArtifact(artifactPath, 'provenance artifact', errors);
+    if (!realPath) continue;
+    const actualHash = createHash('sha256').update(readFileSync(realPath)).digest('hex');
+    if (actualHash !== expectedHash) errors.push(`provenance artifact hash mismatch for ${artifactPath}.`);
+  }
+}
+
+function markdownTableCell(value) {
+  return String(value ?? '').replace(/\r?\n/g, '<br>').replace(/\|/g, '&#124;').trim();
 }
 
 function isValidIsoDate(value) {

@@ -40,6 +40,7 @@ Current unit coverage includes:
 - Exa provider behavior with mocked missing-key, success mapping, canonical duplicate filtering, provider error wrapping, and timeout coverage
 - Pipeline HITL/cost behavior, including budget metadata, over-budget warnings, and critical-gap budget gates
 - Credential-free orchestration replay for worker -> research -> approval -> reporting -> fenced report publication
+- Provenance-bound live proof artifact construction and Supabase/manifest consistency checks
 - Persisted eval history with public-safe column projection and summary sanitization
 - Rate-limit window, reset, and per-key isolation behavior
 - Production boundary checks that keep hosted run requests enqueue-only and prevent pipeline report readiness from bypassing transactional publication
@@ -95,9 +96,10 @@ npm run evals:persist
 
 ## Configured Live Proof
 
-`npm run verify` proves the local deterministic and build gates; it does not prove a configured live demo. Live proof requires real provider/Supabase credentials, `docs/demo/live-demo.json`, local report/eval/media artifacts, a benchmark row, and session-level evidence for the research run, approval, reporting run, per-stage costs, aggregate usage, model calls, token count, and Exa search count. The live proof gate is:
+`npm run verify` proves the local deterministic and build gates; it does not prove a configured live demo. Live proof requires real provider/Supabase credentials, a Supabase-exported `docs/demo/live-demo.json`, local report/eval/media artifacts with exhaustive SHA-256 provenance, a benchmark row, and session-level evidence for the research run, approval, reporting run, final review audit, per-stage costs, aggregate usage, model calls, token count, and Exa search count. The live proof gate is:
 
 ```bash
+npm run demo:export -- --reporting-run-id <id> --media docs/demo/artifacts/session-detail.png
 npm run demo:record
 npm run evals:live
 ```

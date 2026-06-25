@@ -43,7 +43,7 @@
     {
       "id": "approval_queues_distinct_reporting_run",
       "passed": true,
-      "details": "Approval should queue a distinct reporting run."
+      "details": "Approval should queue a distinct reporting run with approval and source research lineage."
     },
     {
       "id": "reporting_worker_processed",

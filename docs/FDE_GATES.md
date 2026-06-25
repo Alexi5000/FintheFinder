@@ -13,7 +13,7 @@ Fin is production-ready only when each public claim is implemented, tested, demo
 | Four-axis grader | Implemented offline seed | `src/server/evals/offline-eval.ts`, `docs/benchmark/offline-eval-summary.json` | `npm run evals` |
 | Plateau scorer | Implemented pure module | `src/server/research/plateau-scorer.ts` | `npm run test` |
 | Notebook authoring surface | Implemented as non-runtime artifact | `notebooks/` | `npm run notebooks:check` |
-| Containerization | Implemented | Non-root `Dockerfile`, web healthcheck, compose restart/healthcheck policy, and worker command | `npm run container:build`, `npx vitest run tests/unit/container-config.test.ts` |
+| Containerization | Implemented | Non-root `Dockerfile`, web healthcheck, compose restart/healthcheck policy, worker command, and worker config/Supabase healthcheck that does not claim queue work | `npm run container:build`, `npx vitest run tests/unit/container-config.test.ts` |
 | FDE narrative README/About | Implemented | `README.md`, `docs/ABOUT.md`, `/about` with dynamic package version, offline-gated proof tier, pending configured-live proof state, and narrow-desktop overflow coverage | `npm run build`, Playwright |
 | Honest benchmark doc | Implemented | `docs/BENCHMARK.md`, 10-scenario `docs/benchmark/offline-eval-summary.json` | `npm run benchmark:check` |
 | Recorded live demo proof | Pending configured credentials | `docs/demo/live-demo.example.json`, `scripts/demo-record.mjs`, demo verifier tests | `npm run demo:record` and `npm run evals:live` after live run |

@@ -49,7 +49,7 @@ export type WorkerDependencies = {
   getProviderStatus: () => ProviderStatus;
   getSessionById: (sessionId: string) => Promise<ResearchSession>;
   hasSupabaseConfig: () => boolean;
-  heartbeatResearchRun: (runId: string, workerId: string, leaseMs: number) => Promise<ResearchRun | null>;
+  heartbeatResearchRun: (runId: string, workerId: string, leaseMs: number, attemptId?: string | null) => Promise<ResearchRun | null>;
   initTelemetry: () => void;
   logger: {
     error: WorkerLogMethod;
@@ -65,7 +65,7 @@ export type WorkerDependencies = {
   updateRunStatus: (
     runId: string,
     status: RunStatus,
-    updates?: { error?: string | null; startedAt?: string | null; completedAt?: string | null; workerId?: string },
+    updates?: { error?: string | null; startedAt?: string | null; completedAt?: string | null; workerId?: string; attemptId?: string | null },
   ) => Promise<ResearchRun>;
   updateSessionState: (sessionId: string, status: ResearchStatus, phase: ResearchPhase) => Promise<unknown>;
   withSpan: <T>(name: string, attributes: Record<string, string | number | boolean>, callback: () => Promise<T>) => Promise<T>;
@@ -176,7 +176,8 @@ async function processClaimedRun(
   const leaseState: LeaseState = { lost: false };
 
   try {
-    await dependencies.updateRunStatus(run.id, 'running', { workerId: config.workerId });
+    const attemptId = attemptIdForRun(run);
+    await dependencies.updateRunStatus(run.id, 'running', { workerId: config.workerId, attemptId });
     await dependencies.addEvent(
       session.id,
       session.phase,
@@ -187,7 +188,7 @@ async function processClaimedRun(
 
     heartbeat = dependencies.setInterval(() => {
       void dependencies
-        .heartbeatResearchRun(run.id, config.workerId, config.leaseMs)
+        .heartbeatResearchRun(run.id, config.workerId, config.leaseMs, attemptId)
         .then((extended) => {
           if (extended) return;
           markLeaseLost(run, config, leaseState, dependencies);
@@ -206,7 +207,7 @@ async function processClaimedRun(
     const pipelineOptions = {
       run,
       correlationId,
-      attemptId: attemptIdForRun(run),
+      attemptId,
       assertLease: (context: PipelinePersistenceContext) => assertPipelineLease(run, context, config, leaseState, dependencies),
     };
     const result =
@@ -217,9 +218,9 @@ async function processClaimedRun(
     if (!(await proveLeaseOwnership(run, config, leaseState, dependencies))) return false;
 
     if (result.status === 'awaiting_approval') {
-      await dependencies.updateRunStatus(run.id, 'awaiting_approval', { workerId: config.workerId });
+      await dependencies.updateRunStatus(run.id, 'awaiting_approval', { workerId: config.workerId, attemptId });
     } else {
-      await dependencies.updateRunStatus(run.id, 'completed', { workerId: config.workerId });
+      await dependencies.updateRunStatus(run.id, 'completed', { workerId: config.workerId, attemptId });
     }
     await saveRunSummaryMemorySafely(session, run, dependencies, {
       runId: run.id,
@@ -244,7 +245,7 @@ async function processClaimedRun(
 
     if (!(await proveLeaseOwnership(run, config, leaseState, dependencies))) return false;
 
-    await dependencies.updateRunStatus(run.id, 'failed', { error: persistedMessage, workerId: config.workerId });
+    await dependencies.updateRunStatus(run.id, 'failed', { error: persistedMessage, workerId: config.workerId, attemptId: attemptIdForRun(run) });
     await dependencies.updateSessionState(session.id, 'failed', 'failed');
     await dependencies.addEvent(
       session.id,
@@ -281,6 +282,7 @@ function stageForRun(run: ResearchRun) {
 }
 
 function attemptIdForRun(run: ResearchRun) {
+  if (run.currentAttemptId) return run.currentAttemptId;
   return typeof run.metadata.attemptId === 'string' ? run.metadata.attemptId : undefined;
 }
 
@@ -297,7 +299,7 @@ function markLeaseLost(run: ResearchRun, config: WorkerConfig, leaseState: Lease
 async function proveLeaseOwnership(run: ResearchRun, config: WorkerConfig, leaseState: LeaseState, dependencies: WorkerDependencies) {
   if (leaseState.lost) return false;
   try {
-    const extended = await dependencies.heartbeatResearchRun(run.id, config.workerId, config.leaseMs);
+    const extended = await dependencies.heartbeatResearchRun(run.id, config.workerId, config.leaseMs, attemptIdForRun(run));
     if (extended) return true;
     markLeaseLost(run, config, leaseState, dependencies);
     return false;

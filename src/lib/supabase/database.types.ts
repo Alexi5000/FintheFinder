@@ -131,6 +131,7 @@ type ResearchRunsRow = {
   session_id: string;
   status: DbRunStatus;
   attempt: number;
+  current_attempt_id: string | null;
   metadata: Json;
   worker_id: string | null;
   lease_expires_at: string | null;
@@ -139,6 +140,21 @@ type ResearchRunsRow = {
   error: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type ResearchRunAttemptsRow = {
+  id: string;
+  run_id: string;
+  session_id: string;
+  attempt: number;
+  worker_id: string;
+  status: DbRunStatus;
+  lease_expires_at: string | null;
+  heartbeat_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  error: string | null;
+  created_at: string;
 };
 
 type ResearchJobLeasesRow = {
@@ -266,7 +282,8 @@ export type Database = {
       research_reports: TableDefinition<ResearchReportsRow, Optional<ResearchReportsRow, 'created_at'>, Partial<ResearchReportsRow>>;
       research_events: TableDefinition<ResearchEventsRow, Optional<ResearchEventsRow, 'run_id' | 'attempt_id' | 'event_type' | 'severity' | 'actor' | 'step_id' | 'duration_ms' | 'trace_id' | 'correlation_id' | 'metadata' | 'created_at'>, Partial<ResearchEventsRow>>;
       research_approvals: TableDefinition<ResearchApprovalsRow, Optional<ResearchApprovalsRow, 'notes' | 'approved_source_ids' | 'waived_gap_ids' | 'created_at'>, Partial<ResearchApprovalsRow>>;
-      research_runs: TableDefinition<ResearchRunsRow, Optional<ResearchRunsRow, 'attempt' | 'metadata' | 'worker_id' | 'lease_expires_at' | 'started_at' | 'completed_at' | 'error' | 'created_at' | 'updated_at'>, Partial<ResearchRunsRow>>;
+      research_runs: TableDefinition<ResearchRunsRow, Optional<ResearchRunsRow, 'attempt' | 'current_attempt_id' | 'metadata' | 'worker_id' | 'lease_expires_at' | 'started_at' | 'completed_at' | 'error' | 'created_at' | 'updated_at'>, Partial<ResearchRunsRow>>;
+      research_run_attempts: TableDefinition<ResearchRunAttemptsRow, Optional<ResearchRunAttemptsRow, 'lease_expires_at' | 'heartbeat_at' | 'started_at' | 'completed_at' | 'error' | 'created_at'>, Partial<ResearchRunAttemptsRow>>;
       research_job_leases: TableDefinition<ResearchJobLeasesRow, Optional<ResearchJobLeasesRow, 'heartbeat_at' | 'created_at'>, Partial<ResearchJobLeasesRow>>;
       research_claims: TableDefinition<ResearchClaimsRow, Optional<ResearchClaimsRow, 'source_ids' | 'evidence_ids' | 'created_at'>, Partial<ResearchClaimsRow>>;
       claim_evidence: TableDefinition<ClaimEvidenceRow, Optional<ClaimEvidenceRow, 'created_at'>, Partial<ClaimEvidenceRow>>;
@@ -286,7 +303,19 @@ export type Database = {
         Returns: ResearchRunsRow;
       };
       extend_research_run_lease: {
-        Args: { p_run_id: string; p_worker_id: string; p_lease_ms: number };
+        Args: { p_run_id: string; p_attempt_id: string; p_worker_id: string; p_lease_ms: number };
+        Returns: ResearchRunsRow;
+      };
+      transition_research_run: {
+        Args: {
+          p_run_id: string;
+          p_attempt_id: string;
+          p_worker_id: string;
+          p_status: DbRunStatus;
+          p_error?: string | null;
+          p_started_at?: string | null;
+          p_completed_at?: string | null;
+        };
         Returns: ResearchRunsRow;
       };
       ensure_research_approval_owner: {
@@ -348,6 +377,7 @@ export const databaseTableNames = [
   'research_events',
   'research_approvals',
   'research_runs',
+  'research_run_attempts',
   'research_job_leases',
   'research_claims',
   'claim_evidence',
@@ -364,6 +394,7 @@ export const databaseTableNames = [
 export const databaseFunctionNames = [
   'claim_next_research_run',
   'extend_research_run_lease',
+  'transition_research_run',
   'ensure_research_approval_owner',
   'ensure_run_child_session_integrity',
   'ensure_claim_evidence_session_integrity',

@@ -31,7 +31,7 @@ SUPABASE_SERVICE_ROLE_KEY=""
 
 ## Supabase
 
-Apply all SQL files in `supabase/migrations/` in filename order to the project database. Later migrations add the worker queue, claims, cost/memory surfaces, approval hardening, and eval-history transaction function.
+Apply all SQL files in `supabase/migrations/` in filename order to the project database. Later migrations add the worker queue, durable run attempts, claims, cost/memory surfaces, approval hardening, and eval-history transaction function.
 
 The app expects Supabase Auth bearer tokens on API requests:
 

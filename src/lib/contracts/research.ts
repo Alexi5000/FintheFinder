@@ -114,6 +114,7 @@ export const researchRunSchema = z.object({
   sessionId: z.string(),
   status: runStatusSchema,
   attempt: z.number().int().positive(),
+  currentAttemptId: z.string().nullable().optional(),
   metadata: z.record(z.string(), z.unknown()).default({}),
   workerId: z.string().nullable().optional(),
   leaseExpiresAt: z.string().nullable().optional(),

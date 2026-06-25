@@ -31,6 +31,7 @@ const migrations = [
   '008_approval_api_write_hardening.sql',
   '009_cross_session_integrity.sql',
   '010_expired_lease_heartbeat_guard.sql',
+  '011_durable_run_attempt_fencing.sql',
 ];
 
 function readMigration(name: string) {
@@ -173,6 +174,7 @@ describe('database migrations', () => {
         session_id: 'uuid',
         status: 'text',
         attempt: 'integer',
+        current_attempt_id: 'uuid',
         metadata: 'jsonb',
         worker_id: 'text',
         lease_expires_at: 'timestamptz',
@@ -181,6 +183,20 @@ describe('database migrations', () => {
         error: 'text',
         created_at: 'timestamptz',
         updated_at: 'timestamptz',
+      },
+      research_run_attempts: {
+        id: 'uuid',
+        run_id: 'uuid',
+        session_id: 'uuid',
+        attempt: 'integer',
+        worker_id: 'text',
+        status: 'text',
+        lease_expires_at: 'timestamptz',
+        heartbeat_at: 'timestamptz',
+        started_at: 'timestamptz',
+        completed_at: 'timestamptz',
+        error: 'text',
+        created_at: 'timestamptz',
       },
       research_job_leases: {
         id: 'uuid',
@@ -378,6 +394,7 @@ describe('database migrations', () => {
       { table: 'research_events', column: 'actor', values: enumValues(eventActorSchema) },
       { table: 'research_approvals', column: 'action', values: enumValues(approvalActionSchema) },
       { table: 'research_runs', column: 'status', values: enumValues(runStatusSchema) },
+      { table: 'research_run_attempts', column: 'status', values: enumValues(runStatusSchema) },
       { table: 'research_claims', column: 'status', values: enumValues(claimStatusSchema) },
       { table: 'research_claims', column: 'severity', values: enumValues(claimSeveritySchema) },
       { table: 'claim_gaps', column: 'severity', values: enumValues(claimSeveritySchema) },
@@ -405,6 +422,7 @@ describe('database migrations', () => {
       'research_events',
       'research_approvals',
       'research_runs',
+      'research_run_attempts',
       'research_job_leases',
       'research_claims',
       'claim_evidence',
@@ -431,7 +449,8 @@ describe('database migrations', () => {
 
     for (const signature of [
       'public.claim_next_research_run(text, integer)',
-      'public.extend_research_run_lease(uuid, text, integer)',
+      'public.extend_research_run_lease(uuid, uuid, text, integer)',
+      'public.transition_research_run(uuid, uuid, text, text, text, timestamptz, timestamptz)',
       'public.record_eval_run(uuid, text, text, jsonb, jsonb, timestamptz)',
     ]) {
       expect(sql).toMatch(new RegExp(`revoke (all|execute) on function ${escapeRegex(signature)} from public, anon, authenticated`, 'i'));
@@ -453,6 +472,27 @@ describe('database migrations', () => {
     expect(migration).toContain('on conflict (run_id) do update');
     expect(migration).toContain('revoke execute on function public.extend_research_run_lease(uuid, text, integer) from public, anon, authenticated');
     expect(migration).toContain('grant execute on function public.extend_research_run_lease(uuid, text, integer) to service_role');
+  });
+
+  it('adds durable run attempts and attempt-fenced worker RPCs', () => {
+    const migration = readMigration('011_durable_run_attempt_fencing.sql');
+
+    expect(migration).toContain('add column if not exists current_attempt_id uuid');
+    expect(migration).toContain('create table if not exists public.research_run_attempts');
+    expect(migration).toContain('unique(run_id, attempt)');
+    expect(migration).toContain('research_run_attempts_one_active_per_run_idx');
+    expect(migration).toContain("where status in ('leased','running')");
+    expect(migration).toMatch(/foreign key \(run_id, session_id\)[\s\S]*references public\.research_runs\(id, session_id\) on delete cascade/i);
+    expect(migration).toMatch(/foreign key \(current_attempt_id\)[\s\S]*references public\.research_run_attempts\(id\) on delete set null/i);
+    expect(migration).toContain('create policy "Users can read own run attempts"');
+    expect(migration).toContain('current_attempt_id = attempt_id');
+    expect(migration).toContain('drop function if exists public.extend_research_run_lease(uuid, text, integer)');
+    expect(migration).toContain('create or replace function public.extend_research_run_lease(p_run_id uuid, p_attempt_id uuid, p_worker_id text, p_lease_ms integer)');
+    expect(migration).toMatch(/r\.current_attempt_id = p_attempt_id[\s\S]*a\.id = p_attempt_id[\s\S]*a\.lease_expires_at > now\(\)/i);
+    expect(migration).toContain('create or replace function public.transition_research_run');
+    expect(migration).toMatch(/r\.current_attempt_id = p_attempt_id[\s\S]*r\.worker_id = p_worker_id[\s\S]*r\.lease_expires_at > now\(\)/i);
+    expect(migration).toContain('revoke execute on function public.transition_research_run(uuid, uuid, text, text, text, timestamptz, timestamptz) from public, anon, authenticated');
+    expect(migration).toContain('grant execute on function public.transition_research_run(uuid, uuid, text, text, text, timestamptz, timestamptz) to service_role');
   });
 });
 

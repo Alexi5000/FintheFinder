@@ -1852,6 +1852,16 @@
           "exclusiveMinimum": 0,
           "maximum": 9007199254740991
         },
+        "currentAttemptId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "metadata": {
           "default": {},
           "type": "object",
@@ -2272,6 +2282,16 @@
                   "type": "integer",
                   "exclusiveMinimum": 0,
                   "maximum": 9007199254740991
+                },
+                "currentAttemptId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "metadata": {
                   "default": {},

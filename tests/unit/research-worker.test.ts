@@ -16,6 +16,7 @@ const run: ResearchRun = {
   sessionId: 'session_1',
   status: 'leased',
   attempt: 1,
+  currentAttemptId: 'attempt_1',
   metadata: { stage: 'research' },
   workerId: 'worker_test',
   leaseExpiresAt: null,
@@ -155,7 +156,7 @@ describe('research worker runtime', () => {
     await expect(processNextRun(baseConfig, dependencies)).resolves.toBe(true);
 
     expect(dependencies.claimNextQueuedRun).toHaveBeenCalledWith('worker_test', 60000);
-    expect(dependencies.updateRunStatus).toHaveBeenNthCalledWith(1, 'run_1', 'running', { workerId: 'worker_test' });
+    expect(dependencies.updateRunStatus).toHaveBeenNthCalledWith(1, 'run_1', 'running', { workerId: 'worker_test', attemptId: 'attempt_1' });
     expect(dependencies.addEvent).toHaveBeenCalledWith(
       'session_1',
       'planning',
@@ -168,10 +169,10 @@ describe('research worker runtime', () => {
     expect(dependencies.runResearchSession).toHaveBeenCalledWith('session_1', 'Research AI agent evaluation systems', {
       run,
       correlationId: 'corr_run_1',
-      attemptId: undefined,
+      attemptId: 'attempt_1',
       assertLease: expect.any(Function),
     });
-    expect(dependencies.updateRunStatus).toHaveBeenLastCalledWith('run_1', 'awaiting_approval', { workerId: 'worker_test' });
+    expect(dependencies.updateRunStatus).toHaveBeenLastCalledWith('run_1', 'awaiting_approval', { workerId: 'worker_test', attemptId: 'attempt_1' });
     expect(dependencies.saveRunSummaryMemory).toHaveBeenCalledWith(
       'user_1',
       'session_1',
@@ -191,10 +192,10 @@ describe('research worker runtime', () => {
     expect(dependencies.runApprovedReportSession).toHaveBeenCalledWith('session_1', 'Research AI agent evaluation systems', {
       run: reportingRun,
       correlationId: 'corr_run_1',
-      attemptId: undefined,
+      attemptId: 'attempt_1',
       assertLease: expect.any(Function),
     });
-    expect(dependencies.updateRunStatus).toHaveBeenLastCalledWith('run_report', 'completed', { workerId: 'worker_test' });
+    expect(dependencies.updateRunStatus).toHaveBeenLastCalledWith('run_report', 'completed', { workerId: 'worker_test', attemptId: 'attempt_1' });
     expect(dependencies.saveRunSummaryMemory).toHaveBeenCalledWith(
       'user_1',
       'session_1',
@@ -204,7 +205,7 @@ describe('research worker runtime', () => {
   });
 
   it('passes durable attempt identifiers from run metadata into pipeline writes', async () => {
-    const attemptedRun = { ...run, metadata: { stage: 'research', attemptId: 'attempt_1' } };
+    const attemptedRun = { ...run, currentAttemptId: 'attempt_current', metadata: { stage: 'research', attemptId: 'attempt_metadata' } };
     dependencies.claimNextQueuedRun = vi.fn(async () => attemptedRun);
     const { processNextRun } = await import('@/worker/research-worker-runtime');
 
@@ -213,7 +214,7 @@ describe('research worker runtime', () => {
     expect(dependencies.runResearchSession).toHaveBeenCalledWith('session_1', 'Research AI agent evaluation systems', {
       run: attemptedRun,
       correlationId: 'corr_run_1',
-      attemptId: 'attempt_1',
+      attemptId: 'attempt_current',
       assertLease: expect.any(Function),
     });
   });
@@ -228,7 +229,7 @@ describe('research worker runtime', () => {
     expect(dependencies.runResearchSession).toHaveBeenCalledWith('session_1', 'Research AI agent evaluation systems', {
       run: unknownStageRun,
       correlationId: 'corr_run_1',
-      attemptId: undefined,
+      attemptId: 'attempt_1',
       assertLease: expect.any(Function),
     });
     expect(dependencies.runApprovedReportSession).not.toHaveBeenCalled();
@@ -258,7 +259,7 @@ describe('research worker runtime', () => {
     heartbeat();
     await flushPromises();
 
-    expect(dependencies.heartbeatResearchRun).toHaveBeenCalledWith('run_1', 'worker_test', 60000);
+    expect(dependencies.heartbeatResearchRun).toHaveBeenCalledWith('run_1', 'worker_test', 60000, 'attempt_1');
 
     resolvePipeline({ status: 'awaiting_approval' });
     await expect(pending).resolves.toBe(true);
@@ -286,7 +287,7 @@ describe('research worker runtime', () => {
 
     await expect(pending).resolves.toBe(false);
     expect(dependencies.updateRunStatus).toHaveBeenCalledTimes(1);
-    expect(dependencies.updateRunStatus).toHaveBeenCalledWith('run_1', 'running', { workerId: 'worker_test' });
+    expect(dependencies.updateRunStatus).toHaveBeenCalledWith('run_1', 'running', { workerId: 'worker_test', attemptId: 'attempt_1' });
     expect(dependencies.createPostMortem).not.toHaveBeenCalled();
     expect(dependencies.saveRunSummaryMemory).not.toHaveBeenCalled();
   });
@@ -301,7 +302,7 @@ describe('research worker runtime', () => {
     await expect(processNextRun(baseConfig, dependencies)).resolves.toBe(false);
 
     expect(dependencies.updateRunStatus).toHaveBeenCalledTimes(1);
-    expect(dependencies.updateRunStatus).toHaveBeenCalledWith('run_1', 'running', { workerId: 'worker_test' });
+    expect(dependencies.updateRunStatus).toHaveBeenCalledWith('run_1', 'running', { workerId: 'worker_test', attemptId: 'attempt_1' });
     expect(dependencies.updateSessionState).not.toHaveBeenCalled();
     expect(dependencies.addEvent).toHaveBeenCalledTimes(1);
     expect(dependencies.createPostMortem).not.toHaveBeenCalled();
@@ -316,7 +317,7 @@ describe('research worker runtime', () => {
 
     await expect(processNextRun(baseConfig, dependencies)).resolves.toBe(true);
 
-    expect(dependencies.updateRunStatus).toHaveBeenLastCalledWith('run_1', 'awaiting_approval', { workerId: 'worker_test' });
+    expect(dependencies.updateRunStatus).toHaveBeenLastCalledWith('run_1', 'awaiting_approval', { workerId: 'worker_test', attemptId: 'attempt_1' });
     expect(dependencies.updateRunStatus).not.toHaveBeenCalledWith('run_1', 'failed', expect.anything());
     expect(dependencies.logger.warn).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'user_1', sessionId: 'session_1', runId: 'run_1', errorType: 'Error' }),
@@ -333,7 +334,7 @@ describe('research worker runtime', () => {
     await expect(processNextRun(baseConfig, dependencies)).resolves.toBe(true);
 
     const persistedError = 'Research worker failed during pipeline execution. See redacted server logs with the run ID for details.';
-    expect(dependencies.updateRunStatus).toHaveBeenLastCalledWith('run_1', 'failed', { error: persistedError, workerId: 'worker_test' });
+    expect(dependencies.updateRunStatus).toHaveBeenLastCalledWith('run_1', 'failed', { error: persistedError, workerId: 'worker_test', attemptId: 'attempt_1' });
     expect(dependencies.updateSessionState).toHaveBeenCalledWith('session_1', 'failed', 'failed');
     expect(dependencies.addEvent).toHaveBeenCalledWith(
       'session_1',

@@ -202,10 +202,11 @@ export async function claimNextQueuedRun(workerId: string, leaseMs: number): Pro
   return data ? mapRunRow(data as Record<string, unknown>) : null;
 }
 
-export async function heartbeatResearchRun(runId: string, workerId: string, leaseMs: number): Promise<ResearchRun | null> {
+export async function heartbeatResearchRun(runId: string, workerId: string, leaseMs: number, attemptId?: string | null): Promise<ResearchRun | null> {
+  if (!attemptId) return null;
   const supabase = createSupabaseAdmin();
   const { data, error } = await supabase
-    .rpc('extend_research_run_lease', { p_run_id: runId, p_worker_id: workerId, p_lease_ms: leaseMs })
+    .rpc('extend_research_run_lease', { p_run_id: runId, p_attempt_id: attemptId, p_worker_id: workerId, p_lease_ms: leaseMs })
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data ? mapRunRow(data as Record<string, unknown>) : null;
@@ -214,9 +215,24 @@ export async function heartbeatResearchRun(runId: string, workerId: string, leas
 export async function updateRunStatus(
   runId: string,
   status: RunStatus,
-  updates: { error?: string | null; startedAt?: string | null; completedAt?: string | null; workerId?: string } = {},
+  updates: { error?: string | null; startedAt?: string | null; completedAt?: string | null; workerId?: string; attemptId?: string | null } = {},
 ): Promise<ResearchRun> {
   const supabase = createSupabaseAdmin();
+  if (updates.workerId && updates.attemptId) {
+    const { data, error } = await supabase
+      .rpc('transition_research_run', {
+        p_run_id: runId,
+        p_attempt_id: updates.attemptId,
+        p_worker_id: updates.workerId,
+        p_status: status,
+        p_error: updates.error ?? null,
+        p_started_at: updates.startedAt ?? null,
+        p_completed_at: updates.completedAt ?? null,
+      })
+      .single();
+    return mapRunRow(requireRow(data as Record<string, unknown> | null, error));
+  }
+
   const patch: DbUpdate<'research_runs'> = {
     status,
     updated_at: nowIso(),
@@ -810,12 +826,15 @@ function mapSessionRow(row: Record<string, string>): ResearchSession {
 }
 
 function mapRunRow(row: Record<string, unknown>): ResearchRun {
+  const metadata = recordFromJson(row.metadata);
+  const currentAttemptId = row.current_attempt_id ? String(row.current_attempt_id) : typeof metadata.attemptId === 'string' ? metadata.attemptId : null;
   return {
     id: String(row.id),
     sessionId: String(row.session_id),
     status: row.status as RunStatus,
     attempt: Number(row.attempt ?? 1),
-    metadata: (row.metadata as Record<string, unknown> | null) ?? {},
+    currentAttemptId,
+    metadata,
     workerId: row.worker_id ? String(row.worker_id) : null,
     leaseExpiresAt: row.lease_expires_at ? String(row.lease_expires_at) : null,
     startedAt: row.started_at ? String(row.started_at) : null,

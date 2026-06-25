@@ -52,6 +52,7 @@ Supabase stores:
 - `research_events`
 - `research_approvals`
 - `research_runs`
+- `research_run_attempts`
 - `research_job_leases`
 - `research_claims`
 - `claim_evidence`

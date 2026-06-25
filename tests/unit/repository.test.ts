@@ -2,8 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const supabaseHarness = vi.hoisted(() => {
   const calls: Array<{ table: string; op: string; payload?: unknown }> = [];
+  const rpcCalls: Array<{ functionName: string; args: unknown }> = [];
   const maybeSingleResponses: Array<{ data: unknown; error: null | { message: string } }> = [];
   const singleResponses: Array<{ data: unknown; error: null | { message: string } }> = [];
+  const rpcMaybeSingleResponses: Array<{ data: unknown; error: null | { message: string } }> = [];
+  const rpcSingleResponses: Array<{ data: unknown; error: null | { message: string } }> = [];
   const rowsResponses: Array<{ data: unknown[]; error: null | { message: string } }> = [];
 
   function createBuilder(table: string) {
@@ -13,6 +16,7 @@ const supabaseHarness = vi.hoisted(() => {
       eq: vi.fn(() => builder),
       is: vi.fn(() => builder),
       in: vi.fn(() => builder),
+      limit: vi.fn(() => builder),
       order: vi.fn(() => builder),
       maybeSingle: vi.fn(async () => maybeSingleResponses.shift() ?? { data: null, error: null }),
       single: vi.fn(async () => singleResponses.shift() ?? { data: null, error: null }),
@@ -36,11 +40,22 @@ const supabaseHarness = vi.hoisted(() => {
 
   return {
     calls,
+    rpcCalls,
     maybeSingleResponses,
+    rpcMaybeSingleResponses,
+    rpcSingleResponses,
     singleResponses,
     rowsResponses,
     supabase: {
       from: vi.fn((table: string) => createBuilder(table)),
+      rpc: vi.fn((functionName: string, args: unknown) => {
+        rpcCalls.push({ functionName, args });
+        const rpcBuilder = {
+          maybeSingle: vi.fn(async () => rpcMaybeSingleResponses.shift() ?? { data: null, error: null }),
+          single: vi.fn(async () => rpcSingleResponses.shift() ?? { data: null, error: null }),
+        };
+        return rpcBuilder;
+      }),
     },
   };
 });
@@ -52,7 +67,10 @@ vi.mock('@/server/supabase/server', () => ({
 describe('research repository persistence helpers', () => {
   beforeEach(() => {
     supabaseHarness.calls.length = 0;
+    supabaseHarness.rpcCalls.length = 0;
     supabaseHarness.maybeSingleResponses.length = 0;
+    supabaseHarness.rpcMaybeSingleResponses.length = 0;
+    supabaseHarness.rpcSingleResponses.length = 0;
     supabaseHarness.singleResponses.length = 0;
     supabaseHarness.rowsResponses.length = 0;
     vi.clearAllMocks();
@@ -92,6 +110,123 @@ describe('research repository persistence helpers', () => {
         payload: expect.objectContaining({ run_id: 'run_1', session_id: 'session_1' }),
       }),
     );
+  });
+
+  it('claims queued runs through the durable attempt RPC and maps the current attempt token', async () => {
+    supabaseHarness.rpcMaybeSingleResponses.push({
+      data: {
+        id: 'run_1',
+        session_id: 'session_1',
+        status: 'leased',
+        attempt: 2,
+        current_attempt_id: 'attempt_2',
+        metadata: { stage: 'research' },
+        worker_id: 'worker_1',
+        lease_expires_at: '2026-06-24T00:10:00.000Z',
+        started_at: '2026-06-24T00:00:00.000Z',
+        completed_at: null,
+        error: null,
+        created_at: '2026-06-24T00:00:00.000Z',
+        updated_at: '2026-06-24T00:00:01.000Z',
+      },
+      error: null,
+    });
+
+    const { claimNextQueuedRun } = await import('@/server/research/repository');
+    const claimed = await claimNextQueuedRun('worker_1', 60000);
+
+    expect(supabaseHarness.rpcCalls).toEqual([
+      { functionName: 'claim_next_research_run', args: { p_worker_id: 'worker_1', p_lease_ms: 60000 } },
+    ]);
+    expect(claimed).toEqual(
+      expect.objectContaining({
+        id: 'run_1',
+        attempt: 2,
+        currentAttemptId: 'attempt_2',
+        workerId: 'worker_1',
+      }),
+    );
+  });
+
+  it('extends leases only with a durable attempt token', async () => {
+    const { heartbeatResearchRun } = await import('@/server/research/repository');
+
+    await expect(heartbeatResearchRun('run_1', 'worker_1', 60000, null)).resolves.toBeNull();
+    expect(supabaseHarness.rpcCalls).toEqual([]);
+
+    supabaseHarness.rpcMaybeSingleResponses.push({
+      data: {
+        id: 'run_1',
+        session_id: 'session_1',
+        status: 'running',
+        attempt: 1,
+        current_attempt_id: 'attempt_1',
+        metadata: { stage: 'research' },
+        worker_id: 'worker_1',
+        lease_expires_at: '2026-06-24T00:10:00.000Z',
+        started_at: '2026-06-24T00:00:00.000Z',
+        completed_at: null,
+        error: null,
+        created_at: '2026-06-24T00:00:00.000Z',
+        updated_at: '2026-06-24T00:00:01.000Z',
+      },
+      error: null,
+    });
+
+    const extended = await heartbeatResearchRun('run_1', 'worker_1', 60000, 'attempt_1');
+
+    expect(supabaseHarness.rpcCalls).toEqual([
+      {
+        functionName: 'extend_research_run_lease',
+        args: { p_run_id: 'run_1', p_attempt_id: 'attempt_1', p_worker_id: 'worker_1', p_lease_ms: 60000 },
+      },
+    ]);
+    expect(extended?.currentAttemptId).toBe('attempt_1');
+  });
+
+  it('transitions worker-owned runs through the attempt-fenced transition RPC', async () => {
+    supabaseHarness.rpcSingleResponses.push({
+      data: {
+        id: 'run_1',
+        session_id: 'session_1',
+        status: 'completed',
+        attempt: 1,
+        current_attempt_id: 'attempt_1',
+        metadata: { stage: 'reporting' },
+        worker_id: 'worker_1',
+        lease_expires_at: null,
+        started_at: '2026-06-24T00:00:00.000Z',
+        completed_at: '2026-06-24T00:05:00.000Z',
+        error: null,
+        created_at: '2026-06-24T00:00:00.000Z',
+        updated_at: '2026-06-24T00:05:00.000Z',
+      },
+      error: null,
+    });
+
+    const { updateRunStatus } = await import('@/server/research/repository');
+    const transitioned = await updateRunStatus('run_1', 'completed', {
+      workerId: 'worker_1',
+      attemptId: 'attempt_1',
+      completedAt: '2026-06-24T00:05:00.000Z',
+    });
+
+    expect(supabaseHarness.rpcCalls).toEqual([
+      {
+        functionName: 'transition_research_run',
+        args: {
+          p_run_id: 'run_1',
+          p_attempt_id: 'attempt_1',
+          p_worker_id: 'worker_1',
+          p_status: 'completed',
+          p_error: null,
+          p_started_at: null,
+          p_completed_at: '2026-06-24T00:05:00.000Z',
+        },
+      },
+    ]);
+    expect(supabaseHarness.calls).toEqual([]);
+    expect(transitioned.status).toBe('completed');
   });
 
   it('upserts explicit user-scoped research memory', async () => {

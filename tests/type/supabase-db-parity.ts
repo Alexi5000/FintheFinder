@@ -6,6 +6,7 @@ import type {
   EvalRunStatus,
   ResearchMemory,
   ResearchPhase,
+  ResearchRun,
   ResearchRunEvent,
   ResearchSession,
   ResearchSource,
@@ -30,6 +31,7 @@ type ExpectedTables =
   | 'research_events'
   | 'research_approvals'
   | 'research_runs'
+  | 'research_run_attempts'
   | 'research_job_leases'
   | 'research_claims'
   | 'claim_evidence'
@@ -45,6 +47,7 @@ type ExpectedTables =
 type ExpectedFunctions =
   | 'claim_next_research_run'
   | 'extend_research_run_lease'
+  | 'transition_research_run'
   | 'ensure_research_approval_owner'
   | 'ensure_run_child_session_integrity'
   | 'ensure_claim_evidence_session_integrity'
@@ -61,6 +64,7 @@ export type SupabaseDbParityAssertions = [
   Assert<Equal<DbRow<'research_sessions'>['status'], ResearchSession['status']>>,
   Assert<Equal<DbRow<'research_sessions'>['phase'], ResearchPhase>>,
   Assert<Equal<DbRow<'research_runs'>['status'], RunStatus>>,
+  Assert<Extends<DbRow<'research_runs'>['current_attempt_id'], ResearchRun['currentAttemptId']>>,
   Assert<Equal<DbRow<'research_sources'>['credibility'], ResearchSource['credibility']>>,
   Assert<Equal<DbRow<'source_evaluations'>['credibility'], SourceEvaluation['credibility']>>,
   Assert<Equal<Exclude<DbRow<'research_events'>['event_type'], null>, NonNullable<ResearchRunEvent['eventType']>>>,
@@ -76,9 +80,17 @@ export type SupabaseDbParityAssertions = [
   Assert<Equal<DbRow<'research_memories'>['scope'], ResearchMemory['scope']>>,
   Assert<Equal<DbRow<'research_memories'>['namespace'], ResearchMemory['namespace']>>,
   Assert<Equal<DbFunctionArgs<'claim_next_research_run'>, { p_worker_id: string; p_lease_ms: number }>>,
-  Assert<Equal<DbFunctionArgs<'extend_research_run_lease'>, { p_run_id: string; p_worker_id: string; p_lease_ms: number }>>,
+  Assert<Equal<DbFunctionArgs<'extend_research_run_lease'>, { p_run_id: string; p_attempt_id: string; p_worker_id: string; p_lease_ms: number }>>,
+  Assert<
+    Equal<
+      keyof DbFunctionArgs<'transition_research_run'>,
+      'p_run_id' | 'p_attempt_id' | 'p_worker_id' | 'p_status' | 'p_error' | 'p_started_at' | 'p_completed_at'
+    >
+  >,
+  Assert<Equal<DbFunctionArgs<'transition_research_run'>['p_status'], RunStatus>>,
   Assert<Equal<DbFunctionReturns<'claim_next_research_run'>, DbRow<'research_runs'>>>,
   Assert<Equal<DbFunctionReturns<'extend_research_run_lease'>, DbRow<'research_runs'>>>,
+  Assert<Equal<DbFunctionReturns<'transition_research_run'>, DbRow<'research_runs'>>>,
   Assert<Equal<DbFunctionReturns<'record_eval_run'>, DbRow<'eval_runs'>>>,
   Assert<
     Equal<
@@ -106,6 +118,7 @@ export const runInsert = {
   session_id: createSessionInsert.id,
   status: 'queued',
   attempt: 1,
+  current_attempt_id: null,
   metadata: { stage: 'research' },
   created_at: createSessionInsert.created_at,
   updated_at: createSessionInsert.updated_at,

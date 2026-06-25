@@ -219,4 +219,25 @@ describe('research schemas', () => {
       }),
     ).toThrow();
   });
+
+  it('rejects memory values that contain secret-like keys or tokens', () => {
+    expect(() =>
+      upsertResearchMemorySchema.parse({
+        scope: 'user',
+        namespace: 'preference',
+        key: 'provider-token',
+        value: { note: 'sk-test_1234567890abcdef1234567890' },
+      }),
+    ).toThrow(/secret-like content/);
+
+    expect(() =>
+      upsertResearchMemorySchema.parse({
+        scope: 'session',
+        sessionId: 'session_1',
+        namespace: 'procedure',
+        key: 'safe-procedure',
+        value: { api_key: 'do-not-store-this' },
+      }),
+    ).toThrow(/secret-like content/);
+  });
 });

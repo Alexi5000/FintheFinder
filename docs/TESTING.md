@@ -36,6 +36,7 @@ Current unit coverage includes:
 - Canonical URL normalization
 - Citation auditing
 - Logger and telemetry redaction for nested credentials, prompts, queries, secret-like error messages, sensitive span attributes, and sanitized exception status
+- Secret-like content scanning for memory values and notebook authoring artifacts
 - Exa provider behavior with mocked missing-key, success mapping, canonical duplicate filtering, provider error wrapping, and timeout coverage
 - Pipeline HITL/cost behavior, including budget metadata, over-budget warnings, and critical-gap budget gates
 - Credential-free orchestration replay for worker -> research -> approval -> reporting -> fenced report publication

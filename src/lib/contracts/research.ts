@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { formatSecretFindings, scanForSecretLikeContent } from '@/lib/secret-scan';
 
 export const researchStatusSchema = z.enum([
   'draft',
@@ -244,6 +245,7 @@ export const researchMemorySchema = z.object({
   if (memory.scope === 'session' && !memory.sessionId) {
     ctx.addIssue({ code: 'custom', path: ['sessionId'], message: 'Session-scoped memory requires a sessionId.' });
   }
+  addMemorySecretIssue(ctx, memory.key, memory.value);
 });
 
 export const upsertResearchMemorySchema = z.object({
@@ -259,7 +261,18 @@ export const upsertResearchMemorySchema = z.object({
   if (memory.scope === 'session' && !memory.sessionId) {
     ctx.addIssue({ code: 'custom', path: ['sessionId'], message: 'Session-scoped memory requires a sessionId.' });
   }
+  addMemorySecretIssue(ctx, memory.key, memory.value);
 });
+
+function addMemorySecretIssue(ctx: z.RefinementCtx, key: string, value: Record<string, unknown>) {
+  const findings = scanForSecretLikeContent({ [key]: value }, { rootPath: 'memory', maxJsonBytes: 8192, maxStringLength: 4096 });
+  if (findings.length === 0) return;
+  ctx.addIssue({
+    code: 'custom',
+    path: ['value'],
+    message: `Memory value contains disallowed secret-like content: ${formatSecretFindings(findings)}.`,
+  });
+}
 
 export const approvalActionSchema = z.enum(['approve', 'reject', 'follow_up']);
 

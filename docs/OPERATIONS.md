@@ -9,7 +9,7 @@ npm run verify
 npm run test:e2e
 ```
 
-CI mirrors the release gate with typecheck, lint, contract drift, notebook validation, coverage, offline evals, build, audit, smoke, Playwright, and Docker build jobs.
+CI mirrors the release gate with typecheck, lint, contract drift, notebook validation, coverage, offline evals, orchestration replay, build, audit, smoke, Playwright, and Docker build jobs.
 
 ## Audit Policy
 
@@ -79,7 +79,7 @@ Approval mutations must go through the hosted API routes. Direct authenticated S
 
 Service-role persistence must keep session-scoped graphs coherent. Cross-session constraints and trigger guards reject child rows whose `source_id`, `claim_id`, `run_id`, approval JSONB IDs, claim JSONB IDs, or memory `session_id` belongs to a different research session/user. Session ownership and parent `session_id` fields are intentionally immutable after insert.
 
-Scoped memory is explicit. The app writes user/session memories through `/api/research/memory`; worker summaries use the `run_summary` namespace and are best-effort after terminal run updates. Do not store raw prompts, secrets, or unredacted confidential source material in memory values.
+Scoped memory is explicit. The app writes user/session memories through `/api/research/memory`; worker summaries use the `run_summary` namespace and are best-effort after terminal run updates. Memory schemas reject obvious secret-like keys, token-shaped values, oversized JSON values, and long strings before repository writes. Do not store raw prompts, secrets, or unredacted confidential source material in memory values.
 
 ## Generated Files
 

@@ -635,6 +635,27 @@ describe('hosted research API routes', () => {
     expect(payload.error.code).toBe('validation_error');
     expect(routeHarness.upsertResearchMemory).not.toHaveBeenCalled();
   });
+
+  it('rejects memory writes that contain secret-like values', async () => {
+    const memoryRoute = await import('@/app/api/research/memory/route');
+
+    const response = await memoryRoute.POST(
+      new Request('http://localhost/api/research/memory', {
+        method: 'POST',
+        body: JSON.stringify({
+          scope: 'user',
+          namespace: 'preference',
+          key: 'source-policy',
+          value: { api_key: 'sk-test_1234567890abcdef1234567890' },
+        }),
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(422);
+    expect(payload.error.code).toBe('validation_error');
+    expect(routeHarness.upsertResearchMemory).not.toHaveBeenCalled();
+  });
 });
 
 function params(id: string) {

@@ -65,9 +65,9 @@ Cost and trace defaults:
 
 Pino redacts keys, tokens, prompts, and sensitive fields. Do not log raw model prompts, service-role keys, bearer tokens, or user-provided confidential research material.
 
-API errors preserve validation details but scrub unexpected server exception messages before returning them to clients. Keep raw repository/provider errors in server logs or traces only after redaction review.
+API errors preserve validation details but scrub unexpected server exception messages before returning them to clients. Keep raw repository/provider errors out of logs and traces unless a redaction review explicitly allows them.
 
-OpenTelemetry is initialized lazily for API spans and during worker boot. Run events persist trace IDs when an active span exists and always carry a correlation ID for worker-claimed runs. Post-mortems emit `post_mortem_created` events and are visible from run/session APIs.
+OpenTelemetry is initialized lazily for API spans and during worker boot. Run events persist trace IDs when an active span exists and always carry a correlation ID for worker-claimed runs. Sensitive span attribute keys are redacted, and exception status/recording uses sanitized error details rather than raw provider, prompt, token, or report text. Post-mortems emit `post_mortem_created` events and are visible from run/session APIs.
 
 Cost events include `budgetExceeded` and `budgetRemainingUsd`. A `budget_gate` warning means the run exceeded `RUN_BUDGET_USD` while critical claim gaps were still open, so the worker intentionally returned the session to `awaiting_approval` instead of publishing. Operators should inspect the cost row, open gap IDs, and approval history; the next step is human resolution, explicit waiver, or follow-up research rather than retrying the same reporting job.
 

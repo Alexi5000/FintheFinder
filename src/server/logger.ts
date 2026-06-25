@@ -78,7 +78,7 @@ export function redactLogValue(value: unknown, seen = new WeakSet<object>()): un
   );
 }
 
-function redactSecretText(value: string) {
+export function redactSecretText(value: string) {
   return value
     .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, `Bearer ${CENSOR}`)
     .replace(/\bsk-[A-Za-z0-9_-]{6,}\b/g, CENSOR)

@@ -34,7 +34,7 @@ Current unit coverage includes:
 - Hosted API route contracts for queueing runs, run status, SSE events, report export, claims, memory ownership, and transactional HITL approval-decision mapping
 - Canonical URL normalization
 - Citation auditing
-- Logger redaction for nested credentials, prompts, queries, and secret-like error messages
+- Logger and telemetry redaction for nested credentials, prompts, queries, secret-like error messages, sensitive span attributes, and sanitized exception status
 - Exa provider behavior with mocked missing-key, success mapping, canonical duplicate filtering, provider error wrapping, and timeout coverage
 - Pipeline HITL/cost behavior, including budget metadata, over-budget warnings, and critical-gap budget gates
 - Persisted eval history with public-safe column projection and summary sanitization

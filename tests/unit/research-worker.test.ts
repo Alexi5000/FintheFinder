@@ -204,6 +204,44 @@ describe('research worker runtime', () => {
     );
   });
 
+  it('does not re-complete reporting runs finalized by transactional report publication', async () => {
+    const reportingRun = { ...run, id: 'run_report_finalized', metadata: { stage: 'reporting' } };
+    dependencies.claimNextQueuedRun = vi.fn(async () => reportingRun);
+    dependencies.runApprovedReportSession = vi.fn(async () => ({ status: 'completed', runFinalized: true }));
+    const { processNextRun } = await import('@/worker/research-worker-runtime');
+
+    await expect(processNextRun(baseConfig, dependencies)).resolves.toBe(true);
+
+    expect(dependencies.updateRunStatus).toHaveBeenCalledTimes(1);
+    expect(dependencies.updateRunStatus).toHaveBeenCalledWith('run_report_finalized', 'running', { workerId: 'worker_test', attemptId: 'attempt_1' });
+    expect(dependencies.saveRunSummaryMemory).toHaveBeenCalledWith(
+      'user_1',
+      'session_1',
+      'run_report_finalized',
+      expect.objectContaining({ stage: 'reporting', status: 'completed', workerId: 'worker_test' }),
+    );
+  });
+
+  it('does not fail reporting runs returned to approval by transactional publication policy gates', async () => {
+    const reportingRun = { ...run, id: 'run_report_blocked', metadata: { stage: 'reporting' } };
+    dependencies.claimNextQueuedRun = vi.fn(async () => reportingRun);
+    dependencies.runApprovedReportSession = vi.fn(async () => ({ status: 'awaiting_approval', runFinalized: true }));
+    const { processNextRun } = await import('@/worker/research-worker-runtime');
+
+    await expect(processNextRun(baseConfig, dependencies)).resolves.toBe(true);
+
+    expect(dependencies.updateRunStatus).toHaveBeenCalledTimes(1);
+    expect(dependencies.updateRunStatus).toHaveBeenCalledWith('run_report_blocked', 'running', { workerId: 'worker_test', attemptId: 'attempt_1' });
+    expect(dependencies.updateSessionState).not.toHaveBeenCalledWith('session_1', 'failed', 'failed');
+    expect(dependencies.createPostMortem).not.toHaveBeenCalled();
+    expect(dependencies.saveRunSummaryMemory).toHaveBeenCalledWith(
+      'user_1',
+      'session_1',
+      'run_report_blocked',
+      expect.objectContaining({ stage: 'reporting', status: 'awaiting_approval', workerId: 'worker_test' }),
+    );
+  });
+
   it('passes durable attempt identifiers from run metadata into pipeline writes', async () => {
     const attemptedRun = { ...run, currentAttemptId: 'attempt_current', metadata: { stage: 'research', attemptId: 'attempt_metadata' } };
     dependencies.claimNextQueuedRun = vi.fn(async () => attemptedRun);

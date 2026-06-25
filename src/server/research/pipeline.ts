@@ -24,7 +24,7 @@ import { auditClaims, claimsFromLearnings, evidenceFromLearnings } from './claim
 import { estimateModelCall, estimateRunCost } from './cost-model';
 import { renderReportMarkdown } from './report-format';
 import { searchWeb } from './search-service';
-import { addEvent, getResearchArtifacts, replaceResearchArtifacts, saveReport, saveResearchAudit, saveRunCost, updateSessionState } from './repository';
+import { addEvent, getResearchArtifacts, publishReport, replaceResearchArtifacts, saveReport, saveResearchAudit, saveRunCost, updateSessionState } from './repository';
 
 const planSchema = z.object({
   queries: z.array(z.string().min(3)).min(2).max(6),
@@ -59,6 +59,7 @@ type PipelineOptions = {
 
 type PipelineStageResult = {
   status: 'awaiting_approval' | 'completed';
+  runFinalized?: boolean;
 };
 
 export type PipelinePersistenceContext = {
@@ -107,6 +108,11 @@ function persistenceFor(options: PipelineOptions) {
 function artifactReplacementFence(options: PipelineOptions) {
   if (!options.run?.id || !options.attemptId || !options.run.workerId) return undefined;
   return { runId: options.run.id, attemptId: options.attemptId, workerId: options.run.workerId };
+}
+
+function reportPublicationContext(options: PipelineOptions) {
+  if (!options.run?.id && !options.attemptId && !options.correlationId) return undefined;
+  return { runId: options.run?.id, attemptId: options.attemptId, workerId: options.run?.workerId ?? undefined, correlationId: options.correlationId };
 }
 
 export async function runResearchSession(sessionId: string, query: string, options: PipelineOptions = {}): Promise<PipelineStageResult> {
@@ -258,10 +264,10 @@ export async function runApprovedReportSession(sessionId: string, query: string,
   await persistence.mutate('update_session_state', 'reviewing', 'final_reviewer', () => updateSessionState(sessionId, 'running', 'reviewing'));
   const finalReviewResult = await reviewFinalReport(report);
   const finalReview = finalReviewResult.review;
-  await persistence.mutate('save_research_audit', 'reviewing', 'final_reviewer', () => saveResearchAudit(sessionId, 'final_review', { ok: finalReview.approved, issues: finalReview.issues }, options.run?.id));
   const reportingModelUsage = [reportResult.usage, citationAgentAuditResult.usage, finalReviewResult.usage];
 
   if (!finalReview.approved) {
+    await persistence.mutate('save_research_audit', 'reviewing', 'final_reviewer', () => saveResearchAudit(sessionId, 'final_review', { ok: false, issues: finalReview.issues }, options.run?.id));
     await recordRunCost(sessionId, options, 'reviewing', measurementMethodFor(reportingModelUsage), {
       exaSearches: 0,
       modelCalls: reportingModelUsage.map((usage) => usage.call),
@@ -275,10 +281,19 @@ export async function runApprovedReportSession(sessionId: string, query: string,
     exaSearches: 0,
     modelCalls: reportingModelUsage.map((usage) => usage.call),
   });
-  await persistence.mutate('save_report', 'complete', 'report_ready', () => saveReport(report));
-  await persistence.mutate('update_session_state', 'complete', 'report_ready', () => updateSessionState(sessionId, 'report_ready', 'complete'));
-  await persistence.event(sessionId, 'complete', 'Report is ready.', { reportId: report.id }, { eventType: 'report_ready', actor: 'worker', stepId: 'report_ready' });
-  return { status: 'completed' };
+  const publicationContext = reportPublicationContext(options);
+  const publicationFenced = Boolean(publicationContext?.runId && publicationContext.attemptId && publicationContext.workerId);
+  const publication = await persistence.mutate('publish_report', 'complete', 'report_ready', () =>
+    publishReport(sessionId, report, { ok: true, issues: finalReview.issues }, publicationContext),
+  );
+  if (!publication.ok) {
+    logger.warn(
+      { sessionId, runId: options.run?.id, openCriticalGapIds: publication.openCriticalGapIds },
+      'report publication returned to approval because critical gaps reopened',
+    );
+    return { status: 'awaiting_approval', runFinalized: publicationFenced };
+  }
+  return { status: 'completed', runFinalized: publicationFenced };
 }
 
 export async function runLegacySynchronousResearchSession(sessionId: string, query: string) {

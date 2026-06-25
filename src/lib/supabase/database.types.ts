@@ -335,6 +335,19 @@ export type Database = {
         };
         Returns: Json;
       };
+      publish_research_report_for_attempt: {
+        Args: {
+          p_session_id: string;
+          p_run_id: string;
+          p_attempt_id: string;
+          p_worker_id: string;
+          p_report: Json;
+          p_final_audit: Json;
+          p_trace_id?: string | null;
+          p_correlation_id?: string | null;
+        };
+        Returns: Json;
+      };
       ensure_research_approval_owner: {
         Args: Record<string, never>;
         Returns: unknown;
@@ -414,6 +427,7 @@ export const databaseFunctionNames = [
   'transition_research_run',
   'replace_research_artifacts',
   'record_research_approval_decision',
+  'publish_research_report_for_attempt',
   'ensure_research_approval_owner',
   'ensure_run_child_session_integrity',
   'ensure_claim_evidence_session_integrity',

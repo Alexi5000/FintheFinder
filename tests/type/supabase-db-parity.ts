@@ -14,7 +14,7 @@ import type {
   RunStatus,
   SourceEvaluation,
 } from '@/lib/schemas';
-import type { Database, DbFunctionArgs, DbFunctionReturns, DbInsert, DbRow } from '@/lib/supabase/database.types';
+import type { Database, DbFunctionArgs, DbFunctionReturns, DbInsert, DbRow, Json } from '@/lib/supabase/database.types';
 
 type Equal<Actual, Expected> = (<Value>() => Value extends Actual ? 1 : 2) extends <Value>() => Value extends Expected ? 1 : 2
   ? true
@@ -50,6 +50,7 @@ type ExpectedFunctions =
   | 'transition_research_run'
   | 'replace_research_artifacts'
   | 'record_research_approval_decision'
+  | 'publish_research_report_for_attempt'
   | 'ensure_research_approval_owner'
   | 'ensure_run_child_session_integrity'
   | 'ensure_claim_evidence_session_integrity'
@@ -110,10 +111,32 @@ export type SupabaseDbParityAssertions = [
     >
   >,
   Assert<Equal<DbFunctionArgs<'record_research_approval_decision'>['p_action'], ApprovalRequest['action']>>,
+  Assert<
+    Equal<
+      keyof DbFunctionArgs<'publish_research_report_for_attempt'>,
+      | 'p_session_id'
+      | 'p_run_id'
+      | 'p_attempt_id'
+      | 'p_worker_id'
+      | 'p_report'
+      | 'p_final_audit'
+      | 'p_trace_id'
+      | 'p_correlation_id'
+    >
+  >,
+  Assert<Equal<DbFunctionArgs<'publish_research_report_for_attempt'>['p_session_id'], string>>,
+  Assert<Equal<DbFunctionArgs<'publish_research_report_for_attempt'>['p_run_id'], string>>,
+  Assert<Equal<DbFunctionArgs<'publish_research_report_for_attempt'>['p_attempt_id'], string>>,
+  Assert<Equal<DbFunctionArgs<'publish_research_report_for_attempt'>['p_worker_id'], string>>,
+  Assert<Equal<DbFunctionArgs<'publish_research_report_for_attempt'>['p_report'], Json>>,
+  Assert<Equal<DbFunctionArgs<'publish_research_report_for_attempt'>['p_final_audit'], Json>>,
+  Assert<Equal<DbFunctionArgs<'publish_research_report_for_attempt'>['p_trace_id'], string | null | undefined>>,
+  Assert<Equal<DbFunctionArgs<'publish_research_report_for_attempt'>['p_correlation_id'], string | null | undefined>>,
   Assert<Equal<DbFunctionReturns<'claim_next_research_run'>, DbRow<'research_runs'>>>,
   Assert<Equal<DbFunctionReturns<'extend_research_run_lease'>, DbRow<'research_runs'>>>,
   Assert<Equal<DbFunctionReturns<'transition_research_run'>, DbRow<'research_runs'>>>,
   Assert<Equal<DbFunctionReturns<'replace_research_artifacts'>, void>>,
+  Assert<Equal<DbFunctionReturns<'publish_research_report_for_attempt'>, Json>>,
   Assert<Equal<DbFunctionReturns<'record_eval_run'>, DbRow<'eval_runs'>>>,
   Assert<
     Equal<

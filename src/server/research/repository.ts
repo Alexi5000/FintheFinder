@@ -55,6 +55,17 @@ type ResearchArtifactReplacementFence = {
   workerId: string;
 };
 
+type ReportPublicationContext = {
+  runId?: string;
+  attemptId?: string;
+  workerId?: string;
+  correlationId?: string;
+};
+
+export type ReportPublicationResult =
+  | { ok: true; idempotent: boolean }
+  | { ok: false; code: 'critical_gaps_unresolved'; status: 'awaiting_approval'; openCriticalGapIds: string[] };
+
 export type ApprovalDecisionErrorCode =
   | 'session_not_found'
   | 'approval_not_available'
@@ -590,6 +601,71 @@ export async function saveResearchAudit(sessionId: string, auditType: string, au
     created_at: nowIso(),
   });
   if (error) throw new Error(error.message);
+}
+
+export async function publishReport(
+  sessionId: string,
+  report: ResearchReport,
+  finalAudit: { ok: boolean; issues?: unknown[] },
+  context?: ReportPublicationContext,
+): Promise<ReportPublicationResult> {
+  if (hasReportPublicationFence(context)) {
+    const supabase = createSupabaseAdmin();
+    const { data, error } = await supabase.rpc('publish_research_report_for_attempt', {
+      p_session_id: sessionId,
+      p_run_id: context.runId,
+      p_attempt_id: context.attemptId,
+      p_worker_id: context.workerId,
+      p_report: reportPublicationPayload(report),
+      p_final_audit: toJson({ ok: finalAudit.ok, issues: finalAudit.issues ?? [] }),
+      p_trace_id: activeTraceId() ?? null,
+      p_correlation_id: context.correlationId ?? null,
+    });
+    if (error) throw new Error(error.message);
+    return mapReportPublicationResult(data);
+  }
+
+  await saveResearchAudit(sessionId, 'final_review', finalAudit, context?.runId);
+  await saveReport(report);
+  await updateSessionState(sessionId, 'report_ready', 'complete');
+  await addEvent(sessionId, 'complete', 'Report is ready.', { reportId: report.id }, {
+    runId: context?.runId,
+    attemptId: context?.attemptId,
+    eventType: 'report_ready',
+    actor: 'worker',
+    stepId: 'report_ready',
+    correlationId: context?.correlationId,
+  });
+  return { ok: true, idempotent: false };
+}
+
+function hasReportPublicationFence(context: ReportPublicationContext | undefined): context is Required<Pick<ReportPublicationContext, 'runId' | 'attemptId' | 'workerId'>> & ReportPublicationContext {
+  return Boolean(context?.runId && context.attemptId && context.workerId);
+}
+
+function reportPublicationPayload(report: ResearchReport): Json {
+  return toJson({
+    id: report.id,
+    title: report.title,
+    executive_summary: report.executiveSummary,
+    sections: toJson(report.sections),
+    citations: toJson(report.citations),
+    markdown: report.markdown,
+    created_at: report.createdAt,
+  });
+}
+
+function mapReportPublicationResult(value: unknown): ReportPublicationResult {
+  const record = recordFromJson(value);
+  if (record.ok === false && record.code === 'critical_gaps_unresolved') {
+    return {
+      ok: false,
+      code: 'critical_gaps_unresolved',
+      status: 'awaiting_approval',
+      openCriticalGapIds: stringArrayFromJson(record.openCriticalGapIds),
+    };
+  }
+  return { ok: true, idempotent: record.idempotent === true };
 }
 
 export async function addApproval(

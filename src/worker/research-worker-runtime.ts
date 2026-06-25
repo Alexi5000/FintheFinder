@@ -2,6 +2,7 @@ import type { ResearchMemory, ResearchPhase, ResearchRun, ResearchRunEvent, Rese
 
 type PipelineStageResult = {
   status: 'awaiting_approval' | 'completed';
+  runFinalized?: boolean;
 };
 
 type PipelinePersistenceContext = {
@@ -214,6 +215,18 @@ async function processClaimedRun(
       stage === 'reporting'
         ? await dependencies.runApprovedReportSession(session.id, session.query, pipelineOptions)
         : await dependencies.runResearchSession(session.id, session.query, pipelineOptions);
+
+    if (result.runFinalized) {
+      await saveRunSummaryMemorySafely(session, run, dependencies, {
+        runId: run.id,
+        stage,
+        status: result.status,
+        workerId: config.workerId,
+        completedAt: new Date().toISOString(),
+      });
+      dependencies.logger.info({ workerId: config.workerId, runId: run.id, status: result.status }, 'research run processed');
+      return true;
+    }
 
     if (!(await proveLeaseOwnership(run, config, leaseState, dependencies))) return false;
 

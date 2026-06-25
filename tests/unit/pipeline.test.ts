@@ -42,6 +42,7 @@ const reportDraft = {
 const repositoryMock = vi.hoisted(() => ({
   addEvent: vi.fn(async () => undefined),
   getResearchArtifacts: vi.fn(),
+  publishReport: vi.fn(async () => ({ ok: true, idempotent: false })),
   replaceResearchArtifacts: vi.fn(async () => undefined),
   saveReport: vi.fn(async () => undefined),
   saveResearchAudit: vi.fn(async () => undefined),
@@ -205,19 +206,65 @@ describe('research pipeline', () => {
         status: 'running',
         attempt: 1,
         metadata: { stage: 'reporting' },
+        workerId: 'worker_1',
         createdAt: '2026-06-24T00:00:00.000Z',
         updatedAt: '2026-06-24T00:00:00.000Z',
       },
+      attemptId: 'attempt_1',
+      correlationId: 'corr_1',
     });
 
     expect(result.status).toBe('completed');
-    expect(repositoryMock.saveReport).toHaveBeenCalledWith(expect.objectContaining<Partial<ResearchReport>>({ title: 'Report', sessionId: 'session_1' }));
-    expect(repositoryMock.saveResearchAudit).toHaveBeenCalledWith('session_1', 'final_review', { ok: true, issues: [] }, 'run_2');
+    expect(result.runFinalized).toBe(true);
+    expect(repositoryMock.publishReport).toHaveBeenCalledWith(
+      'session_1',
+      expect.objectContaining<Partial<ResearchReport>>({ title: 'Report', sessionId: 'session_1' }),
+      { ok: true, issues: [] },
+      { runId: 'run_2', attemptId: 'attempt_1', workerId: 'worker_1', correlationId: 'corr_1' },
+    );
+    expect(repositoryMock.saveReport).not.toHaveBeenCalled();
+    expect(repositoryMock.saveResearchAudit).not.toHaveBeenCalled();
+    expect(repositoryMock.updateSessionState).not.toHaveBeenCalledWith('session_1', 'report_ready', 'complete');
+    expect(repositoryMock.addEvent).not.toHaveBeenCalledWith(
+      'session_1',
+      'complete',
+      'Report is ready.',
+      expect.any(Object),
+      expect.objectContaining({ eventType: 'report_ready' }),
+    );
+  });
+
+  it('returns to approval when transactional report publication finds reopened critical gaps', async () => {
+    repositoryMock.publishReport.mockResolvedValueOnce({
+      ok: false,
+      code: 'critical_gaps_unresolved',
+      status: 'awaiting_approval',
+      openCriticalGapIds: ['gap_critical'],
+    });
+    const { runApprovedReportSession } = await import('@/server/research/pipeline');
+    const result = await runApprovedReportSession('session_1', 'Research AI compliance', {
+      run: {
+        id: 'run_gap_reopened',
+        sessionId: 'session_1',
+        status: 'running',
+        attempt: 1,
+        metadata: { stage: 'reporting' },
+        workerId: 'worker_1',
+        createdAt: '2026-06-24T00:00:00.000Z',
+        updatedAt: '2026-06-24T00:00:00.000Z',
+      },
+      attemptId: 'attempt_1',
+      correlationId: 'corr_1',
+    });
+
+    expect(result).toEqual({ status: 'awaiting_approval', runFinalized: true });
+    expect(repositoryMock.saveReport).not.toHaveBeenCalled();
+    expect(repositoryMock.updateSessionState).not.toHaveBeenCalledWith('session_1', 'awaiting_approval', 'reviewing');
   });
 
   it('blocks final report persistence when the worker lease guard fails', async () => {
     const assertLease = vi.fn(async (context: { operation: string }) => {
-      if (context.operation === 'save_report') throw new Error('lease lost before report write');
+      if (context.operation === 'publish_report') throw new Error('lease lost before report write');
     });
     const { runApprovedReportSession } = await import('@/server/research/pipeline');
 
@@ -236,8 +283,8 @@ describe('research pipeline', () => {
       }),
     ).rejects.toThrow('lease lost before report write');
 
-    expect(assertLease).toHaveBeenCalledWith(expect.objectContaining({ operation: 'save_report', runId: 'run_report_guarded' }));
-    expect(repositoryMock.saveReport).not.toHaveBeenCalled();
+    expect(assertLease).toHaveBeenCalledWith(expect.objectContaining({ operation: 'publish_report', runId: 'run_report_guarded' }));
+    expect(repositoryMock.publishReport).not.toHaveBeenCalled();
     expect(repositoryMock.updateSessionState).not.toHaveBeenCalledWith('session_1', 'report_ready', 'complete');
   });
 

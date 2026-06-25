@@ -34,6 +34,7 @@ const migrations = [
   '011_durable_run_attempt_fencing.sql',
   '012_fenced_artifact_replacement.sql',
   '013_transactional_approval_decision.sql',
+  '014_fenced_report_publication.sql',
 ];
 
 function readMigration(name: string) {
@@ -455,6 +456,7 @@ describe('database migrations', () => {
       'public.transition_research_run(uuid, uuid, text, text, text, timestamptz, timestamptz)',
       'public.replace_research_artifacts(uuid, uuid, uuid, text, jsonb)',
       'public.record_research_approval_decision(uuid, uuid, text, text, jsonb, jsonb, text, text)',
+      'public.publish_research_report_for_attempt(uuid, uuid, uuid, text, jsonb, jsonb, text, text)',
       'public.record_eval_run(uuid, text, text, jsonb, jsonb, timestamptz)',
     ]) {
       expect(sql).toMatch(new RegExp(`revoke (all|execute) on function ${escapeRegex(signature)} from public, anon, authenticated`, 'i'));
@@ -550,6 +552,42 @@ describe('database migrations', () => {
     expect(migration).toMatch(/update public\.research_sessions[\s\S]*status = 'queued'/i);
     expect(migration).toContain('revoke execute on function public.record_research_approval_decision(uuid, uuid, text, text, jsonb, jsonb, text, text) from public, anon, authenticated');
     expect(migration).toContain('grant execute on function public.record_research_approval_decision(uuid, uuid, text, text, jsonb, jsonb, text, text) to service_role');
+  });
+
+  it('adds an attempt-fenced transactional report publication RPC', () => {
+    const migration = readMigration('014_fenced_report_publication.sql');
+
+    expect(migration).toContain('create or replace function public.publish_research_report_for_attempt');
+    expect(migration).toContain('returns jsonb');
+    expect(migration).toContain('security definer');
+    expect(migration).toContain("report publication payload is missing required report fields");
+    expect(migration).toContain("report publication sections and citations must be JSON arrays");
+    expect(migration).toContain("report publication audit issues must be a JSON array");
+    expect(migration).toContain("report publication requires an approved final audit");
+    expect(migration).toMatch(/join public\.research_reports report[\s\S]*report\.id = report_id[\s\S]*r\.status = 'completed'[\s\S]*a\.status = 'completed'/i);
+    expect(migration).toContain("'idempotent', true");
+    expect(migration).toMatch(/r\.current_attempt_id = p_attempt_id[\s\S]*r\.worker_id = p_worker_id[\s\S]*r\.lease_expires_at > now\(\)/i);
+    expect(migration).toMatch(/a\.id = p_attempt_id[\s\S]*a\.worker_id = p_worker_id[\s\S]*a\.lease_expires_at > now\(\)/i);
+    expect(migration).toContain("coalesce(r.metadata ->> 'stage', 'research') = 'reporting'");
+    expect(migration).toMatch(/from public\.research_sessions[\s\S]*status = 'running'[\s\S]*phase in \('reporting','reviewing'\)[\s\S]*for update/i);
+    expect(migration).toMatch(/from public\.claim_gaps[\s\S]*severity = 'critical'[\s\S]*status = 'open'[\s\S]*for update/i);
+    expect(migration).toMatch(/if jsonb_array_length\(open_critical_gap_ids\) > 0 then[\s\S]*status = 'awaiting_approval'[\s\S]*phase = 'reviewing'/i);
+    expect(migration).toMatch(/'claim_gap_opened'[\s\S]*'critical_gap_gate'[\s\S]*'openCriticalGapIds'/i);
+    expect(migration).toMatch(/update public\.research_runs[\s\S]*status = 'awaiting_approval'[\s\S]*lease_expires_at = null/i);
+    expect(migration).toMatch(/update public\.research_run_attempts[\s\S]*status = 'awaiting_approval'[\s\S]*lease_expires_at = null/i);
+    expect(migration).toContain("'code', 'critical_gaps_unresolved'");
+    expect(migration).not.toContain('delete from public.research_reports');
+    expect(migration).toMatch(/insert into public\.research_audits[\s\S]*audit_type[\s\S]*ok[\s\S]*'final_review'[\s\S]*true/i);
+    expect(migration).toContain("'final_review'");
+    expect(migration).toContain('insert into public.research_reports');
+    expect(migration).toMatch(/update public\.research_sessions[\s\S]*status = 'report_ready'[\s\S]*phase = 'complete'/i);
+    expect(migration).toMatch(/insert into public\.research_events[\s\S]*run_id[\s\S]*attempt_id[\s\S]*trace_id[\s\S]*correlation_id[\s\S]*metadata/i);
+    expect(migration).toMatch(/'report_ready'[\s\S]*jsonb_build_object\('reportId'/i);
+    expect(migration).toMatch(/update public\.research_runs[\s\S]*status = 'completed'[\s\S]*lease_expires_at = null/i);
+    expect(migration).toMatch(/update public\.research_run_attempts[\s\S]*status = 'completed'[\s\S]*lease_expires_at = null/i);
+    expect(migration).toMatch(/delete from public\.research_job_leases[\s\S]*where run_id = p_run_id[\s\S]*worker_id = p_worker_id/i);
+    expect(migration).toContain('revoke execute on function public.publish_research_report_for_attempt(uuid, uuid, uuid, text, jsonb, jsonb, text, text) from public, anon, authenticated');
+    expect(migration).toContain('grant execute on function public.publish_research_report_for_attempt(uuid, uuid, uuid, text, jsonb, jsonb, text, text) to service_role');
   });
 });
 

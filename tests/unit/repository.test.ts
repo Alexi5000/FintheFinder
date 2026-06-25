@@ -542,6 +542,157 @@ describe('research repository persistence helpers', () => {
     );
   });
 
+  it('publishes final reports through the attempt-fenced publication RPC', async () => {
+    const { publishReport } = await import('@/server/research/repository');
+    supabaseHarness.rpcResponses.push({ data: { ok: true, idempotent: false }, error: null });
+
+    await publishReport(
+      '00000000-0000-4000-8000-000000000101',
+      {
+        id: '00000000-0000-4000-8000-000000000201',
+        sessionId: '00000000-0000-4000-8000-000000000101',
+        title: 'Report',
+        executiveSummary: 'Summary',
+        sections: [{ heading: 'Finding', body: 'AI systems need review.', sourceIds: ['src_1'], claimIds: ['claim_1'] }],
+        citations: [{ sourceId: 'src_1', url: 'https://example.com/source', title: 'Primary source' }],
+        markdown: '# Report',
+        createdAt: '2026-06-24T00:00:00.000Z',
+      },
+      { ok: true, issues: [] },
+      {
+        runId: '00000000-0000-4000-8000-000000000301',
+        attemptId: '00000000-0000-4000-8000-000000000401',
+        workerId: 'worker_1',
+        correlationId: 'corr_1',
+      },
+    );
+
+    expect(supabaseHarness.calls).toEqual([]);
+    expect(supabaseHarness.rpcCalls).toEqual([
+      {
+        functionName: 'publish_research_report_for_attempt',
+        args: expect.objectContaining({
+          p_session_id: '00000000-0000-4000-8000-000000000101',
+          p_run_id: '00000000-0000-4000-8000-000000000301',
+          p_attempt_id: '00000000-0000-4000-8000-000000000401',
+          p_worker_id: 'worker_1',
+          p_final_audit: { ok: true, issues: [] },
+          p_correlation_id: 'corr_1',
+          p_report: expect.objectContaining({
+            id: '00000000-0000-4000-8000-000000000201',
+            executive_summary: 'Summary',
+            sections: expect.any(Array),
+            citations: expect.any(Array),
+            markdown: '# Report',
+          }),
+        }),
+      },
+    ]);
+  });
+
+  it('does not fall back to direct table writes when fenced report publication fails', async () => {
+    const { publishReport } = await import('@/server/research/repository');
+    supabaseHarness.rpcResponses.push({ data: null, error: { message: 'worker attempt does not own report publication' } });
+
+    await expect(
+      publishReport(
+        '00000000-0000-4000-8000-000000000101',
+        {
+          id: '00000000-0000-4000-8000-000000000201',
+          sessionId: '00000000-0000-4000-8000-000000000101',
+          title: 'Report',
+          executiveSummary: 'Summary',
+          sections: [{ heading: 'Finding', body: 'AI systems need review.', sourceIds: ['src_1'], claimIds: ['claim_1'] }],
+          citations: [{ sourceId: 'src_1', url: 'https://example.com/source', title: 'Primary source' }],
+          markdown: '# Report',
+          createdAt: '2026-06-24T00:00:00.000Z',
+        },
+        { ok: true, issues: [] },
+        {
+          runId: '00000000-0000-4000-8000-000000000301',
+          attemptId: '00000000-0000-4000-8000-000000000401',
+          workerId: 'worker_1',
+          correlationId: 'corr_1',
+        },
+      ),
+    ).rejects.toThrow('worker attempt does not own report publication');
+
+    expect(supabaseHarness.calls).toEqual([]);
+    expect(supabaseHarness.rpcCalls).toHaveLength(1);
+  });
+
+  it('maps transactional report publication policy blocks without direct table writes', async () => {
+    const { publishReport } = await import('@/server/research/repository');
+    supabaseHarness.rpcResponses.push({
+      data: { ok: false, code: 'critical_gaps_unresolved', status: 'awaiting_approval', openCriticalGapIds: ['gap_critical'] },
+      error: null,
+    });
+
+    const result = await publishReport(
+      '00000000-0000-4000-8000-000000000101',
+      {
+        id: '00000000-0000-4000-8000-000000000201',
+        sessionId: '00000000-0000-4000-8000-000000000101',
+        title: 'Report',
+        executiveSummary: 'Summary',
+        sections: [{ heading: 'Finding', body: 'AI systems need review.', sourceIds: ['src_1'], claimIds: ['claim_1'] }],
+        citations: [{ sourceId: 'src_1', url: 'https://example.com/source', title: 'Primary source' }],
+        markdown: '# Report',
+        createdAt: '2026-06-24T00:00:00.000Z',
+      },
+      { ok: true, issues: [] },
+      {
+        runId: '00000000-0000-4000-8000-000000000301',
+        attemptId: '00000000-0000-4000-8000-000000000401',
+        workerId: 'worker_1',
+      },
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      code: 'critical_gaps_unresolved',
+      status: 'awaiting_approval',
+      openCriticalGapIds: ['gap_critical'],
+    });
+    expect(supabaseHarness.calls).toEqual([]);
+  });
+
+  it('keeps run attribution on non-fenced report publication fallback writes', async () => {
+    const { publishReport } = await import('@/server/research/repository');
+
+    await publishReport(
+      'session_1',
+      {
+        id: 'report_1',
+        sessionId: 'session_1',
+        title: 'Report',
+        executiveSummary: 'Summary',
+        sections: [{ heading: 'Finding', body: 'AI systems need review.', sourceIds: ['src_1'], claimIds: ['claim_1'] }],
+        citations: [{ sourceId: 'src_1', url: 'https://example.com/source', title: 'Primary source' }],
+        markdown: '# Report',
+        createdAt: '2026-06-24T00:00:00.000Z',
+      },
+      { ok: true, issues: [] },
+      { runId: 'run_1', attemptId: 'attempt_1', correlationId: 'corr_1' },
+    );
+
+    expect(supabaseHarness.rpcCalls).toEqual([]);
+    expect(supabaseHarness.calls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          table: 'research_audits',
+          op: 'insert',
+          payload: expect.objectContaining({ run_id: 'run_1', audit_type: 'final_review', ok: true }),
+        }),
+        expect.objectContaining({
+          table: 'research_events',
+          op: 'insert',
+          payload: expect.objectContaining({ run_id: 'run_1', attempt_id: 'attempt_1', correlation_id: 'corr_1', event_type: 'report_ready' }),
+        }),
+      ]),
+    );
+  });
+
   it('persists structured run-event columns for tracing and SSE replay', async () => {
     const { addEvent } = await import('@/server/research/repository');
 

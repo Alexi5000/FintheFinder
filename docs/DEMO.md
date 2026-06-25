@@ -17,7 +17,7 @@ Expected: `/` renders the workspace, provider status shows missing keys, `/setti
 1. Configure `.env` from `.env.example`.
 2. Run Supabase migrations.
 3. Start the web service and worker.
-4. Sign in, create a session, enqueue a run, review sources/claims/events, approve, generate a report, export markdown.
+4. Use an existing Supabase Auth session or API bearer token, create a session, enqueue a run, review sources/claims/events, approve, generate a report, export markdown. Fin consumes Supabase Auth; it does not include a separate in-app auth product.
 5. Run `npm run evals:persist` to record the offline fixture eval history for the configured environment.
 6. Export a live eval output artifact for the recorded run. The JSON must include `passed: true`, `mode: "live"`, `status: "ok"`, `runId`, `traceId`, `fixtureCount` or equivalent scenario count, and any reviewer-visible issues/regressions.
 7. Record the run ID, trace ID, exported report, screenshots or video, eval output path, persisted eval-history row, and cost row in `docs/BENCHMARK.md`.

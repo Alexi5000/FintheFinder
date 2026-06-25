@@ -47,10 +47,10 @@ test('about page avoids horizontal overflow on narrow desktop', async ({ page })
 
 test('session history renders authenticated loader state', async ({ page }) => {
   await page.goto('/sessions');
-  await expect(page.getByText(/Supabase Not Configured|Sign In Required/)).toBeVisible();
+  await expect(page.getByText(/Supabase Not Configured|Supabase Session Required/)).toBeVisible();
 });
 
 test('report reader renders authenticated loader state', async ({ page }) => {
   await page.goto('/reports/demo-session');
-  await expect(page.getByText(/Supabase Not Configured|Sign In Required/)).toBeVisible();
+  await expect(page.getByText(/Supabase Not Configured|Supabase Session Required/)).toBeVisible();
 });

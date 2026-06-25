@@ -41,7 +41,7 @@ extraction calls = one per relevant source
 report calls = 1
 ```
 
-The deterministic estimator lives in `src/server/research/cost-model.ts` and uses a dated pricing snapshot. Hosted runs persist `research_run_costs` with `measurementMethod="provider_usage"` when Mastra returns token usage, otherwise `measurementMethod="estimated"`. Pricing must be refreshed before publishing fixed cost claims.
+The deterministic estimator lives in `src/server/research/cost-model.ts` and uses a dated repo-owned pricing snapshot for configured model strings. Hosted runs persist `research_run_costs` with `measurementMethod="provider_usage"` when Mastra returns token usage, otherwise `measurementMethod="estimated"`. Pricing and exact model IDs must be refreshed from the recorded configured run before publishing fixed cost claims.
 
 ## Live Run Log
 

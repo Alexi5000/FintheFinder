@@ -27,6 +27,6 @@ Fin treats research artifacts as product data: sessions, sources, evaluations, l
 
 ## Proof Tier
 
-Fin is offline-gated today: deterministic contracts, unit coverage, Playwright, Docker build, smoke checks, audit, offline evals, and benchmark drift checks are the current proof set.
+Fin is offline-gated today: deterministic contracts, unit coverage, Playwright, Docker build, smoke checks, audit, offline evals, and benchmark drift checks are the current release gate.
 
 Configured-provider research is supported when OpenAI, Exa, and Supabase credentials are present. Measured live benchmark rows and recorded live demo evidence are not claimed until the same real run passes `npm run demo:record`, `npm run evals:live`, and the Live Run Log in `docs/BENCHMARK.md`.

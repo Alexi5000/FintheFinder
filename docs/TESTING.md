@@ -26,6 +26,7 @@ CI also starts the built Next.js server and runs `SMOKE_URL=http://127.0.0.1:300
 Current unit coverage includes:
 
 - Shared Zod schemas
+- Authenticated data UI populated rendering for session detail, report reader, run cost, approvals, claims, memory, and artifacts
 - Container runtime config for non-root image execution, Docker healthcheck, compose healthchecks, worker healthcheck fail-closed behavior, and restart policy
 - Coverage gate configuration for first-party contract/server code
 - Demo proof verifier CLI behavior

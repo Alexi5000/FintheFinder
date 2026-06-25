@@ -33,7 +33,9 @@ Required for live research:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
-Model defaults:
+Default model environment values:
+
+These are configuration defaults. Treat exact model availability, selected model IDs, and pricing as live-proof facts only after a configured run records them in the demo manifest and benchmark row.
 
 - `OPENAI_MODEL_PRIMARY=gpt-5.5`
 - `OPENAI_MODEL_FAST=gpt-5.4-mini`

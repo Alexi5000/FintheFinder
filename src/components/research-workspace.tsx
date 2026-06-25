@@ -20,7 +20,7 @@ export function ResearchWorkspace({ providerReady }: Props) {
       const supabase = createSupabaseBrowserClient();
       const token = (await supabase?.auth.getSession())?.data.session?.access_token;
       if (!token) {
-        setStatus('Sign in with Supabase Auth before starting a hosted research run.');
+        setStatus('Use an existing Supabase Auth session before starting a hosted research run.');
         return;
       }
 

@@ -23,7 +23,7 @@ async function getBearerToken() {
 async function authedFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = await getBearerToken();
   if (token.kind === 'unconfigured') throw new Error('Supabase browser configuration is missing.');
-  if (token.kind === 'unauthenticated') throw new Error('Sign in with Supabase Auth to inspect hosted research data.');
+  if (token.kind === 'unauthenticated') throw new Error('Use an existing Supabase Auth session to inspect hosted research data.');
   const response = await fetch(path, {
     ...init,
     headers: {
@@ -37,24 +37,25 @@ async function authedFetch<T>(path: string, init: RequestInit = {}): Promise<T> 
   return payload as T;
 }
 
-function useAuthedResource<T>(path: string) {
-  const [state, setState] = useState<LoadState<T>>({ status: 'idle' });
+function useAuthedResource<T>(path: string, initialData?: T) {
+  const [state, setState] = useState<LoadState<T>>(initialData ? { status: 'ready', data: initialData } : { status: 'idle' });
   const load = useCallback(async () => {
     setState({ status: 'loading' });
     try {
       setState({ status: 'ready', data: await authedFetch<T>(path) });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unexpected data loading failure.';
-      const status = message.includes('configuration') ? 'unconfigured' : message.includes('Sign in') ? 'unauthenticated' : 'error';
+      const status = message.includes('configuration') ? 'unconfigured' : message.includes('Supabase Auth session') ? 'unauthenticated' : 'error';
       setState({ status, message });
     }
   }, [path]);
 
   useEffect(() => {
+    if (initialData) return;
     queueMicrotask(() => {
       void load();
     });
-  }, [load]);
+  }, [initialData, load]);
 
   return { state, reload: load };
 }
@@ -86,7 +87,7 @@ function StatusBlock<T>({ state, loadingLabel }: { state: LoadState<T>; loadingL
     return <EmptyState title="Supabase Not Configured" body="Add Supabase URL and anon key values to inspect hosted research records from the UI." />;
   }
   if (state.status === 'unauthenticated') {
-    return <EmptyState title="Sign In Required" body={state.message ?? 'Sign in with Supabase Auth before loading hosted research data.'} />;
+    return <EmptyState title="Supabase Session Required" body={state.message ?? 'Use an existing Supabase Auth session before loading hosted research data.'} />;
   }
   if (state.status === 'error') {
     return <EmptyState title="Data Load Failed" body={state.message ?? 'The authenticated API returned an error.'} />;
@@ -96,8 +97,7 @@ function StatusBlock<T>({ state, loadingLabel }: { state: LoadState<T>; loadingL
 
 export function SessionsClient() {
   const { state, reload } = useAuthedResource<{ sessions: ResearchSession[] }>('/api/research/sessions');
-  const status = <StatusBlock state={state} loadingLabel="Loading research sessions..." />;
-  if (status) return status;
+  if (state.status !== 'ready') return <StatusBlock state={state} loadingLabel="Loading research sessions..." />;
 
   const sessions = state.data?.sessions ?? [];
   return (
@@ -148,11 +148,23 @@ export function SessionsClient() {
   );
 }
 
-export function SessionDetailClient({ sessionId }: { sessionId: string }) {
-  const { state, reload } = useAuthedResource<{ session: ResearchSessionDetail }>(`/api/research/sessions/${sessionId}`);
+export function SessionDetailClient({
+  sessionId,
+  initialClaims,
+  initialMemories,
+  initialSession,
+}: {
+  sessionId: string;
+  initialClaims?: { claims: ResearchClaim[]; gaps: ClaimGap[] };
+  initialMemories?: ResearchMemory[];
+  initialSession?: ResearchSessionDetail;
+}) {
+  const { state, reload } = useAuthedResource<{ session: ResearchSessionDetail }>(
+    `/api/research/sessions/${sessionId}`,
+    initialSession ? { session: initialSession } : undefined,
+  );
   const [actionStatus, setActionStatus] = useState('');
-  const status = <StatusBlock state={state} loadingLabel="Loading session detail..." />;
-  if (status) return status;
+  if (state.status !== 'ready') return <StatusBlock state={state} loadingLabel="Loading session detail..." />;
 
   const session = state.data?.session;
   if (!session) return null;
@@ -207,10 +219,10 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
       </div>
 
       <RunPanel run={currentRun ?? null} cost={currentRunCost} postMortem={currentPostMortem} />
-      {session.status === 'awaiting_approval' ? <ApprovalGatePanel session={session} postAction={postAction} /> : null}
+      {session.status === 'awaiting_approval' ? <ApprovalGatePanel initialClaims={initialClaims} session={session} postAction={postAction} /> : null}
       <ApprovalHistoryPanel approvals={session.approvals} />
-      <ClaimsPanel sessionId={session.id} />
-      <MemoryPanel sessionId={session.id} />
+      <ClaimsPanel initialClaims={initialClaims} sessionId={session.id} />
+      <MemoryPanel initialMemories={initialMemories} sessionId={session.id} />
       <ArtifactsPanel session={session} />
     </div>
   );
@@ -291,12 +303,19 @@ function RunPanel({ run, cost, postMortem }: { run: ResearchRun | null; cost: Ru
   );
 }
 
-function ApprovalGatePanel({ session, postAction }: { session: ResearchSessionDetail; postAction: (path: string, body?: unknown) => Promise<void> }) {
-  const { state, reload } = useAuthedResource<{ claims: ResearchClaim[]; gaps: ClaimGap[] }>(`/api/research/sessions/${session.id}/claims`);
+function ApprovalGatePanel({
+  initialClaims,
+  session,
+  postAction,
+}: {
+  initialClaims?: { claims: ResearchClaim[]; gaps: ClaimGap[] };
+  session: ResearchSessionDetail;
+  postAction: (path: string, body?: unknown) => Promise<void>;
+}) {
+  const { state, reload } = useAuthedResource<{ claims: ResearchClaim[]; gaps: ClaimGap[] }>(`/api/research/sessions/${session.id}/claims`, initialClaims);
   const [selectedWaivers, setSelectedWaivers] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
-  const status = <StatusBlock state={state} loadingLabel="Loading approval gate..." />;
-  if (status) return status;
+  if (state.status !== 'ready') return <StatusBlock state={state} loadingLabel="Loading approval gate..." />;
 
   const gaps = state.data?.gaps ?? [];
   const openCriticalGaps = gaps.filter((gap) => gap.severity === 'critical' && gap.status === 'open');
@@ -390,10 +409,9 @@ function ApprovalHistoryPanel({ approvals }: { approvals: ResearchApproval[] }) 
   );
 }
 
-function ClaimsPanel({ sessionId }: { sessionId: string }) {
-  const { state, reload } = useAuthedResource<{ claims: ResearchClaim[]; gaps: ClaimGap[] }>(`/api/research/sessions/${sessionId}/claims`);
-  const status = <StatusBlock state={state} loadingLabel="Loading claims and gaps..." />;
-  if (status) return status;
+function ClaimsPanel({ initialClaims, sessionId }: { initialClaims?: { claims: ResearchClaim[]; gaps: ClaimGap[] }; sessionId: string }) {
+  const { state, reload } = useAuthedResource<{ claims: ResearchClaim[]; gaps: ClaimGap[] }>(`/api/research/sessions/${sessionId}/claims`, initialClaims);
+  if (state.status !== 'ready') return <StatusBlock state={state} loadingLabel="Loading claims and gaps..." />;
 
   const claims = state.data?.claims ?? [];
   const gaps = state.data?.gaps ?? [];
@@ -431,12 +449,14 @@ function ClaimsPanel({ sessionId }: { sessionId: string }) {
   );
 }
 
-function MemoryPanel({ sessionId }: { sessionId: string }) {
-  const { state, reload } = useAuthedResource<{ memories: ResearchMemory[] }>(`/api/research/memory?sessionId=${sessionId}`);
+function MemoryPanel({ initialMemories, sessionId }: { initialMemories?: ResearchMemory[]; sessionId: string }) {
+  const { state, reload } = useAuthedResource<{ memories: ResearchMemory[] }>(
+    `/api/research/memory?sessionId=${sessionId}`,
+    initialMemories ? { memories: initialMemories } : undefined,
+  );
   const [note, setNote] = useState('');
   const [saveStatus, setSaveStatus] = useState('');
-  const status = <StatusBlock state={state} loadingLabel="Loading research memory..." />;
-  if (status) return status;
+  if (state.status !== 'ready') return <StatusBlock state={state} loadingLabel="Loading research memory..." />;
 
   const memories = state.data?.memories ?? [];
 
@@ -532,11 +552,13 @@ function ArtifactsPanel({ session }: { session: ResearchSessionDetail }) {
   );
 }
 
-export function ReportReaderClient({ sessionId }: { sessionId: string }) {
-  const { state, reload } = useAuthedResource<{ session: ResearchSessionDetail }>(`/api/research/sessions/${sessionId}`);
+export function ReportReaderClient({ initialSession, sessionId }: { initialSession?: ResearchSessionDetail; sessionId: string }) {
+  const { state, reload } = useAuthedResource<{ session: ResearchSessionDetail }>(
+    `/api/research/sessions/${sessionId}`,
+    initialSession ? { session: initialSession } : undefined,
+  );
   const [exportStatus, setExportStatus] = useState('');
-  const status = <StatusBlock state={state} loadingLabel="Loading report..." />;
-  if (status) return status;
+  if (state.status !== 'ready') return <StatusBlock state={state} loadingLabel="Loading report..." />;
 
   const session = state.data?.session;
   const report = session?.report;
@@ -546,7 +568,7 @@ export function ReportReaderClient({ sessionId }: { sessionId: string }) {
     try {
       const token = await getBearerToken();
       if (token.kind === 'unconfigured') throw new Error('Supabase browser configuration is missing.');
-      if (token.kind === 'unauthenticated') throw new Error('Sign in with Supabase Auth to export reports.');
+      if (token.kind === 'unauthenticated') throw new Error('Use an existing Supabase Auth session to export reports.');
       const response = await fetch(`/api/reports/${sessionId}/export.md`, { headers: { authorization: `Bearer ${token.token}` } });
       if (!response.ok) throw new Error(`Export failed: ${response.status}`);
       const markdown = await response.text();

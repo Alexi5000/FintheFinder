@@ -22,14 +22,14 @@ The goal is a serious engineering repo, not a demo claim. `docs/FDE_GATES.md` is
 
 ## Proof Tier
 
-Current status: **offline-gated**. The repo proves deterministic contracts, tests, lint, audit, Docker build, smoke checks, offline evals, and benchmark drift locally and in CI.
+Current status: **offline-gated**. The repo is gated by deterministic contracts, tests, lint, audit, Docker build, smoke checks, offline evals, and benchmark drift locally and in CI.
 
 Configured-provider research is implemented behind OpenAI, Exa, and Supabase credentials, but recorded live proof is still pending. Do not treat Fin as having a measured live demo or cost-per-run claim until `docs/demo/live-demo.json`, `npm run demo:record`, `npm run evals:live`, and the Live Run Log in `docs/BENCHMARK.md` all reference the same real run artifacts.
 
 ## Product Capabilities
 
 - Mastra agent stack for planner, source evaluator, extractor, contradiction checker, citation auditor, report writer, and final reviewer roles; full hosted-path wiring is tracked in the FDE gates.
-- GPT-5.5 quality-first defaults through environment-driven model configuration.
+- Environment-driven OpenAI primary and fast model configuration; exact model IDs are recorded in live proof before benchmark claims.
 - Exa search integration with timeout handling, canonical URL normalization, duplicate filtering, and typed source records.
 - Supabase Auth and Postgres schema for multi-user sessions, source records, learnings, approvals, events, runs, claims, costs, post-mortems, memory, and reports.
 - Next.js product shell with workspace, About, session history, session detail, report reader, settings, health, and API routes.
@@ -43,7 +43,7 @@ Configured-provider research is implemented behind OpenAI, Exa, and Supabase cre
 | --- | --- |
 | App | Next.js 16, React 19, TypeScript |
 | Agent orchestration | Mastra 1.x |
-| Models | OpenAI via configurable GPT-5.5 primary and GPT-5.4-mini fast defaults |
+| Models | OpenAI via configurable primary and fast model defaults |
 | Search | Exa |
 | Persistence | Supabase Postgres and Auth |
 | Validation | Zod |

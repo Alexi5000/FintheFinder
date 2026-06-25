@@ -24,7 +24,7 @@ import { auditClaims, claimsFromLearnings, evidenceFromLearnings } from './claim
 import { estimateModelCall, estimateRunCost } from './cost-model';
 import { renderReportMarkdown } from './report-format';
 import { searchWeb } from './search-service';
-import { addEvent, getResearchArtifacts, publishReport, replaceResearchArtifacts, saveReport, saveResearchAudit, saveRunCost, updateSessionState } from './repository';
+import { addEvent, getResearchArtifacts, publishReport, replaceResearchArtifacts, saveResearchAudit, saveRunCost, updateSessionState } from './repository';
 
 const planSchema = z.object({
   queries: z.array(z.string().min(3)).min(2).max(6),
@@ -294,26 +294,6 @@ export async function runApprovedReportSession(sessionId: string, query: string,
     return { status: 'awaiting_approval', runFinalized: publicationFenced };
   }
   return { status: 'completed', runFinalized: publicationFenced };
-}
-
-export async function runLegacySynchronousResearchSession(sessionId: string, query: string) {
-  await runResearchSession(sessionId, query);
-  await updateSessionState(sessionId, 'running', 'reporting');
-  await addEvent(sessionId, 'reporting', 'Synthesizing cited report.');
-  const artifacts = await getResearchArtifacts(sessionId);
-  const { report } = await generateReport(sessionId, query, artifacts.sources, artifacts.learnings);
-
-  const citationAudit = auditReportCitations(report, artifacts.sources);
-  if (!citationAudit.ok) {
-    logger.warn({ citationAudit, sessionId }, 'citation audit issues found');
-    await addEvent(sessionId, 'reviewing', 'Citation audit completed with issues.', { issues: citationAudit.issues });
-  }
-
-  await saveReport(report);
-  await updateSessionState(sessionId, 'report_ready', 'complete');
-  await addEvent(sessionId, 'complete', 'Report is ready.', { reportId: report.id });
-
-  return { ...artifacts, report };
 }
 
 async function evaluateSources(query: string, sources: ResearchSource[]): Promise<{ evaluations: SourceEvaluation[]; usage: MeasuredModelCall[] }> {

@@ -16,3 +16,5 @@ Introduce a claim ledger and HITL state machine. Reports should cite claims and 
 The product gains a reviewable evidence trail. Implementation requires new persistence tables and UI for gaps, approvals, and waivers.
 
 Approval decisions must remain transactional. The hosted route delegates to `record_research_approval_decision` so waiver updates, approval history, run events, session transitions, and follow-on run enqueueing cannot partially commit.
+
+Hosted research requests remain enqueue-only. Report readiness is produced by the worker reporting path and `publish_research_report_for_attempt`; synchronous legacy helpers must not write `report_ready` directly around the claim ledger or HITL state machine.

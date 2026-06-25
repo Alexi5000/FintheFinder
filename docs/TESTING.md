@@ -34,6 +34,7 @@ Current unit coverage includes:
 - Pipeline HITL/cost behavior
 - Persisted eval history with public-safe column projection and summary sanitization
 - Rate-limit window, reset, and per-key isolation behavior
+- Production boundary checks that keep hosted run requests enqueue-only and prevent pipeline report readiness from bypassing transactional publication
 - Repository persistence mapping for costs, memories, and post-mortems
 - Smoke-script hosted health contract and secret-leak rejection
 - Worker runtime config parsing, no-work paths, attempt-token lease heartbeats, lease-guarded pipeline persistence, lease-loss terminal-write blocking, reporting dispatch, sanitized failure artifacts, and best-effort run-summary memory

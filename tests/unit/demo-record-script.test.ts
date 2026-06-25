@@ -89,6 +89,32 @@ describe('demo-record script', () => {
     expect(result.stdout).toContain('runId must not be a placeholder value');
   });
 
+  it('makes evals:live emit run, trace, and cost proof for a complete manifest', () => {
+    const manifestPath = writeDemoBundle({
+      evalOutput: { passed: true, mode: 'live', status: 'ok', runId, traceId, fixtureCount: 10, issues: [], regressions: [] },
+    });
+
+    const result = runLiveEval(manifestPath);
+    const payload = JSON.parse(result.stdout);
+
+    expect(result.status).toBe(0);
+    expect(payload).toEqual(
+      expect.objectContaining({
+        passed: true,
+        mode: 'live',
+        status: 'ok',
+        runId,
+        traceId,
+        manifest: manifestPath,
+        fixtureCount: 10,
+        issues: [],
+        regressions: [],
+        cost: { totalUsd: 0.42, measurementMethod: 'provider_usage', pricingEffectiveDate: '2026-06-24' },
+      }),
+    );
+    expect(payload.manifestSha256).toMatch(/^[a-f0-9]{64}$/);
+  });
+
   it('rejects missing media, weak cost evidence, and pending benchmark rows', () => {
     const manifestPath = writeDemoBundle({
       benchmark: '| Pending | Configured live demo run | Pending |',
@@ -113,6 +139,21 @@ function runDemoRecord(manifestPath: string) {
   return spawnSync(process.execPath, ['scripts/demo-record.mjs', manifestPath], {
     cwd: workspace,
     encoding: 'utf8',
+  });
+}
+
+function runLiveEval(manifestPath: string) {
+  return spawnSync(process.execPath, [join(workspace, 'node_modules', 'tsx', 'dist', 'cli.mjs'), 'scripts/evals.ts', '--live', '--manifest', manifestPath], {
+    cwd: workspace,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      OPENAI_API_KEY: 'test-openai',
+      EXA_API_KEY: 'test-exa',
+      NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test-anon',
+      SUPABASE_SERVICE_ROLE_KEY: 'test-service-role',
+    },
   });
 }
 
@@ -165,7 +206,7 @@ function writeDemoBundle(options: {
         '',
         '## Live Run Log',
         '',
-        '| Date | Prompt | Run ID | Model(s) | Exa searches | Tokens | Estimated cost | Eval result | Report |',
+        '| Date | Prompt | Run ID | Model(s) | Exa searches | Tokens | Cost / method | Eval result | Report |',
         '| --- | --- | --- | --- | ---: | ---: | ---: | --- | --- |',
         `| ${today()} | Demo prompt | ${runId} | gpt-5.5 | 3 | 1000 | 0.42 provider_usage | ${rel(evalOutputPath)} ${rel(manifestPath)} | ${rel(reportPath)} ${rel(runExportPath)} ${rel(screenshotPath)} |`,
         '',

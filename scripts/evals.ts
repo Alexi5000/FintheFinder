@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
@@ -68,7 +69,12 @@ function runLiveEvalProofCheck(path: string) {
     };
   }
 
-  const manifest = JSON.parse(readFileSync(absoluteManifestPath, 'utf8')) as { evalOutput?: string; runId?: string };
+  const manifest = JSON.parse(readFileSync(absoluteManifestPath, 'utf8')) as {
+    evalOutput?: string;
+    runId?: string;
+    traceId?: string;
+    cost?: { totalUsd?: number; measurementMethod?: string; pricingEffectiveDate?: string };
+  };
   if (!manifest.evalOutput || !existsSync(resolvePath(manifest.evalOutput))) {
     return {
       passed: false,
@@ -78,14 +84,26 @@ function runLiveEvalProofCheck(path: string) {
     };
   }
 
-  const evalOutput = JSON.parse(readFileSync(resolvePath(manifest.evalOutput), 'utf8')) as { passed?: boolean };
+  const evalOutput = JSON.parse(readFileSync(resolvePath(manifest.evalOutput), 'utf8')) as {
+    passed?: boolean;
+    fixtureCount?: number;
+    scenarioCount?: number;
+    issues?: unknown;
+    regressions?: unknown;
+  };
   return {
     passed: evalOutput.passed === true,
     mode: 'live',
     status: evalOutput.passed === true ? 'ok' : 'failed_eval_output',
     runId: manifest.runId,
+    traceId: manifest.traceId,
     manifest: path,
+    manifestSha256: createHash('sha256').update(readFileSync(absoluteManifestPath)).digest('hex'),
     evalOutput: manifest.evalOutput,
+    fixtureCount: evalOutput.fixtureCount ?? evalOutput.scenarioCount,
+    issues: Array.isArray(evalOutput.issues) ? evalOutput.issues : [],
+    regressions: Array.isArray(evalOutput.regressions) ? evalOutput.regressions : [],
+    cost: manifest.cost,
   };
 }
 

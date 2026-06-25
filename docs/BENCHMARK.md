@@ -45,7 +45,7 @@ The deterministic estimator lives in `src/server/research/cost-model.ts` and use
 
 ## Live Run Log
 
-| Date | Prompt | Run ID | Model(s) | Exa searches | Tokens | Estimated cost | Eval result | Report |
+| Date | Prompt | Run ID | Model(s) | Exa searches | Tokens | Cost / method | Eval result | Report |
 | --- | --- | --- | --- | ---: | ---: | ---: | --- | --- |
 | Pending | Configured live demo run | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
 

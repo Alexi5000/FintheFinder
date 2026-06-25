@@ -30,7 +30,7 @@ Current unit coverage includes:
 - Canonical URL normalization
 - Citation auditing
 - Logger redaction for nested credentials, prompts, queries, and secret-like error messages
-- Missing Exa provider behavior
+- Exa provider behavior with mocked missing-key, success mapping, canonical duplicate filtering, provider error wrapping, and timeout coverage
 - Pipeline HITL/cost behavior
 - Persisted eval history with public-safe column projection and summary sanitization
 - Rate-limit window, reset, and per-key isolation behavior

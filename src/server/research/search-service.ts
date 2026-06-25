@@ -22,8 +22,9 @@ export async function searchWeb(query: string, options: SearchOptions = {}): Pro
 
   const exa = new Exa(env.EXA_API_KEY);
   const timeoutMs = options.timeoutMs ?? 20000;
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new SearchProviderError('Exa search timed out.', 'timeout')), timeoutMs);
+    timeoutHandle = setTimeout(() => reject(new SearchProviderError('Exa search timed out.', 'timeout')), timeoutMs);
   });
 
   try {
@@ -68,5 +69,7 @@ export async function searchWeb(query: string, options: SearchOptions = {}): Pro
   } catch (error) {
     if (error instanceof SearchProviderError) throw error;
     throw new SearchProviderError(error instanceof Error ? error.message : 'Exa search failed.', 'provider_error');
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
   }
 }

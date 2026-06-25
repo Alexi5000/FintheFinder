@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import type { SupabaseBrowserConfig } from '@/lib/supabase-browser';
 
 type Props = {
   providerReady: boolean;
+  supabaseConfig?: SupabaseBrowserConfig;
 };
 
-export function ResearchWorkspace({ providerReady }: Props) {
+export function ResearchWorkspace({ providerReady, supabaseConfig }: Props) {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<string>('');
   const [busy, setBusy] = useState(false);
@@ -17,7 +19,7 @@ export function ResearchWorkspace({ providerReady }: Props) {
     setBusy(true);
     setStatus('Creating research session...');
     try {
-      const supabase = createSupabaseBrowserClient();
+      const supabase = createSupabaseBrowserClient(supabaseConfig);
       const token = (await supabase?.auth.getSession())?.data.session?.access_token;
       if (!token) {
         setStatus('Use an existing Supabase Auth session before starting a hosted research run.');

@@ -1,13 +1,15 @@
 import { getProviderStatus } from '@/lib/config';
 import { ResearchWorkspace } from '@/components/research-workspace';
+import { getSupabaseBrowserConfig } from '@/server/supabase/server';
 
 export default function HomePage() {
   const status = getProviderStatus();
   const providerReady = status.openai && status.exa && status.supabase;
+  const supabaseConfig = getSupabaseBrowserConfig();
 
   return (
     <div className="workspace-grid">
-      <ResearchWorkspace providerReady={providerReady} />
+      <ResearchWorkspace providerReady={providerReady} supabaseConfig={supabaseConfig} />
       <aside className="stack">
         <section className="panel">
           <h2 className="h2">Production Readiness</h2>

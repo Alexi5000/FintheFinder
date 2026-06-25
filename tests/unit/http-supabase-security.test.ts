@@ -67,4 +67,13 @@ describe('HTTP and Supabase request security', () => {
     expect(supabaseHarness.createClient).toHaveBeenCalledWith('https://example.supabase.co', 'service-role-key', expect.any(Object));
     expect(supabaseHarness.getUser).toHaveBeenCalledWith('access-token');
   });
+
+  it('exposes only safe public Supabase runtime config to server-rendered clients', async () => {
+    const { getSupabaseBrowserConfig } = await import('@/server/supabase/server');
+
+    const config = getSupabaseBrowserConfig();
+
+    expect(config).toEqual({ url: 'https://example.supabase.co', anonKey: 'anon-key' });
+    expect(JSON.stringify(config)).not.toContain('service-role-key');
+  });
 });

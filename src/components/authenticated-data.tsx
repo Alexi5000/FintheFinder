@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, Download, Loader2, Play, RefreshCw, Save, XCircle } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import type { SupabaseBrowserConfig } from '@/lib/supabase-browser';
 import type { ClaimGap, ResearchApproval, ResearchClaim, ResearchMemory, ResearchPostMortem, ResearchRun, ResearchSession, ResearchSessionDetail, RunCost } from '@/lib/schemas';
 
 type LoadState<T> = {
@@ -12,16 +13,16 @@ type LoadState<T> = {
   message?: string;
 };
 
-async function getBearerToken() {
-  const supabase = createSupabaseBrowserClient();
+async function getBearerToken(config?: SupabaseBrowserConfig) {
+  const supabase = createSupabaseBrowserClient(config);
   if (!supabase) return { kind: 'unconfigured' as const };
   const token = (await supabase.auth.getSession()).data.session?.access_token;
   if (!token) return { kind: 'unauthenticated' as const };
   return { kind: 'ready' as const, token };
 }
 
-async function authedFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = await getBearerToken();
+async function authedFetch<T>(path: string, init: RequestInit = {}, config?: SupabaseBrowserConfig): Promise<T> {
+  const token = await getBearerToken(config);
   if (token.kind === 'unconfigured') throw new Error('Supabase browser configuration is missing.');
   if (token.kind === 'unauthenticated') throw new Error('Use an existing Supabase Auth session to inspect hosted research data.');
   const response = await fetch(path, {
@@ -37,18 +38,18 @@ async function authedFetch<T>(path: string, init: RequestInit = {}): Promise<T> 
   return payload as T;
 }
 
-function useAuthedResource<T>(path: string, initialData?: T) {
+function useAuthedResource<T>(path: string, initialData?: T, config?: SupabaseBrowserConfig) {
   const [state, setState] = useState<LoadState<T>>(initialData ? { status: 'ready', data: initialData } : { status: 'idle' });
   const load = useCallback(async () => {
     setState({ status: 'loading' });
     try {
-      setState({ status: 'ready', data: await authedFetch<T>(path) });
+      setState({ status: 'ready', data: await authedFetch<T>(path, {}, config) });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unexpected data loading failure.';
       const status = message.includes('configuration') ? 'unconfigured' : message.includes('Supabase Auth session') ? 'unauthenticated' : 'error';
       setState({ status, message });
     }
-  }, [path]);
+  }, [path, config]);
 
   useEffect(() => {
     if (initialData) return;
@@ -95,8 +96,8 @@ function StatusBlock<T>({ state, loadingLabel }: { state: LoadState<T>; loadingL
   return null;
 }
 
-export function SessionsClient() {
-  const { state, reload } = useAuthedResource<{ sessions: ResearchSession[] }>('/api/research/sessions');
+export function SessionsClient({ supabaseConfig }: { supabaseConfig?: SupabaseBrowserConfig } = {}) {
+  const { state, reload } = useAuthedResource<{ sessions: ResearchSession[] }>('/api/research/sessions', undefined, supabaseConfig);
   if (state.status !== 'ready') return <StatusBlock state={state} loadingLabel="Loading research sessions..." />;
 
   const sessions = state.data?.sessions ?? [];
@@ -153,15 +154,18 @@ export function SessionDetailClient({
   initialClaims,
   initialMemories,
   initialSession,
+  supabaseConfig,
 }: {
   sessionId: string;
   initialClaims?: { claims: ResearchClaim[]; gaps: ClaimGap[] };
   initialMemories?: ResearchMemory[];
   initialSession?: ResearchSessionDetail;
+  supabaseConfig?: SupabaseBrowserConfig;
 }) {
   const { state, reload } = useAuthedResource<{ session: ResearchSessionDetail }>(
     `/api/research/sessions/${sessionId}`,
     initialSession ? { session: initialSession } : undefined,
+    supabaseConfig,
   );
   const [actionStatus, setActionStatus] = useState('');
   if (state.status !== 'ready') return <StatusBlock state={state} loadingLabel="Loading session detail..." />;
@@ -175,10 +179,14 @@ export function SessionDetailClient({
   async function postAction(path: string, body?: unknown) {
     setActionStatus('Submitting...');
     try {
-      const result = await authedFetch<{ runId?: string; status?: string }>(path, {
-        method: 'POST',
-        body: body ? JSON.stringify(body) : undefined,
-      });
+      const result = await authedFetch<{ runId?: string; status?: string }>(
+        path,
+        {
+          method: 'POST',
+          body: body ? JSON.stringify(body) : undefined,
+        },
+        supabaseConfig,
+      );
       setActionStatus(result.runId ? `Queued run ${result.runId}` : 'Saved.');
       await reload();
     } catch (error) {
@@ -219,10 +227,12 @@ export function SessionDetailClient({
       </div>
 
       <RunPanel run={currentRun ?? null} cost={currentRunCost} postMortem={currentPostMortem} />
-      {session.status === 'awaiting_approval' ? <ApprovalGatePanel initialClaims={initialClaims} session={session} postAction={postAction} /> : null}
+      {session.status === 'awaiting_approval' ? (
+        <ApprovalGatePanel initialClaims={initialClaims} session={session} postAction={postAction} supabaseConfig={supabaseConfig} />
+      ) : null}
       <ApprovalHistoryPanel approvals={session.approvals} />
-      <ClaimsPanel initialClaims={initialClaims} sessionId={session.id} />
-      <MemoryPanel initialMemories={initialMemories} sessionId={session.id} />
+      <ClaimsPanel initialClaims={initialClaims} sessionId={session.id} supabaseConfig={supabaseConfig} />
+      <MemoryPanel initialMemories={initialMemories} sessionId={session.id} supabaseConfig={supabaseConfig} />
       <ArtifactsPanel session={session} />
     </div>
   );
@@ -307,12 +317,18 @@ function ApprovalGatePanel({
   initialClaims,
   session,
   postAction,
+  supabaseConfig,
 }: {
   initialClaims?: { claims: ResearchClaim[]; gaps: ClaimGap[] };
   session: ResearchSessionDetail;
   postAction: (path: string, body?: unknown) => Promise<void>;
+  supabaseConfig?: SupabaseBrowserConfig;
 }) {
-  const { state, reload } = useAuthedResource<{ claims: ResearchClaim[]; gaps: ClaimGap[] }>(`/api/research/sessions/${session.id}/claims`, initialClaims);
+  const { state, reload } = useAuthedResource<{ claims: ResearchClaim[]; gaps: ClaimGap[] }>(
+    `/api/research/sessions/${session.id}/claims`,
+    initialClaims,
+    supabaseConfig,
+  );
   const [selectedWaivers, setSelectedWaivers] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
   if (state.status !== 'ready') return <StatusBlock state={state} loadingLabel="Loading approval gate..." />;
@@ -409,8 +425,20 @@ function ApprovalHistoryPanel({ approvals }: { approvals: ResearchApproval[] }) 
   );
 }
 
-function ClaimsPanel({ initialClaims, sessionId }: { initialClaims?: { claims: ResearchClaim[]; gaps: ClaimGap[] }; sessionId: string }) {
-  const { state, reload } = useAuthedResource<{ claims: ResearchClaim[]; gaps: ClaimGap[] }>(`/api/research/sessions/${sessionId}/claims`, initialClaims);
+function ClaimsPanel({
+  initialClaims,
+  sessionId,
+  supabaseConfig,
+}: {
+  initialClaims?: { claims: ResearchClaim[]; gaps: ClaimGap[] };
+  sessionId: string;
+  supabaseConfig?: SupabaseBrowserConfig;
+}) {
+  const { state, reload } = useAuthedResource<{ claims: ResearchClaim[]; gaps: ClaimGap[] }>(
+    `/api/research/sessions/${sessionId}/claims`,
+    initialClaims,
+    supabaseConfig,
+  );
   if (state.status !== 'ready') return <StatusBlock state={state} loadingLabel="Loading claims and gaps..." />;
 
   const claims = state.data?.claims ?? [];
@@ -449,10 +477,11 @@ function ClaimsPanel({ initialClaims, sessionId }: { initialClaims?: { claims: R
   );
 }
 
-function MemoryPanel({ initialMemories, sessionId }: { initialMemories?: ResearchMemory[]; sessionId: string }) {
+function MemoryPanel({ initialMemories, sessionId, supabaseConfig }: { initialMemories?: ResearchMemory[]; sessionId: string; supabaseConfig?: SupabaseBrowserConfig }) {
   const { state, reload } = useAuthedResource<{ memories: ResearchMemory[] }>(
     `/api/research/memory?sessionId=${sessionId}`,
     initialMemories ? { memories: initialMemories } : undefined,
+    supabaseConfig,
   );
   const [note, setNote] = useState('');
   const [saveStatus, setSaveStatus] = useState('');
@@ -464,16 +493,20 @@ function MemoryPanel({ initialMemories, sessionId }: { initialMemories?: Researc
     if (!note.trim()) return;
     setSaveStatus('Saving...');
     try {
-      await authedFetch<{ memory: ResearchMemory }>('/api/research/memory', {
-        method: 'POST',
-        body: JSON.stringify({
-          sessionId,
-          scope: 'session',
-          namespace: 'procedure',
-          key: `operator-note:${Date.now()}`,
-          value: { note: note.trim(), recordedAt: new Date().toISOString(), source: 'session_ui' },
-        }),
-      });
+      await authedFetch<{ memory: ResearchMemory }>(
+        '/api/research/memory',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            sessionId,
+            scope: 'session',
+            namespace: 'procedure',
+            key: `operator-note:${Date.now()}`,
+            value: { note: note.trim(), recordedAt: new Date().toISOString(), source: 'session_ui' },
+          }),
+        },
+        supabaseConfig,
+      );
       setNote('');
       setSaveStatus('Saved.');
       await reload();
@@ -552,10 +585,11 @@ function ArtifactsPanel({ session }: { session: ResearchSessionDetail }) {
   );
 }
 
-export function ReportReaderClient({ initialSession, sessionId }: { initialSession?: ResearchSessionDetail; sessionId: string }) {
+export function ReportReaderClient({ initialSession, sessionId, supabaseConfig }: { initialSession?: ResearchSessionDetail; sessionId: string; supabaseConfig?: SupabaseBrowserConfig }) {
   const { state, reload } = useAuthedResource<{ session: ResearchSessionDetail }>(
     `/api/research/sessions/${sessionId}`,
     initialSession ? { session: initialSession } : undefined,
+    supabaseConfig,
   );
   const [exportStatus, setExportStatus] = useState('');
   if (state.status !== 'ready') return <StatusBlock state={state} loadingLabel="Loading report..." />;
@@ -566,7 +600,7 @@ export function ReportReaderClient({ initialSession, sessionId }: { initialSessi
   async function exportMarkdown() {
     setExportStatus('Preparing markdown export...');
     try {
-      const token = await getBearerToken();
+      const token = await getBearerToken(supabaseConfig);
       if (token.kind === 'unconfigured') throw new Error('Supabase browser configuration is missing.');
       if (token.kind === 'unauthenticated') throw new Error('Use an existing Supabase Auth session to export reports.');
       const response = await fetch(`/api/reports/${sessionId}/export.md`, { headers: { authorization: `Bearer ${token.token}` } });

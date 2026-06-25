@@ -53,6 +53,21 @@ describe('container runtime configuration', () => {
     expect(compose).toMatch(/worker:[\s\S]*test: \["CMD", "node", "scripts\/container-healthcheck\.mjs", "worker"\]/);
   });
 
+  it('passes runtime public Supabase config from server pages into browser clients', () => {
+    const homePage = readRepoFile('src/app/page.tsx');
+    const sessionsPage = readRepoFile('src/app/sessions/page.tsx');
+    const sessionDetailPage = readRepoFile('src/app/sessions/[id]/page.tsx');
+    const reportPage = readRepoFile('src/app/reports/[id]/page.tsx');
+    const browserClient = readRepoFile('src/lib/supabase-browser.ts');
+
+    for (const page of [homePage, sessionsPage, sessionDetailPage, reportPage]) {
+      expect(page).toContain('getSupabaseBrowserConfig');
+      expect(page).toContain('supabaseConfig=');
+    }
+    expect(browserClient).toContain('config?.url ?? process.env.NEXT_PUBLIC_SUPABASE_URL');
+    expect(browserClient).toContain('config?.anonKey ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  });
+
   it('validates worker healthcheck configuration without claiming work', () => {
     const result = runWorkerHealthcheck(validWorkerHealthEnv);
 

@@ -1,9 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 import { env } from '@/lib/config';
 import type { Database } from '@/lib/supabase/database.types';
+import type { SupabaseBrowserConfig } from '@/lib/supabase-browser';
 
 export function hasSupabaseConfig() {
   return Boolean(env.NEXT_PUBLIC_SUPABASE_URL && env.NEXT_PUBLIC_SUPABASE_ANON_KEY && env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+export function getSupabaseBrowserConfig(): SupabaseBrowserConfig | undefined {
+  if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return undefined;
+  return {
+    anonKey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    url: env.NEXT_PUBLIC_SUPABASE_URL,
+  };
 }
 
 export function createSupabaseAdmin() {

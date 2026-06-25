@@ -28,6 +28,7 @@ Current unit coverage includes:
 - Shared Zod schemas
 - Authenticated data UI populated rendering for session detail, report reader, run cost, approvals, claims, memory, and artifacts
 - Container runtime config for non-root image execution, Docker healthcheck, compose healthchecks, worker healthcheck fail-closed behavior, and restart policy
+- Runtime public Supabase browser config for containerized web clients without build-time public env injection
 - Coverage gate configuration for first-party contract/server code
 - Demo proof verifier CLI behavior
 - Hosted API route contracts for queueing runs, run status, SSE events, report export, claims, memory ownership, and transactional HITL approval-decision mapping

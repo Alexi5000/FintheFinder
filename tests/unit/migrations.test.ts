@@ -36,6 +36,7 @@ const migrations = [
   '013_transactional_approval_decision.sql',
   '014_fenced_report_publication.sql',
   '015_terminal_run_lease_cleanup.sql',
+  '016_exact_report_publication_replay.sql',
 ];
 
 function readMigration(name: string) {
@@ -599,6 +600,28 @@ describe('database migrations', () => {
     expect(migration).toMatch(/update public\.research_run_attempts[\s\S]*status = 'completed'[\s\S]*lease_expires_at = null/i);
     expect(migration).toMatch(/delete from public\.research_job_leases[\s\S]*where run_id = p_run_id[\s\S]*worker_id = p_worker_id/i);
     expect(migration).toContain('revoke execute on function public.publish_research_report_for_attempt(uuid, uuid, uuid, text, jsonb, jsonb, text, text) from public, anon, authenticated');
+    expect(migration).toContain('grant execute on function public.publish_research_report_for_attempt(uuid, uuid, uuid, text, jsonb, jsonb, text, text) to service_role');
+  });
+
+  it('enforces exact replay for committed report publication retries', () => {
+    const migration = readMigration('016_exact_report_publication_replay.sql');
+
+    expect(migration).toContain('create or replace function public.publish_research_report_for_attempt');
+    expect(migration).toContain('existing_report public.research_reports%rowtype');
+    expect(migration).toContain('existing_final_audit public.research_audits%rowtype');
+    expect(migration).toMatch(/select report\.\*[\s\S]*into existing_report[\s\S]*report\.session_id = p_session_id[\s\S]*report\.id = report_id/i);
+    expect(migration).toMatch(/select audit\.\*[\s\S]*into existing_final_audit[\s\S]*audit\.audit_type = 'final_review'[\s\S]*audit\.ok is true/i);
+    expect(migration).toContain('report publication replay is missing committed report or audit');
+    expect(migration).toContain("existing_report.title is distinct from p_report ->> 'title'");
+    expect(migration).toContain("existing_report.executive_summary is distinct from p_report ->> 'executive_summary'");
+    expect(migration).toContain("existing_report.sections is distinct from p_report -> 'sections'");
+    expect(migration).toContain("existing_report.citations is distinct from p_report -> 'citations'");
+    expect(migration).toContain("existing_report.markdown is distinct from p_report ->> 'markdown'");
+    expect(migration).toContain("existing_report.created_at is distinct from (p_report ->> 'created_at')::timestamptz");
+    expect(migration).toContain("existing_final_audit.issues is distinct from coalesce(p_final_audit -> 'issues', '[]'::jsonb)");
+    expect(migration).toContain('report publication replay payload does not match committed report');
+    expect(migration).toContain("'idempotent', true");
+    expect(migration).toMatch(/delete from public\.research_job_leases[\s\S]*where run_id = p_run_id[\s\S]*worker_id = p_worker_id/i);
     expect(migration).toContain('grant execute on function public.publish_research_report_for_attempt(uuid, uuid, uuid, text, jsonb, jsonb, text, text) to service_role');
   });
 });

@@ -55,7 +55,7 @@
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
     "ai": "^6.0.209",
-    "exa-js": "^2.14.0",
+    "exa-js": "^2.15.0",
     "lucide-react": "^1.21.0",
     "next": "^16.2.9",
     "pino": "10.3.1",

@@ -65,7 +65,7 @@ API errors preserve validation details but scrub unexpected server exception mes
 
 OpenTelemetry is initialized lazily for API spans and during worker boot. Run events persist trace IDs when an active span exists and always carry a correlation ID for worker-claimed runs. Post-mortems emit `post_mortem_created` events and are visible from run/session APIs.
 
-Worker terminal run updates require a successful ownership heartbeat. If ownership cannot be proven, the worker leaves terminal writes and post-mortem creation to the current lease owner or retry path.
+Worker-owned pipeline writes and terminal run updates require a successful ownership heartbeat. If ownership cannot be proven, the worker leaves artifact/report/cost/event persistence, terminal writes, and post-mortem creation to the current lease owner or retry path. Expired leases are not extendable by the stale worker; they must be reclaimed through the queue claim RPC.
 
 Approval mutations must go through the hosted API routes. Direct authenticated Supabase writes to `research_approvals` are intentionally denied so critical-gap blocking, waiver notes, rejection, and follow-up transitions stay inside the audited HITL state machine.
 

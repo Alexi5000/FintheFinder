@@ -13,6 +13,7 @@ import {
   type ResearchSource,
   type ModelUsage,
   type RunUsage,
+  type ResearchRunEvent,
   type SourceEvaluation,
   type ResearchPhase,
 } from '@/lib/schemas';
@@ -52,29 +53,68 @@ const finalReviewSchema = z.object({
 type PipelineOptions = {
   run?: ResearchRun;
   correlationId?: string;
+  attemptId?: string;
+  assertLease?: PipelinePersistenceGuard;
 };
 
 type PipelineStageResult = {
   status: 'awaiting_approval' | 'completed';
 };
 
+export type PipelinePersistenceContext = {
+  runId?: string;
+  operation: string;
+  phase: ResearchPhase;
+  stepId: string;
+};
+
+export type PipelinePersistenceGuard = (context: PipelinePersistenceContext) => Promise<void>;
+
 type MeasuredModelCall = {
   call: ModelUsage;
   measured: boolean;
 };
 
+type PipelineEventOptions = Partial<
+  Pick<ResearchRunEvent, 'eventType' | 'severity' | 'actor' | 'stepId' | 'durationMs' | 'traceId' | 'correlationId'>
+>;
+
+function persistenceFor(options: PipelineOptions) {
+  const mutate = async <T>(operation: string, phase: ResearchPhase, stepId: string, action: () => Promise<T>) => {
+    await options.assertLease?.({ runId: options.run?.id, operation, phase, stepId });
+    return action();
+  };
+
+  const event = (
+    sessionId: string,
+    phase: ResearchPhase,
+    message: string,
+    metadata: Record<string, unknown> = {},
+    eventOptions: PipelineEventOptions = {},
+  ) =>
+    mutate('add_event', phase, eventOptions.stepId ?? eventOptions.eventType ?? 'event', () =>
+      addEvent(sessionId, phase, message, metadata, {
+        ...eventOptions,
+        runId: options.run?.id,
+        attemptId: options.attemptId,
+        correlationId: eventOptions.correlationId ?? options.correlationId,
+      }),
+    );
+
+  return { mutate, event };
+}
+
 export async function runResearchSession(sessionId: string, query: string, options: PipelineOptions = {}): Promise<PipelineStageResult> {
-  const runId = options.run?.id;
-  const correlationId = options.correlationId;
+  const persistence = persistenceFor(options);
   const status = getProviderStatus();
   if (!status.openai || !status.exa) {
-    await updateSessionState(sessionId, 'failed', 'failed');
-    await addEvent(sessionId, 'failed', 'Provider configuration is incomplete.', status, { runId, correlationId, eventType: 'error', severity: 'error' });
+    await persistence.mutate('update_session_state', 'failed', 'provider_config', () => updateSessionState(sessionId, 'failed', 'failed'));
+    await persistence.event(sessionId, 'failed', 'Provider configuration is incomplete.', status, { eventType: 'error', severity: 'error', stepId: 'provider_config' });
     throw new Error('OpenAI and Exa keys are required to run research.');
   }
 
-  await updateSessionState(sessionId, 'running', 'planning');
-  await addEvent(sessionId, 'planning', 'Planning focused search queries.', {}, { runId, correlationId, eventType: 'agent_started', actor: 'agent', stepId: 'planner' });
+  await persistence.mutate('update_session_state', 'planning', 'planner', () => updateSessionState(sessionId, 'running', 'planning'));
+  await persistence.event(sessionId, 'planning', 'Planning focused search queries.', {}, { eventType: 'agent_started', actor: 'agent', stepId: 'planner' });
 
   const planner = mastra.getAgent('plannerAgent');
   const planResponse = await planner.generate(
@@ -92,9 +132,9 @@ export async function runResearchSession(sessionId: string, query: string, optio
   const sources: ResearchSource[] = [];
   const seen = new Set<string>();
 
-  await updateSessionState(sessionId, 'running', 'searching');
+  await persistence.mutate('update_session_state', 'searching', 'exa_search', () => updateSessionState(sessionId, 'running', 'searching'));
   for (const searchQuery of plan.queries) {
-    await addEvent(sessionId, 'searching', `Searching: ${searchQuery}`, {}, { runId, correlationId, eventType: 'tool_started', actor: 'tool', stepId: 'exa_search' });
+    await persistence.event(sessionId, 'searching', `Searching: ${searchQuery}`, {}, { eventType: 'tool_started', actor: 'tool', stepId: 'exa_search' });
     const results = await searchWeb(searchQuery, { numResults: 5 });
     for (const source of results) {
       if (seen.has(source.canonicalUrl)) continue;
@@ -103,19 +143,19 @@ export async function runResearchSession(sessionId: string, query: string, optio
     }
   }
 
-  await updateSessionState(sessionId, 'running', 'evaluating');
-  await addEvent(sessionId, 'evaluating', `Evaluating ${sources.length} sources.`, {}, { runId, correlationId, eventType: 'agent_started', actor: 'agent', stepId: 'source_evaluator' });
+  await persistence.mutate('update_session_state', 'evaluating', 'source_evaluator', () => updateSessionState(sessionId, 'running', 'evaluating'));
+  await persistence.event(sessionId, 'evaluating', `Evaluating ${sources.length} sources.`, {}, { eventType: 'agent_started', actor: 'agent', stepId: 'source_evaluator' });
   const evaluatedSources = await evaluateSources(query, sources);
   const evaluations = evaluatedSources.evaluations;
   const relevantSources = sources.filter((source) => evaluations.some((evaluation) => evaluation.sourceId === source.id && evaluation.isRelevant));
 
-  await updateSessionState(sessionId, 'running', 'extracting');
-  await addEvent(sessionId, 'extracting', `Extracting learnings from ${relevantSources.length} relevant sources.`, {}, { runId, correlationId, eventType: 'agent_started', actor: 'agent', stepId: 'learning_extractor' });
+  await persistence.mutate('update_session_state', 'extracting', 'learning_extractor', () => updateSessionState(sessionId, 'running', 'extracting'));
+  await persistence.event(sessionId, 'extracting', `Extracting learnings from ${relevantSources.length} relevant sources.`, {}, { eventType: 'agent_started', actor: 'agent', stepId: 'learning_extractor' });
   const extractedLearnings = await extractLearnings(query, relevantSources);
   const learnings = extractedLearnings.learnings;
 
-  await updateSessionState(sessionId, 'awaiting_approval', 'reviewing');
-  await addEvent(sessionId, 'reviewing', 'Building claim ledger and checking for gaps.', {}, { runId, correlationId, eventType: 'agent_started', actor: 'agent', stepId: 'claim_audit' });
+  await persistence.mutate('update_session_state', 'reviewing', 'claim_audit', () => updateSessionState(sessionId, 'running', 'reviewing'));
+  await persistence.event(sessionId, 'reviewing', 'Building claim ledger and checking for gaps.', {}, { eventType: 'agent_started', actor: 'agent', stepId: 'claim_audit' });
   const claims = claimsFromLearnings(sessionId, learnings, relevantSources);
   const claimEvidence = evidenceFromLearnings(sessionId, learnings, relevantSources);
   const claimAudit = auditClaims(sessionId, claims, plan.successCriteria);
@@ -131,7 +171,7 @@ export async function runResearchSession(sessionId: string, query: string, optio
   }));
   const allGaps = [...claimAudit.openGaps, ...contradictionGaps];
 
-  await replaceResearchArtifacts(sessionId, {
+  await persistence.mutate('replace_research_artifacts', 'reviewing', 'claim_audit', () => replaceResearchArtifacts(sessionId, {
     sources: relevantSources,
     evaluations,
     learnings,
@@ -139,56 +179,56 @@ export async function runResearchSession(sessionId: string, query: string, optio
     claimEvidence,
     claimGaps: allGaps,
     audits: [
-      { runId, auditType: 'claim_gap', audit: { ...claimAudit, openGaps: allGaps, openCriticalGaps: allGaps.filter((gap) => gap.severity === 'critical') } satisfies ClaimAudit },
-      { runId, auditType: 'contradiction', audit: contradictionReview },
+      { runId: options.run?.id, auditType: 'claim_gap', audit: { ...claimAudit, openGaps: allGaps, openCriticalGaps: allGaps.filter((gap) => gap.severity === 'critical') } satisfies ClaimAudit },
+      { runId: options.run?.id, auditType: 'contradiction', audit: contradictionReview },
     ],
-  });
+  }));
 
   const researchModelUsage = [plannerUsage, ...evaluatedSources.usage, ...extractedLearnings.usage, contradictionResult.usage];
-  await recordRunCost(sessionId, runId, correlationId, 'reviewing', measurementMethodFor(researchModelUsage), {
+  await recordRunCost(sessionId, options, 'reviewing', measurementMethodFor(researchModelUsage), {
     exaSearches: plan.queries.length,
     modelCalls: [
       ...researchModelUsage.map((usage) => usage.call),
     ],
   });
 
-  await addEvent(
+  await persistence.mutate('update_session_state', 'reviewing', 'awaiting_approval', () => updateSessionState(sessionId, 'awaiting_approval', 'reviewing'));
+  await persistence.event(
     sessionId,
     'reviewing',
     'Research artifacts are ready for human approval.',
     { openGaps: allGaps.length, supportedClaims: claims.length },
-    { runId, correlationId, eventType: 'state_transition', actor: 'worker', stepId: 'awaiting_approval' },
+    { eventType: 'state_transition', actor: 'worker', stepId: 'awaiting_approval' },
   );
 
   return { status: 'awaiting_approval' };
 }
 
 export async function runApprovedReportSession(sessionId: string, query: string, options: PipelineOptions = {}): Promise<PipelineStageResult> {
-  const runId = options.run?.id;
-  const correlationId = options.correlationId;
+  const persistence = persistenceFor(options);
   const status = getProviderStatus();
   if (!status.openai) {
-    await updateSessionState(sessionId, 'failed', 'failed');
-    await addEvent(sessionId, 'failed', 'OpenAI configuration is incomplete.', status, { runId, correlationId, eventType: 'error', severity: 'error' });
+    await persistence.mutate('update_session_state', 'failed', 'provider_config', () => updateSessionState(sessionId, 'failed', 'failed'));
+    await persistence.event(sessionId, 'failed', 'OpenAI configuration is incomplete.', status, { eventType: 'error', severity: 'error', stepId: 'provider_config' });
     throw new Error('OpenAI key is required to generate reports.');
   }
 
   const artifacts = await getResearchArtifacts(sessionId);
   const unresolvedCriticalGaps = artifacts.gaps.filter((gap) => gap.severity === 'critical' && gap.status === 'open');
   if (unresolvedCriticalGaps.length > 0) {
-    await updateSessionState(sessionId, 'awaiting_approval', 'reviewing');
-    await addEvent(
+    await persistence.mutate('update_session_state', 'reviewing', 'critical_gap_gate', () => updateSessionState(sessionId, 'awaiting_approval', 'reviewing'));
+    await persistence.event(
       sessionId,
       'reviewing',
       'Report generation blocked by unresolved critical claim gaps.',
       { openCriticalGapIds: unresolvedCriticalGaps.map((gap) => gap.id) },
-      { runId, correlationId, eventType: 'claim_gap_opened', severity: 'warn', actor: 'worker', stepId: 'critical_gap_gate' },
+      { eventType: 'claim_gap_opened', severity: 'warn', actor: 'worker', stepId: 'critical_gap_gate' },
     );
     return { status: 'awaiting_approval' };
   }
 
-  await updateSessionState(sessionId, 'running', 'reporting');
-  await addEvent(sessionId, 'reporting', 'Synthesizing cited report from approved research artifacts.', {}, { runId, correlationId, eventType: 'agent_started', actor: 'agent', stepId: 'report_writer' });
+  await persistence.mutate('update_session_state', 'reporting', 'report_writer', () => updateSessionState(sessionId, 'running', 'reporting'));
+  await persistence.event(sessionId, 'reporting', 'Synthesizing cited report from approved research artifacts.', {}, { eventType: 'agent_started', actor: 'agent', stepId: 'report_writer' });
 
   const reportResult = await generateReport(sessionId, query, artifacts.sources, artifacts.learnings);
   const report = reportResult.report;
@@ -198,41 +238,41 @@ export async function runApprovedReportSession(sessionId: string, query: string,
 
   if (!citationAudit.ok || !citationAgentAudit.ok) {
     const issues = [...citationAudit.issues, ...citationAgentAudit.issues];
-    logger.warn({ issues, sessionId, runId }, 'citation audit blocked report readiness');
-    await saveResearchAudit(sessionId, 'citation', { ok: false, issues }, runId);
+    logger.warn({ issues, sessionId, runId: options.run?.id }, 'citation audit blocked report readiness');
+    await persistence.mutate('save_research_audit', 'reviewing', 'citation_auditor', () => saveResearchAudit(sessionId, 'citation', { ok: false, issues }, options.run?.id));
     const modelUsage = [reportResult.usage, citationAgentAuditResult.usage];
-    await recordRunCost(sessionId, runId, correlationId, 'reviewing', measurementMethodFor(modelUsage), {
+    await recordRunCost(sessionId, options, 'reviewing', measurementMethodFor(modelUsage), {
       exaSearches: 0,
       modelCalls: modelUsage.map((usage) => usage.call),
     });
-    await updateSessionState(sessionId, 'awaiting_approval', 'reviewing');
-    await addEvent(sessionId, 'reviewing', 'Citation audit blocked report readiness.', { issues }, { runId, correlationId, eventType: 'claim_gap_opened', severity: 'warn' });
+    await persistence.mutate('update_session_state', 'reviewing', 'citation_auditor', () => updateSessionState(sessionId, 'awaiting_approval', 'reviewing'));
+    await persistence.event(sessionId, 'reviewing', 'Citation audit blocked report readiness.', { issues }, { eventType: 'claim_gap_opened', severity: 'warn', stepId: 'citation_auditor' });
     return { status: 'awaiting_approval' };
   }
 
-  await updateSessionState(sessionId, 'running', 'reviewing');
+  await persistence.mutate('update_session_state', 'reviewing', 'final_reviewer', () => updateSessionState(sessionId, 'running', 'reviewing'));
   const finalReviewResult = await reviewFinalReport(report);
   const finalReview = finalReviewResult.review;
-  await saveResearchAudit(sessionId, 'final_review', { ok: finalReview.approved, issues: finalReview.issues }, runId);
+  await persistence.mutate('save_research_audit', 'reviewing', 'final_reviewer', () => saveResearchAudit(sessionId, 'final_review', { ok: finalReview.approved, issues: finalReview.issues }, options.run?.id));
   const reportingModelUsage = [reportResult.usage, citationAgentAuditResult.usage, finalReviewResult.usage];
 
   if (!finalReview.approved) {
-    await recordRunCost(sessionId, runId, correlationId, 'reviewing', measurementMethodFor(reportingModelUsage), {
+    await recordRunCost(sessionId, options, 'reviewing', measurementMethodFor(reportingModelUsage), {
       exaSearches: 0,
       modelCalls: reportingModelUsage.map((usage) => usage.call),
     });
-    await updateSessionState(sessionId, 'awaiting_approval', 'reviewing');
-    await addEvent(sessionId, 'reviewing', 'Final reviewer requested human follow-up.', { issues: finalReview.issues }, { runId, correlationId, eventType: 'claim_gap_opened', severity: 'warn' });
+    await persistence.mutate('update_session_state', 'reviewing', 'final_reviewer', () => updateSessionState(sessionId, 'awaiting_approval', 'reviewing'));
+    await persistence.event(sessionId, 'reviewing', 'Final reviewer requested human follow-up.', { issues: finalReview.issues }, { eventType: 'claim_gap_opened', severity: 'warn', stepId: 'final_reviewer' });
     return { status: 'awaiting_approval' };
   }
 
-  await recordRunCost(sessionId, runId, correlationId, 'complete', measurementMethodFor(reportingModelUsage), {
+  await recordRunCost(sessionId, options, 'complete', measurementMethodFor(reportingModelUsage), {
     exaSearches: 0,
     modelCalls: reportingModelUsage.map((usage) => usage.call),
   });
-  await saveReport(report);
-  await updateSessionState(sessionId, 'report_ready', 'complete');
-  await addEvent(sessionId, 'complete', 'Report is ready.', { reportId: report.id }, { runId, correlationId, eventType: 'report_ready', actor: 'worker' });
+  await persistence.mutate('save_report', 'complete', 'report_ready', () => saveReport(report));
+  await persistence.mutate('update_session_state', 'complete', 'report_ready', () => updateSessionState(sessionId, 'report_ready', 'complete'));
+  await persistence.event(sessionId, 'complete', 'Report is ready.', { reportId: report.id }, { eventType: 'report_ready', actor: 'worker', stepId: 'report_ready' });
   return { status: 'completed' };
 }
 
@@ -432,17 +472,18 @@ Approve only if it is ready to publish.`,
 
 async function recordRunCost(
   sessionId: string,
-  runId: string | undefined,
-  correlationId: string | undefined,
+  options: PipelineOptions,
   phase: ResearchPhase,
   measurementMethod: 'estimated' | 'provider_usage',
   usage: RunUsage,
 ) {
+  const runId = options.run?.id;
   if (!runId) return null;
 
+  const persistence = persistenceFor(options);
   const estimate = estimateRunCost(usage);
-  const cost = await saveRunCost(runId, sessionId, usage, estimate, measurementMethod);
-  await addEvent(
+  const cost = await persistence.mutate('save_run_cost', phase, 'cost_estimator', () => saveRunCost(runId, sessionId, usage, estimate, measurementMethod));
+  await persistence.event(
     sessionId,
     phase,
     measurementMethod === 'provider_usage' ? 'Run provider usage cost recorded.' : 'Run cost estimate recorded.',
@@ -454,8 +495,6 @@ async function recordRunCost(
       pricingEffectiveDate: cost.pricingEffectiveDate,
     },
     {
-      runId,
-      correlationId,
       eventType: 'tool_completed',
       severity: cost.totalUsd > env.RUN_BUDGET_USD ? 'warn' : 'info',
       actor: 'system',

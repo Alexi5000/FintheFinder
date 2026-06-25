@@ -124,9 +124,18 @@ describe('research pipeline', () => {
         createdAt: '2026-06-24T00:00:00.000Z',
         updatedAt: '2026-06-24T00:00:00.000Z',
       },
+      attemptId: 'attempt_1',
+      correlationId: 'corr_1',
     });
 
     expect(result.status).toBe('awaiting_approval');
+    expect(repositoryMock.addEvent).toHaveBeenCalledWith(
+      'session_1',
+      'planning',
+      'Planning focused search queries.',
+      {},
+      expect.objectContaining({ attemptId: 'attempt_1', correlationId: 'corr_1', runId: 'run_1' }),
+    );
     expect(repositoryMock.replaceResearchArtifacts).toHaveBeenCalledWith(
       'session_1',
       expect.objectContaining({
@@ -138,6 +147,33 @@ describe('research pipeline', () => {
         audits: expect.any(Array),
       }),
     );
+  });
+
+  it('blocks research artifact persistence when the worker lease guard fails', async () => {
+    const assertLease = vi.fn(async (context: { operation: string }) => {
+      if (context.operation === 'replace_research_artifacts') throw new Error('lease lost before artifact write');
+    });
+    const { runResearchSession } = await import('@/server/research/pipeline');
+
+    await expect(
+      runResearchSession('session_1', 'Research AI compliance', {
+        run: {
+          id: 'run_guarded',
+          sessionId: 'session_1',
+          status: 'running',
+          attempt: 1,
+          metadata: { stage: 'research' },
+          createdAt: '2026-06-24T00:00:00.000Z',
+          updatedAt: '2026-06-24T00:00:00.000Z',
+        },
+        assertLease,
+      }),
+    ).rejects.toThrow('lease lost before artifact write');
+
+    expect(assertLease).toHaveBeenCalledWith(expect.objectContaining({ operation: 'replace_research_artifacts', runId: 'run_guarded' }));
+    expect(repositoryMock.replaceResearchArtifacts).not.toHaveBeenCalled();
+    expect(repositoryMock.saveRunCost).not.toHaveBeenCalled();
+    expect(repositoryMock.updateSessionState).not.toHaveBeenCalledWith('session_1', 'awaiting_approval', 'reviewing');
   });
 
   it('marks run cost as provider usage when all agent calls report tokens', async () => {
@@ -175,6 +211,32 @@ describe('research pipeline', () => {
     expect(result.status).toBe('completed');
     expect(repositoryMock.saveReport).toHaveBeenCalledWith(expect.objectContaining<Partial<ResearchReport>>({ title: 'Report', sessionId: 'session_1' }));
     expect(repositoryMock.saveResearchAudit).toHaveBeenCalledWith('session_1', 'final_review', { ok: true, issues: [] }, 'run_2');
+  });
+
+  it('blocks final report persistence when the worker lease guard fails', async () => {
+    const assertLease = vi.fn(async (context: { operation: string }) => {
+      if (context.operation === 'save_report') throw new Error('lease lost before report write');
+    });
+    const { runApprovedReportSession } = await import('@/server/research/pipeline');
+
+    await expect(
+      runApprovedReportSession('session_1', 'Research AI compliance', {
+        run: {
+          id: 'run_report_guarded',
+          sessionId: 'session_1',
+          status: 'running',
+          attempt: 1,
+          metadata: { stage: 'reporting' },
+          createdAt: '2026-06-24T00:00:00.000Z',
+          updatedAt: '2026-06-24T00:00:00.000Z',
+        },
+        assertLease,
+      }),
+    ).rejects.toThrow('lease lost before report write');
+
+    expect(assertLease).toHaveBeenCalledWith(expect.objectContaining({ operation: 'save_report', runId: 'run_report_guarded' }));
+    expect(repositoryMock.saveReport).not.toHaveBeenCalled();
+    expect(repositoryMock.updateSessionState).not.toHaveBeenCalledWith('session_1', 'report_ready', 'complete');
   });
 
   it('returns to approval when citation audit fails', async () => {

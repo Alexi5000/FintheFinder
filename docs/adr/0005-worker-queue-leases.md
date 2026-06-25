@@ -12,7 +12,7 @@ Research runs can outlive a short API request. The hosted path therefore uses a 
 
 ## Decision
 
-Use Supabase/Postgres as the durable queue source of truth. The queue claim RPC marks one run as leased with `for update skip locked`, records the owning `worker_id`, and writes `research_job_leases`. While the worker is active it heartbeats through `extend_research_run_lease`; terminal status updates and failure artifacts are written only after the worker proves ownership with a successful heartbeat.
+Use Supabase/Postgres as the durable queue source of truth. The queue claim RPC marks one run as leased with `for update skip locked`, records the owning `worker_id`, and writes `research_job_leases`. While the worker is active it heartbeats through `extend_research_run_lease`; expired leases cannot be revived by the old worker. Terminal status updates, failure artifacts, and worker-owned pipeline persistence are written only after the worker proves ownership with a successful heartbeat.
 
 The queue RPCs are `security definer` functions but execution is revoked from `public`, `anon`, and `authenticated`, and granted to the service-role runtime only.
 

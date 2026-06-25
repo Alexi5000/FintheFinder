@@ -4,6 +4,20 @@ type PipelineStageResult = {
   status: 'awaiting_approval' | 'completed';
 };
 
+type PipelinePersistenceContext = {
+  runId?: string;
+  operation: string;
+  phase: ResearchPhase;
+  stepId: string;
+};
+
+type PipelineStageOptions = {
+  run: ResearchRun;
+  correlationId: string;
+  attemptId?: string;
+  assertLease?: (context: PipelinePersistenceContext) => Promise<void>;
+};
+
 type ProviderStatus = {
   openai: boolean;
   exa: boolean;
@@ -43,8 +57,8 @@ export type WorkerDependencies = {
     warn: WorkerLogMethod;
   };
   newCorrelationId: (prefix?: string) => string;
-  runApprovedReportSession: (sessionId: string, query: string, options: { run: ResearchRun; correlationId: string }) => Promise<PipelineStageResult>;
-  runResearchSession: (sessionId: string, query: string, options: { run: ResearchRun; correlationId: string }) => Promise<PipelineStageResult>;
+  runApprovedReportSession: (sessionId: string, query: string, options: PipelineStageOptions) => Promise<PipelineStageResult>;
+  runResearchSession: (sessionId: string, query: string, options: PipelineStageOptions) => Promise<PipelineStageResult>;
   saveRunSummaryMemory: (userId: string, sessionId: string, runId: string, value: Record<string, unknown>) => Promise<ResearchMemory>;
   setInterval: (handler: () => void, timeout: number) => WorkerTimer;
   sleep: (ms: number) => Promise<void>;
@@ -189,10 +203,16 @@ async function processClaimedRun(
     heartbeat.unref?.();
 
     const stage = stageForRun(run);
+    const pipelineOptions = {
+      run,
+      correlationId,
+      attemptId: attemptIdForRun(run),
+      assertLease: (context: PipelinePersistenceContext) => assertPipelineLease(run, context, config, leaseState, dependencies),
+    };
     const result =
       stage === 'reporting'
-        ? await dependencies.runApprovedReportSession(session.id, session.query, { run, correlationId })
-        : await dependencies.runResearchSession(session.id, session.query, { run, correlationId });
+        ? await dependencies.runApprovedReportSession(session.id, session.query, pipelineOptions)
+        : await dependencies.runResearchSession(session.id, session.query, pipelineOptions);
 
     if (!(await proveLeaseOwnership(run, config, leaseState, dependencies))) return false;
 
@@ -260,6 +280,10 @@ function stageForRun(run: ResearchRun) {
   return run.metadata.stage === 'reporting' ? 'reporting' : 'research';
 }
 
+function attemptIdForRun(run: ResearchRun) {
+  return typeof run.metadata.attemptId === 'string' ? run.metadata.attemptId : undefined;
+}
+
 function persistedWorkerFailureMessage() {
   return 'Research worker failed during pipeline execution. See redacted server logs with the run ID for details.';
 }
@@ -284,6 +308,27 @@ async function proveLeaseOwnership(run: ResearchRun, config: WorkerConfig, lease
     );
     return false;
   }
+}
+
+async function assertPipelineLease(
+  run: ResearchRun,
+  context: PipelinePersistenceContext,
+  config: WorkerConfig,
+  leaseState: LeaseState,
+  dependencies: WorkerDependencies,
+) {
+  if (await proveLeaseOwnership(run, config, leaseState, dependencies)) return;
+  dependencies.logger.warn(
+    {
+      workerId: config.workerId,
+      runId: run.id,
+      operation: context.operation,
+      phase: context.phase,
+      stepId: context.stepId,
+    },
+    'research pipeline write blocked after lease ownership was lost',
+  );
+  throw new WorkerLeaseLostError(run.id, config.workerId);
 }
 
 async function saveRunSummaryMemorySafely(

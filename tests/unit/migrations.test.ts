@@ -30,6 +30,7 @@ const migrations = [
   '007_event_contract_hardening.sql',
   '008_approval_api_write_hardening.sql',
   '009_cross_session_integrity.sql',
+  '010_expired_lease_heartbeat_guard.sql',
 ];
 
 function readMigration(name: string) {
@@ -442,6 +443,16 @@ describe('database migrations', () => {
     expect(sql).toMatch(/create policy "Authenticated users can read eval runs"[\s\S]*for select[\s\S]*auth\.role\(\) = 'authenticated'/i);
     expect(sql).not.toMatch(/on public\.eval_runs[\s\S]{0,160}for\s+(insert|update|delete)/i);
     expect(sql).not.toMatch(/on public\.eval_results[\s\S]{0,160}for\s+(insert|update|delete)/i);
+  });
+
+  it('prevents expired workers from reviving stale research leases', () => {
+    const migration = readMigration('010_expired_lease_heartbeat_guard.sql');
+
+    expect(migration).toContain('create or replace function public.extend_research_run_lease');
+    expect(migration).toMatch(/where id = p_run_id[\s\S]*and worker_id = p_worker_id[\s\S]*and status in \('leased','running'\)[\s\S]*and lease_expires_at > now\(\)/i);
+    expect(migration).toContain('on conflict (run_id) do update');
+    expect(migration).toContain('revoke execute on function public.extend_research_run_lease(uuid, text, integer) from public, anon, authenticated');
+    expect(migration).toContain('grant execute on function public.extend_research_run_lease(uuid, text, integer) to service_role');
   });
 });
 

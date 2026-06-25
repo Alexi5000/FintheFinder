@@ -168,6 +168,8 @@ describe('research worker runtime', () => {
     expect(dependencies.runResearchSession).toHaveBeenCalledWith('session_1', 'Research AI agent evaluation systems', {
       run,
       correlationId: 'corr_run_1',
+      attemptId: undefined,
+      assertLease: expect.any(Function),
     });
     expect(dependencies.updateRunStatus).toHaveBeenLastCalledWith('run_1', 'awaiting_approval', { workerId: 'worker_test' });
     expect(dependencies.saveRunSummaryMemory).toHaveBeenCalledWith(
@@ -189,6 +191,8 @@ describe('research worker runtime', () => {
     expect(dependencies.runApprovedReportSession).toHaveBeenCalledWith('session_1', 'Research AI agent evaluation systems', {
       run: reportingRun,
       correlationId: 'corr_run_1',
+      attemptId: undefined,
+      assertLease: expect.any(Function),
     });
     expect(dependencies.updateRunStatus).toHaveBeenLastCalledWith('run_report', 'completed', { workerId: 'worker_test' });
     expect(dependencies.saveRunSummaryMemory).toHaveBeenCalledWith(
@@ -197,6 +201,21 @@ describe('research worker runtime', () => {
       'run_report',
       expect.objectContaining({ stage: 'reporting', status: 'completed' }),
     );
+  });
+
+  it('passes durable attempt identifiers from run metadata into pipeline writes', async () => {
+    const attemptedRun = { ...run, metadata: { stage: 'research', attemptId: 'attempt_1' } };
+    dependencies.claimNextQueuedRun = vi.fn(async () => attemptedRun);
+    const { processNextRun } = await import('@/worker/research-worker-runtime');
+
+    await expect(processNextRun(baseConfig, dependencies)).resolves.toBe(true);
+
+    expect(dependencies.runResearchSession).toHaveBeenCalledWith('session_1', 'Research AI agent evaluation systems', {
+      run: attemptedRun,
+      correlationId: 'corr_run_1',
+      attemptId: 'attempt_1',
+      assertLease: expect.any(Function),
+    });
   });
 
   it('defaults unknown worker stages to the research pipeline', async () => {
@@ -209,6 +228,8 @@ describe('research worker runtime', () => {
     expect(dependencies.runResearchSession).toHaveBeenCalledWith('session_1', 'Research AI agent evaluation systems', {
       run: unknownStageRun,
       correlationId: 'corr_run_1',
+      attemptId: undefined,
+      assertLease: expect.any(Function),
     });
     expect(dependencies.runApprovedReportSession).not.toHaveBeenCalled();
     expect(dependencies.saveRunSummaryMemory).toHaveBeenCalledWith(
@@ -266,6 +287,23 @@ describe('research worker runtime', () => {
     await expect(pending).resolves.toBe(false);
     expect(dependencies.updateRunStatus).toHaveBeenCalledTimes(1);
     expect(dependencies.updateRunStatus).toHaveBeenCalledWith('run_1', 'running', { workerId: 'worker_test' });
+    expect(dependencies.createPostMortem).not.toHaveBeenCalled();
+    expect(dependencies.saveRunSummaryMemory).not.toHaveBeenCalled();
+  });
+
+  it('does not persist failed state when pipeline failure handling cannot prove lease ownership', async () => {
+    dependencies.runResearchSession = vi.fn(async () => {
+      throw new Error('provider timeout');
+    });
+    dependencies.heartbeatResearchRun = vi.fn(async () => null);
+    const { processNextRun } = await import('@/worker/research-worker-runtime');
+
+    await expect(processNextRun(baseConfig, dependencies)).resolves.toBe(false);
+
+    expect(dependencies.updateRunStatus).toHaveBeenCalledTimes(1);
+    expect(dependencies.updateRunStatus).toHaveBeenCalledWith('run_1', 'running', { workerId: 'worker_test' });
+    expect(dependencies.updateSessionState).not.toHaveBeenCalled();
+    expect(dependencies.addEvent).toHaveBeenCalledTimes(1);
     expect(dependencies.createPostMortem).not.toHaveBeenCalled();
     expect(dependencies.saveRunSummaryMemory).not.toHaveBeenCalled();
   });

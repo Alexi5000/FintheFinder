@@ -35,6 +35,7 @@ const migrations = [
   '012_fenced_artifact_replacement.sql',
   '013_transactional_approval_decision.sql',
   '014_fenced_report_publication.sql',
+  '015_terminal_run_lease_cleanup.sql',
 ];
 
 function readMigration(name: string) {
@@ -497,6 +498,17 @@ describe('database migrations', () => {
     expect(migration).toMatch(/r\.current_attempt_id = p_attempt_id[\s\S]*a\.id = p_attempt_id[\s\S]*a\.lease_expires_at > now\(\)/i);
     expect(migration).toContain('create or replace function public.transition_research_run');
     expect(migration).toMatch(/r\.current_attempt_id = p_attempt_id[\s\S]*r\.worker_id = p_worker_id[\s\S]*r\.lease_expires_at > now\(\)/i);
+    expect(migration).toContain('revoke execute on function public.transition_research_run(uuid, uuid, text, text, text, timestamptz, timestamptz) from public, anon, authenticated');
+    expect(migration).toContain('grant execute on function public.transition_research_run(uuid, uuid, text, text, text, timestamptz, timestamptz) to service_role');
+  });
+
+  it('cleans up companion job leases on terminal run transitions', () => {
+    const migration = readMigration('015_terminal_run_lease_cleanup.sql');
+
+    expect(migration).toContain('create or replace function public.transition_research_run');
+    expect(migration).toMatch(/p_status in \('awaiting_approval','completed','failed','cancelled'\)[\s\S]*then null/i);
+    expect(migration).toMatch(/if p_status in \('awaiting_approval','completed','failed','cancelled'\) then[\s\S]*delete from public\.research_job_leases/i);
+    expect(migration).toMatch(/where run_id = transitioned\.id[\s\S]*and worker_id = p_worker_id/i);
     expect(migration).toContain('revoke execute on function public.transition_research_run(uuid, uuid, text, text, text, timestamptz, timestamptz) from public, anon, authenticated');
     expect(migration).toContain('grant execute on function public.transition_research_run(uuid, uuid, text, text, text, timestamptz, timestamptz) to service_role');
   });

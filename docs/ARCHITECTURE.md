@@ -71,6 +71,8 @@ All user-owned tables have row-level security. Server routes use Supabase Auth b
 
 Mastra LibSQL remains local workflow storage for development. Product records are persisted in Supabase so the web app has durable session history and report access.
 
+Worker run transitions are attempt-fenced. `transition_research_run` verifies the current worker attempt before changing run state, and terminal transitions also clear the companion `research_job_leases` row so operations do not see completed work as still leased.
+
 Worker-owned artifact replacement is transaction-fenced in Supabase. The worker pipeline proves current `research_run_attempts` ownership before persistence, then the `replace_research_artifacts` RPC locks the run/attempt rows, verifies the worker and unexpired lease, and rebuilds sources, evaluations, learnings, claims, evidence, gaps, audits, and optional report data in one database transaction.
 
 Final report publication is also a Supabase-owned transaction. The reporting worker calls `publish_research_report_for_attempt`, which validates the report payload, treats exact replay after a committed publish as idempotent success, locks the current run/attempt/session, rechecks open critical gaps, and either returns the session/run to approval or commits the final audit, report row, `report_ready` event, session completion, run completion, attempt completion, and job-lease cleanup atomically.

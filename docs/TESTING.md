@@ -13,6 +13,7 @@ npm run contracts:check
 npm run notebooks:check
 npm run test:coverage
 npm run evals
+npm run evals:replay
 npm run benchmark:check
 npm run build
 npm run audit
@@ -37,6 +38,7 @@ Current unit coverage includes:
 - Logger and telemetry redaction for nested credentials, prompts, queries, secret-like error messages, sensitive span attributes, and sanitized exception status
 - Exa provider behavior with mocked missing-key, success mapping, canonical duplicate filtering, provider error wrapping, and timeout coverage
 - Pipeline HITL/cost behavior, including budget metadata, over-budget warnings, and critical-gap budget gates
+- Credential-free orchestration replay for worker -> research -> approval -> reporting -> fenced report publication
 - Persisted eval history with public-safe column projection and summary sanitization
 - Rate-limit window, reset, and per-key isolation behavior
 - Production boundary checks that keep hosted run requests enqueue-only and prevent pipeline report readiness from bypassing transactional publication

@@ -16,7 +16,7 @@ const principles = [
   {
     icon: <GitBranch size={18} />,
     title: 'Contracts keep it honest',
-    body: 'Zod contracts, generated JSON Schema, offline evals, and CI gates make public claims harder to drift.',
+    body: 'Zod contracts, generated JSON Schema, offline evals, orchestration replay, and CI gates make public claims harder to drift.',
   },
   {
     icon: <CheckCircle2 size={18} />,
@@ -71,8 +71,8 @@ const proofSurfaces = [
   {
     label: 'Evaluation',
     status: 'Offline verified',
-    value: '10-scenario benchmark artifact',
-    detail: 'The checked eval suite includes positive cases and adversarial negative controls.',
+    value: 'Fixtures plus orchestration replay',
+    detail: 'The checked eval suite includes positive cases, adversarial negative controls, and a credential-free worker/pipeline replay.',
   },
   {
     label: 'Live demo',
@@ -224,7 +224,8 @@ export default function AboutPage() {
         </div>
         <p className="muted">
           The foundation includes typed API routes, Supabase persistence, Mastra agents, Exa/OpenAI integration, contract generation, offline evals,
-          claim-ledger persistence, plateau scoring, run-cost estimates, trace-linked events, scoped memory, audit-green dependencies, and repository proof docs.
+          orchestration replay, claim-ledger persistence, plateau scoring, run-cost estimates, trace-linked events, scoped memory, audit-green dependencies, and
+          repository proof docs.
         </p>
         <p className="muted">
           Configured-live benchmark rows and recorded demo evidence are intentionally pending real provider credentials; the FDE gate matrix tracks that

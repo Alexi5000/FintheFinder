@@ -22,7 +22,7 @@ The goal is a serious engineering repo, not a demo claim. `docs/FDE_GATES.md` is
 
 ## Proof Tier
 
-Current status: **offline-gated**. The repo is gated by deterministic contracts, tests, lint, audit, Docker build, smoke checks, offline evals, and benchmark drift locally and in CI.
+Current status: **offline-gated**. The repo is gated by deterministic contracts, tests, lint, audit, Docker build, smoke checks, offline evals, credential-free orchestration replay, and benchmark drift locally and in CI.
 
 Configured-provider research is implemented behind OpenAI, Exa, and Supabase credentials, but recorded live proof is still pending. Do not treat Fin as having a measured live demo or cost-per-run claim until `docs/demo/live-demo.json`, `npm run demo:record`, `npm run evals:live`, and the Live Run Log in `docs/BENCHMARK.md` all reference the same real session, research run, reporting run, approval, usage, and report artifacts.
 
@@ -35,7 +35,7 @@ Configured-provider research is implemented behind OpenAI, Exa, and Supabase cre
 - Next.js product shell with workspace, About, session history, session detail, report reader, settings, health, and API routes.
 - Cited markdown report export.
 - Structured logging with redaction for keys, tokens, prompts, and sensitive payloads.
-- Contract generation, offline evals, persisted eval history, claim-ledger primitives, plateau scoring, persisted cost estimates, OpenTelemetry hooks, scoped memory, coverage gate, and audit-green dependency baseline.
+- Contract generation, offline evals, credential-free orchestration replay, persisted eval history, claim-ledger primitives, plateau scoring, persisted cost estimates, OpenTelemetry hooks, scoped memory, coverage gate, and audit-green dependency baseline.
 
 ## Stack
 
@@ -60,6 +60,7 @@ npm run lint
 npm run contracts:check
 npm run test:coverage
 npm run evals
+npm run evals:replay
 npm run build
 npm run audit
 npm run dev
@@ -92,8 +93,9 @@ SUPABASE_SERVICE_ROLE_KEY=""
 | `npm run contracts:sync` | Regenerate JSON Schema contracts |
 | `npm run contracts:check` | Verify committed contracts and drift hash |
 | `npm run evals` | Run deterministic offline eval fixtures |
+| `npm run evals:replay` | Run credential-free worker/pipeline orchestration replay |
 | `npm run evals:persist` | Record deterministic offline eval history in Supabase |
-| `npm run benchmark:check` | Verify checked-in fixture expected-vs-evaluation benchmark evidence |
+| `npm run benchmark:check` | Verify checked-in fixture and orchestration replay benchmark evidence |
 | `npm run notebooks:check` | Validate authoring notebooks are non-runtime artifacts |
 | `npm run audit` | Run npm audit at moderate severity |
 | `npm run smoke` | Run repository and contract smoke checks |
@@ -127,6 +129,7 @@ npm run contracts:check
 npm run notebooks:check
 npm run test:coverage
 npm run evals
+npm run evals:replay
 npm run benchmark:check
 npm run build
 npm run audit

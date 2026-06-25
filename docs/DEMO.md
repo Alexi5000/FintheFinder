@@ -12,6 +12,14 @@ npm run dev
 
 Expected: `/` renders the workspace, provider status shows missing keys, `/settings` shows model defaults, and `/api/health` returns non-secret configuration status.
 
+For credential-free product-path proof, run:
+
+```bash
+npm run evals:replay
+```
+
+Expected: the replay executes the real worker runtime and pipeline functions through deterministic in-memory adapters, proves the research -> approval -> reporting -> fenced publication path, and reports zero live OpenAI, Exa, or Supabase calls. This is orchestration proof, not live provider-quality proof.
+
 ## Configured Live Demo
 
 1. Configure `.env` from `.env.example`.

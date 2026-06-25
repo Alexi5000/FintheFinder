@@ -21,6 +21,7 @@
     "contracts:sync": "tsx scripts/contracts-sync.ts",
     "contracts:check": "tsx scripts/contracts-check.ts",
     "evals": "tsx scripts/evals.ts",
+    "evals:replay": "tsx scripts/replay-eval.ts",
     "evals:persist": "tsx scripts/evals.ts --persist",
     "evals:live": "tsx scripts/evals.ts --live",
     "benchmark:check": "tsx scripts/benchmark-check.ts",
@@ -29,7 +30,7 @@
     "container:build": "docker build -t fin-the-finder .",
     "container:run": "docker compose up web worker",
     "deps:close-stale-prs": "bash scripts/close-stale-deps-prs.sh",
-    "verify": "npm run typecheck && npm run lint && npm run contracts:check && npm run notebooks:check && npm run test:coverage && npm run evals && npm run benchmark:check && npm run build && npm run audit && npm run smoke",
+    "verify": "npm run typecheck && npm run lint && npm run contracts:check && npm run notebooks:check && npm run test:coverage && npm run evals && npm run evals:replay && npm run benchmark:check && npm run build && npm run audit && npm run smoke",
     "smoke": "node scripts/smoke.mjs"
   },
   "keywords": [],

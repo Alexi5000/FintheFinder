@@ -23,10 +23,10 @@ Fin treats research artifacts as product data: sessions, sources, evaluations, l
 - Next.js product shell and authenticated API routes.
 - Mastra agents and Exa/OpenAI integration.
 - Supabase schema for sessions, sources, evaluations, learnings, approvals, events, reports, runs, claims, costs, post-mortems, and scoped memory.
-- Contract generation, offline evals, claim-ledger seed, plateau scorer, cost model, audit-green dependency baseline, queued worker execution, OpenTelemetry trace hooks, and authenticated UI loaders for sessions, claims, runs, costs, approvals, memory, and reports.
+- Contract generation, offline evals, credential-free orchestration replay, claim-ledger seed, plateau scorer, cost model, audit-green dependency baseline, queued worker execution, OpenTelemetry trace hooks, and authenticated UI loaders for sessions, claims, runs, costs, approvals, memory, and reports.
 
 ## Proof Tier
 
-Fin is offline-gated today: deterministic contracts, unit coverage, Playwright, Docker build, smoke checks, audit, offline evals, and benchmark drift checks are the current release gate.
+Fin is offline-gated today: deterministic contracts, unit coverage, Playwright, Docker build, smoke checks, audit, offline evals, credential-free orchestration replay, and benchmark drift checks are the current release gate.
 
 Configured-provider research is supported when OpenAI, Exa, and Supabase credentials are present. Measured live benchmark rows and recorded live demo evidence are not claimed until the same real session, research run, reporting run, approval, and cost evidence pass `npm run demo:record`, `npm run evals:live`, and the Live Run Log in `docs/BENCHMARK.md`.

@@ -69,6 +69,24 @@ SUPABASE_SERVICE_ROLE_KEY=""
 
 Use `npm run evals -- docs/benchmark/offline-eval-summary.json` when a checked file artifact is needed. Use `npm run evals:persist` when a release or demo needs durable run history. Persisted history is exposed at `GET /api/research/evals/history?suite=offline&limit=20`.
 
+## Credential-Free Orchestration Replay
+
+`npm run evals:replay` runs a deterministic replay of the product orchestration without OpenAI, Exa, or Supabase credentials. It executes the real worker runtime and real pipeline functions through in-memory adapters:
+
+- `processNextRun`
+- `runResearchSession`
+- approval decision
+- `runApprovedReportSession`
+- `publishReport`
+
+The checked artifact is `docs/benchmark/orchestration-replay-summary.json`. Regenerate it with:
+
+```bash
+npm run evals:replay -- docs/benchmark/orchestration-replay-summary.json
+```
+
+The replay fails unless research stops at approval, approval queues a distinct reporting run, artifacts and report publication use run/attempt/worker fences, no report exists before approval, costs are recorded for both stages, report sections cite known source IDs and claim IDs, event lineage reaches `report_ready`, and deterministic adapters record zero live OpenAI, Exa, or Supabase calls. This proves orchestration wiring, not live research quality or hosted database enforcement.
+
 ## Live Proof Mode
 
 `npm run evals:live` is fail-closed. It requires OpenAI, Exa, and Supabase environment variables plus `docs/demo/live-demo.json`. The manifest must point at an eval output artifact from the configured reporting run, plus session-level run export evidence for the research run, approval, reporting run, per-stage costs, and aggregate usage. `npm run demo:record` must pass against the same manifest before the live proof can be treated as recorded evidence. Missing credentials or missing evidence should fail the command instead of silently passing offline fixtures.

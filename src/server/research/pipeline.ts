@@ -57,12 +57,85 @@ type PipelineOptions = {
   correlationId?: string;
   attemptId?: string;
   assertLease?: PipelinePersistenceGuard;
+  dependencies?: PipelineDependencyOverrides;
 };
 
 type PipelineStageResult = {
   status: 'awaiting_approval' | 'completed';
   runFinalized?: boolean;
 };
+
+type PipelineAgentResponse = {
+  object: unknown;
+  usage?: unknown;
+  totalUsage?: unknown;
+};
+
+type PipelineAgent = {
+  generate: (
+    messages: Array<{ role: 'user'; content: string }>,
+    options: { structuredOutput: { schema: z.ZodType } },
+  ) => Promise<PipelineAgentResponse>;
+};
+
+type PipelineMastra = {
+  getAgent: (name: string) => PipelineAgent;
+};
+
+type PipelineRepositoryDependencies = {
+  addEvent: typeof addEvent;
+  getResearchArtifacts: typeof getResearchArtifacts;
+  publishReport: typeof publishReport;
+  replaceResearchArtifacts: typeof replaceResearchArtifacts;
+  saveResearchAudit: typeof saveResearchAudit;
+  saveRunCost: typeof saveRunCost;
+  updateSessionState: typeof updateSessionState;
+};
+
+export type PipelineDependencies = {
+  config: Pick<typeof env, 'RUN_BUDGET_USD'>;
+  getProviderStatus: typeof getProviderStatus;
+  logger: Pick<typeof logger, 'warn'>;
+  mastra: PipelineMastra;
+  nowIso: typeof nowIso;
+  randomUUID: () => string;
+  repository: PipelineRepositoryDependencies;
+  searchWeb: typeof searchWeb;
+};
+
+export type PipelineDependencyOverrides = Partial<Omit<PipelineDependencies, 'repository'>> & {
+  repository?: Partial<PipelineRepositoryDependencies>;
+};
+
+const defaultPipelineDependencies: PipelineDependencies = {
+  config: env,
+  getProviderStatus,
+  logger,
+  mastra: mastra as unknown as PipelineMastra,
+  nowIso,
+  randomUUID: () => crypto.randomUUID(),
+  repository: {
+    addEvent,
+    getResearchArtifacts,
+    publishReport,
+    replaceResearchArtifacts,
+    saveResearchAudit,
+    saveRunCost,
+    updateSessionState,
+  },
+  searchWeb,
+};
+
+function resolvePipelineDependencies(overrides: PipelineDependencyOverrides | undefined): PipelineDependencies {
+  return {
+    ...defaultPipelineDependencies,
+    ...overrides,
+    repository: {
+      ...defaultPipelineDependencies.repository,
+      ...overrides?.repository,
+    },
+  };
+}
 
 export type PipelinePersistenceContext = {
   runId?: string;
@@ -88,7 +161,7 @@ type RecordedRunCost = {
   budgetRemainingUsd: number;
 };
 
-function persistenceFor(options: PipelineOptions) {
+function persistenceFor(options: PipelineOptions, dependencies: PipelineDependencies) {
   const mutate = async <T>(operation: string, phase: ResearchPhase, stepId: string, action: () => Promise<T>) => {
     await options.assertLease?.({ runId: options.run?.id, operation, phase, stepId });
     return action();
@@ -102,7 +175,7 @@ function persistenceFor(options: PipelineOptions) {
     eventOptions: PipelineEventOptions = {},
   ) =>
     mutate('add_event', phase, eventOptions.stepId ?? eventOptions.eventType ?? 'event', () =>
-      addEvent(sessionId, phase, message, metadata, {
+      dependencies.repository.addEvent(sessionId, phase, message, metadata, {
         ...eventOptions,
         runId: options.run?.id,
         attemptId: options.attemptId,
@@ -124,18 +197,19 @@ function reportPublicationContext(options: PipelineOptions) {
 }
 
 export async function runResearchSession(sessionId: string, query: string, options: PipelineOptions = {}): Promise<PipelineStageResult> {
-  const persistence = persistenceFor(options);
-  const status = getProviderStatus();
+  const dependencies = resolvePipelineDependencies(options.dependencies);
+  const persistence = persistenceFor(options, dependencies);
+  const status = dependencies.getProviderStatus();
   if (!status.openai || !status.exa) {
-    await persistence.mutate('update_session_state', 'failed', 'provider_config', () => updateSessionState(sessionId, 'failed', 'failed'));
+    await persistence.mutate('update_session_state', 'failed', 'provider_config', () => dependencies.repository.updateSessionState(sessionId, 'failed', 'failed'));
     await persistence.event(sessionId, 'failed', 'Provider configuration is incomplete.', status, { eventType: 'error', severity: 'error', stepId: 'provider_config' });
     throw new Error('OpenAI and Exa keys are required to run research.');
   }
 
-  await persistence.mutate('update_session_state', 'planning', 'planner', () => updateSessionState(sessionId, 'running', 'planning'));
+  await persistence.mutate('update_session_state', 'planning', 'planner', () => dependencies.repository.updateSessionState(sessionId, 'running', 'planning'));
   await persistence.event(sessionId, 'planning', 'Planning focused search queries.', {}, { eventType: 'agent_started', actor: 'agent', stepId: 'planner' });
 
-  const planner = mastra.getAgent('plannerAgent');
+  const planner = dependencies.mastra.getAgent('plannerAgent');
   const planResponse = await planner.generate(
     [
       {
@@ -151,10 +225,10 @@ export async function runResearchSession(sessionId: string, query: string, optio
   const sources: ResearchSource[] = [];
   const seen = new Set<string>();
 
-  await persistence.mutate('update_session_state', 'searching', 'exa_search', () => updateSessionState(sessionId, 'running', 'searching'));
+  await persistence.mutate('update_session_state', 'searching', 'exa_search', () => dependencies.repository.updateSessionState(sessionId, 'running', 'searching'));
   for (const searchQuery of plan.queries) {
     await persistence.event(sessionId, 'searching', `Searching: ${searchQuery}`, {}, { eventType: 'tool_started', actor: 'tool', stepId: 'exa_search' });
-    const results = await searchWeb(searchQuery, { numResults: 5 });
+    const results = await dependencies.searchWeb(searchQuery, { numResults: 5 });
     for (const source of results) {
       if (seen.has(source.canonicalUrl)) continue;
       seen.add(source.canonicalUrl);
@@ -162,35 +236,35 @@ export async function runResearchSession(sessionId: string, query: string, optio
     }
   }
 
-  await persistence.mutate('update_session_state', 'evaluating', 'source_evaluator', () => updateSessionState(sessionId, 'running', 'evaluating'));
+  await persistence.mutate('update_session_state', 'evaluating', 'source_evaluator', () => dependencies.repository.updateSessionState(sessionId, 'running', 'evaluating'));
   await persistence.event(sessionId, 'evaluating', `Evaluating ${sources.length} sources.`, {}, { eventType: 'agent_started', actor: 'agent', stepId: 'source_evaluator' });
-  const evaluatedSources = await evaluateSources(query, sources);
+  const evaluatedSources = await evaluateSources(query, sources, dependencies);
   const evaluations = evaluatedSources.evaluations;
   const relevantSources = sources.filter((source) => evaluations.some((evaluation) => evaluation.sourceId === source.id && evaluation.isRelevant));
 
-  await persistence.mutate('update_session_state', 'extracting', 'learning_extractor', () => updateSessionState(sessionId, 'running', 'extracting'));
+  await persistence.mutate('update_session_state', 'extracting', 'learning_extractor', () => dependencies.repository.updateSessionState(sessionId, 'running', 'extracting'));
   await persistence.event(sessionId, 'extracting', `Extracting learnings from ${relevantSources.length} relevant sources.`, {}, { eventType: 'agent_started', actor: 'agent', stepId: 'learning_extractor' });
-  const extractedLearnings = await extractLearnings(query, relevantSources);
+  const extractedLearnings = await extractLearnings(query, relevantSources, dependencies);
   const learnings = extractedLearnings.learnings;
 
-  await persistence.mutate('update_session_state', 'reviewing', 'claim_audit', () => updateSessionState(sessionId, 'running', 'reviewing'));
+  await persistence.mutate('update_session_state', 'reviewing', 'claim_audit', () => dependencies.repository.updateSessionState(sessionId, 'running', 'reviewing'));
   await persistence.event(sessionId, 'reviewing', 'Building claim ledger and checking for gaps.', {}, { eventType: 'agent_started', actor: 'agent', stepId: 'claim_audit' });
   const claims = claimsFromLearnings(sessionId, learnings, relevantSources);
   const claimEvidence = evidenceFromLearnings(sessionId, learnings, relevantSources);
   const claimAudit = auditClaims(sessionId, claims, plan.successCriteria);
-  const contradictionResult = await reviewContradictions(query, learnings, claims);
+  const contradictionResult = await reviewContradictions(query, learnings, claims, dependencies);
   const contradictionReview = contradictionResult.review;
   const contradictionGaps = contradictionReview.criticalGaps.map((description) => ({
-    id: `gap_${crypto.randomUUID()}`,
+    id: `gap_${dependencies.randomUUID()}`,
     sessionId,
     description,
     severity: 'critical' as const,
     status: 'open' as const,
-    createdAt: nowIso(),
+    createdAt: dependencies.nowIso(),
   }));
   const allGaps = [...claimAudit.openGaps, ...contradictionGaps];
 
-  await persistence.mutate('replace_research_artifacts', 'reviewing', 'claim_audit', () => replaceResearchArtifacts(sessionId, {
+  await persistence.mutate('replace_research_artifacts', 'reviewing', 'claim_audit', () => dependencies.repository.replaceResearchArtifacts(sessionId, {
     sources: relevantSources,
     evaluations,
     learnings,
@@ -204,15 +278,15 @@ export async function runResearchSession(sessionId: string, query: string, optio
   }, artifactReplacementFence(options)));
 
   const researchModelUsage = [plannerUsage, ...evaluatedSources.usage, ...extractedLearnings.usage, contradictionResult.usage];
-  const researchCost = await recordRunCost(sessionId, options, 'reviewing', measurementMethodFor(researchModelUsage), {
+  const researchCost = await recordRunCost(sessionId, options, dependencies, 'reviewing', measurementMethodFor(researchModelUsage), {
     exaSearches: plan.queries.length,
     modelCalls: [
       ...researchModelUsage.map((usage) => usage.call),
     ],
   });
-  await emitBudgetCriticalGapEvent(sessionId, options, 'reviewing', researchCost, openCriticalGaps(allGaps));
+  await emitBudgetCriticalGapEvent(sessionId, options, dependencies, 'reviewing', researchCost, openCriticalGaps(allGaps));
 
-  await persistence.mutate('update_session_state', 'reviewing', 'awaiting_approval', () => updateSessionState(sessionId, 'awaiting_approval', 'reviewing'));
+  await persistence.mutate('update_session_state', 'reviewing', 'awaiting_approval', () => dependencies.repository.updateSessionState(sessionId, 'awaiting_approval', 'reviewing'));
   await persistence.event(
     sessionId,
     'reviewing',
@@ -225,18 +299,21 @@ export async function runResearchSession(sessionId: string, query: string, optio
 }
 
 export async function runApprovedReportSession(sessionId: string, query: string, options: PipelineOptions = {}): Promise<PipelineStageResult> {
-  const persistence = persistenceFor(options);
-  const status = getProviderStatus();
+  const dependencies = resolvePipelineDependencies(options.dependencies);
+  const persistence = persistenceFor(options, dependencies);
+  const status = dependencies.getProviderStatus();
   if (!status.openai) {
-    await persistence.mutate('update_session_state', 'failed', 'provider_config', () => updateSessionState(sessionId, 'failed', 'failed'));
+    await persistence.mutate('update_session_state', 'failed', 'provider_config', () => dependencies.repository.updateSessionState(sessionId, 'failed', 'failed'));
     await persistence.event(sessionId, 'failed', 'OpenAI configuration is incomplete.', status, { eventType: 'error', severity: 'error', stepId: 'provider_config' });
     throw new Error('OpenAI key is required to generate reports.');
   }
 
-  const artifacts = await getResearchArtifacts(sessionId);
+  const artifacts = await dependencies.repository.getResearchArtifacts(sessionId);
   const unresolvedCriticalGaps = artifacts.gaps.filter((gap) => gap.severity === 'critical' && gap.status === 'open');
   if (unresolvedCriticalGaps.length > 0) {
-    await persistence.mutate('update_session_state', 'reviewing', 'critical_gap_gate', () => updateSessionState(sessionId, 'awaiting_approval', 'reviewing'));
+    await persistence.mutate('update_session_state', 'reviewing', 'critical_gap_gate', () =>
+      dependencies.repository.updateSessionState(sessionId, 'awaiting_approval', 'reviewing'),
+    );
     await persistence.event(
       sessionId,
       'reviewing',
@@ -247,65 +324,73 @@ export async function runApprovedReportSession(sessionId: string, query: string,
     return { status: 'awaiting_approval' };
   }
 
-  await persistence.mutate('update_session_state', 'reporting', 'report_writer', () => updateSessionState(sessionId, 'running', 'reporting'));
+  await persistence.mutate('update_session_state', 'reporting', 'report_writer', () => dependencies.repository.updateSessionState(sessionId, 'running', 'reporting'));
   await persistence.event(sessionId, 'reporting', 'Synthesizing cited report from approved research artifacts.', {}, { eventType: 'agent_started', actor: 'agent', stepId: 'report_writer' });
 
-  const reportResult = await generateReport(sessionId, query, artifacts.sources, artifacts.learnings);
+  const reportResult = await generateReport(sessionId, query, artifacts.sources, artifacts.learnings, dependencies);
   const report = reportResult.report;
   const citationAudit = auditReportCitations(report, artifacts.sources);
-  const citationAgentAuditResult = await auditCitationsWithAgent(report, artifacts.sources);
+  const citationAgentAuditResult = await auditCitationsWithAgent(report, artifacts.sources, dependencies);
   const citationAgentAudit = citationAgentAuditResult.audit;
 
   if (!citationAudit.ok || !citationAgentAudit.ok) {
     const issues = [...citationAudit.issues, ...citationAgentAudit.issues];
-    logger.warn({ issues, sessionId, runId: options.run?.id }, 'citation audit blocked report readiness');
-    await persistence.mutate('save_research_audit', 'reviewing', 'citation_auditor', () => saveResearchAudit(sessionId, 'citation', { ok: false, issues }, options.run?.id));
+    dependencies.logger.warn({ issues, sessionId, runId: options.run?.id }, 'citation audit blocked report readiness');
+    await persistence.mutate('save_research_audit', 'reviewing', 'citation_auditor', () =>
+      dependencies.repository.saveResearchAudit(sessionId, 'citation', { ok: false, issues }, options.run?.id),
+    );
     const modelUsage = [reportResult.usage, citationAgentAuditResult.usage];
-    await recordRunCost(sessionId, options, 'reviewing', measurementMethodFor(modelUsage), {
+    await recordRunCost(sessionId, options, dependencies, 'reviewing', measurementMethodFor(modelUsage), {
       exaSearches: 0,
       modelCalls: modelUsage.map((usage) => usage.call),
     });
-    await persistence.mutate('update_session_state', 'reviewing', 'citation_auditor', () => updateSessionState(sessionId, 'awaiting_approval', 'reviewing'));
+    await persistence.mutate('update_session_state', 'reviewing', 'citation_auditor', () =>
+      dependencies.repository.updateSessionState(sessionId, 'awaiting_approval', 'reviewing'),
+    );
     await persistence.event(sessionId, 'reviewing', 'Citation audit blocked report readiness.', { issues }, { eventType: 'claim_gap_opened', severity: 'warn', stepId: 'citation_auditor' });
     return { status: 'awaiting_approval' };
   }
 
-  await persistence.mutate('update_session_state', 'reviewing', 'final_reviewer', () => updateSessionState(sessionId, 'running', 'reviewing'));
-  const finalReviewResult = await reviewFinalReport(report);
+  await persistence.mutate('update_session_state', 'reviewing', 'final_reviewer', () => dependencies.repository.updateSessionState(sessionId, 'running', 'reviewing'));
+  const finalReviewResult = await reviewFinalReport(report, dependencies);
   const finalReview = finalReviewResult.review;
   const reportingModelUsage = [reportResult.usage, citationAgentAuditResult.usage, finalReviewResult.usage];
 
   if (!finalReview.approved) {
-    await persistence.mutate('save_research_audit', 'reviewing', 'final_reviewer', () => saveResearchAudit(sessionId, 'final_review', { ok: false, issues: finalReview.issues }, options.run?.id));
-    await recordRunCost(sessionId, options, 'reviewing', measurementMethodFor(reportingModelUsage), {
+    await persistence.mutate('save_research_audit', 'reviewing', 'final_reviewer', () =>
+      dependencies.repository.saveResearchAudit(sessionId, 'final_review', { ok: false, issues: finalReview.issues }, options.run?.id),
+    );
+    await recordRunCost(sessionId, options, dependencies, 'reviewing', measurementMethodFor(reportingModelUsage), {
       exaSearches: 0,
       modelCalls: reportingModelUsage.map((usage) => usage.call),
     });
-    await persistence.mutate('update_session_state', 'reviewing', 'final_reviewer', () => updateSessionState(sessionId, 'awaiting_approval', 'reviewing'));
+    await persistence.mutate('update_session_state', 'reviewing', 'final_reviewer', () =>
+      dependencies.repository.updateSessionState(sessionId, 'awaiting_approval', 'reviewing'),
+    );
     await persistence.event(sessionId, 'reviewing', 'Final reviewer requested human follow-up.', { issues: finalReview.issues }, { eventType: 'claim_gap_opened', severity: 'warn', stepId: 'final_reviewer' });
     return { status: 'awaiting_approval' };
   }
 
-  const reportingCost = await recordRunCost(sessionId, options, 'complete', measurementMethodFor(reportingModelUsage), {
+  const reportingCost = await recordRunCost(sessionId, options, dependencies, 'complete', measurementMethodFor(reportingModelUsage), {
     exaSearches: 0,
     modelCalls: reportingModelUsage.map((usage) => usage.call),
   });
   if (reportingCost?.budgetExceeded) {
-    const currentArtifacts = await getResearchArtifacts(sessionId);
+    const currentArtifacts = await dependencies.repository.getResearchArtifacts(sessionId);
     const currentCriticalGaps = openCriticalGaps(currentArtifacts.gaps);
     if (currentCriticalGaps.length > 0) {
-      await persistence.mutate('update_session_state', 'reviewing', 'budget_gate', () => updateSessionState(sessionId, 'awaiting_approval', 'reviewing'));
-      await emitBudgetCriticalGapEvent(sessionId, options, 'reviewing', reportingCost, currentCriticalGaps);
+      await persistence.mutate('update_session_state', 'reviewing', 'budget_gate', () => dependencies.repository.updateSessionState(sessionId, 'awaiting_approval', 'reviewing'));
+      await emitBudgetCriticalGapEvent(sessionId, options, dependencies, 'reviewing', reportingCost, currentCriticalGaps);
       return { status: 'awaiting_approval' };
     }
   }
   const publicationContext = reportPublicationContext(options);
   const publicationFenced = Boolean(publicationContext?.runId && publicationContext.attemptId && publicationContext.workerId);
   const publication = await persistence.mutate('publish_report', 'complete', 'report_ready', () =>
-    publishReport(sessionId, report, { ok: true, issues: finalReview.issues }, publicationContext),
+    dependencies.repository.publishReport(sessionId, report, { ok: true, issues: finalReview.issues }, publicationContext),
   );
   if (!publication.ok) {
-    logger.warn(
+    dependencies.logger.warn(
       { sessionId, runId: options.run?.id, openCriticalGapIds: publication.openCriticalGapIds },
       'report publication returned to approval because critical gaps reopened',
     );
@@ -314,8 +399,12 @@ export async function runApprovedReportSession(sessionId: string, query: string,
   return { status: 'completed', runFinalized: publicationFenced };
 }
 
-async function evaluateSources(query: string, sources: ResearchSource[]): Promise<{ evaluations: SourceEvaluation[]; usage: MeasuredModelCall[] }> {
-  const agent = mastra.getAgent('evaluationAgent');
+async function evaluateSources(
+  query: string,
+  sources: ResearchSource[],
+  dependencies: PipelineDependencies,
+): Promise<{ evaluations: SourceEvaluation[]; usage: MeasuredModelCall[] }> {
+  const agent = dependencies.mastra.getAgent('evaluationAgent');
   const evaluations: SourceEvaluation[] = [];
   const usage: MeasuredModelCall[] = [];
 
@@ -337,14 +426,18 @@ Content: ${source.content.slice(0, 3000)}`,
     );
     const evaluation = sourceEvaluationSchema.parse(response.object);
     evaluations.push(evaluation);
-    usage.push(modelUsageFromResponse(getProviderStatus().models.primary, response, input, evaluation));
+    usage.push(modelUsageFromResponse(dependencies.getProviderStatus().models.primary, response, input, evaluation));
   }
 
   return { evaluations, usage };
 }
 
-async function extractLearnings(query: string, sources: ResearchSource[]): Promise<{ learnings: ResearchLearning[]; usage: MeasuredModelCall[] }> {
-  const agent = mastra.getAgent('learningExtractionAgent');
+async function extractLearnings(
+  query: string,
+  sources: ResearchSource[],
+  dependencies: PipelineDependencies,
+): Promise<{ learnings: ResearchLearning[]; usage: MeasuredModelCall[] }> {
+  const agent = dependencies.mastra.getAgent('learningExtractionAgent');
   const learnings: ResearchLearning[] = [];
   const usage: MeasuredModelCall[] = [];
 
@@ -366,7 +459,7 @@ Content: ${source.content.slice(0, 6000)}`,
     );
     const learning = learningSchema.parse(response.object);
     learnings.push(learning);
-    usage.push(modelUsageFromResponse(getProviderStatus().models.primary, response, input, learning));
+    usage.push(modelUsageFromResponse(dependencies.getProviderStatus().models.primary, response, input, learning));
   }
 
   return { learnings, usage };
@@ -377,8 +470,9 @@ async function generateReport(
   query: string,
   sources: ResearchSource[],
   learnings: ResearchLearning[],
+  dependencies: PipelineDependencies,
 ): Promise<{ report: ResearchReport; usage: MeasuredModelCall }> {
-  const agent = mastra.getAgent('reportAgent');
+  const agent = dependencies.mastra.getAgent('reportAgent');
   const input = { task: 'report_writer', query, sources, learnings };
   const response = await agent.generate(
     [
@@ -396,25 +490,26 @@ Every section must cite source IDs from the supplied sources.`,
     { structuredOutput: { schema: reportDraftSchema } },
   );
 
+  const reportDraft = reportDraftSchema.parse(response.object);
   const reportWithoutMarkdown = {
-    ...response.object,
-    id: crypto.randomUUID(),
+    ...reportDraft,
+    id: dependencies.randomUUID(),
     sessionId,
-    createdAt: nowIso(),
+    createdAt: dependencies.nowIso(),
   };
 
   return {
     report: {
       ...reportWithoutMarkdown,
-      title: response.object.title || titleFromQuery(query),
+      title: reportDraft.title || titleFromQuery(query),
       markdown: renderReportMarkdown(reportWithoutMarkdown, sources, learnings),
     },
-    usage: modelUsageFromResponse(getProviderStatus().models.primary, response, input, reportWithoutMarkdown),
+    usage: modelUsageFromResponse(dependencies.getProviderStatus().models.primary, response, input, reportWithoutMarkdown),
   };
 }
 
-async function reviewContradictions(query: string, learnings: ResearchLearning[], claims: unknown[]) {
-  const agent = mastra.getAgent('contradictionAgent');
+async function reviewContradictions(query: string, learnings: ResearchLearning[], claims: unknown[], dependencies: PipelineDependencies) {
+  const agent = dependencies.mastra.getAgent('contradictionAgent');
   const input = { task: 'contradiction_review', query, learnings, claims };
   const response = await agent.generate(
     [
@@ -435,12 +530,12 @@ Return ok=false if critical contradictions or gaps remain.`,
   const review = contradictionReviewSchema.parse(response.object);
   return {
     review,
-    usage: modelUsageFromResponse(getProviderStatus().models.primary, response, input, review),
+    usage: modelUsageFromResponse(dependencies.getProviderStatus().models.primary, response, input, review),
   };
 }
 
-async function auditCitationsWithAgent(report: ResearchReport, sources: ResearchSource[]) {
-  const agent = mastra.getAgent('citationAuditorAgent');
+async function auditCitationsWithAgent(report: ResearchReport, sources: ResearchSource[], dependencies: PipelineDependencies) {
+  const agent = dependencies.mastra.getAgent('citationAuditorAgent');
   const input = { task: 'citation_auditor', report, sources };
   const response = await agent.generate(
     [
@@ -460,12 +555,12 @@ Return ok=false if citations are missing, mismatched, or unsupported.`,
   const audit = citationAgentAuditSchema.parse(response.object);
   return {
     audit,
-    usage: modelUsageFromResponse(getProviderStatus().models.primary, response, input, audit),
+    usage: modelUsageFromResponse(dependencies.getProviderStatus().models.primary, response, input, audit),
   };
 }
 
-async function reviewFinalReport(report: ResearchReport) {
-  const agent = mastra.getAgent('finalReviewerAgent');
+async function reviewFinalReport(report: ResearchReport, dependencies: PipelineDependencies) {
+  const agent = dependencies.mastra.getAgent('finalReviewerAgent');
   const input = { task: 'final_reviewer', report };
   const response = await agent.generate(
     [
@@ -484,13 +579,14 @@ Approve only if it is ready to publish.`,
   const review = finalReviewSchema.parse(response.object);
   return {
     review,
-    usage: modelUsageFromResponse(getProviderStatus().models.primary, response, input, review),
+    usage: modelUsageFromResponse(dependencies.getProviderStatus().models.primary, response, input, review),
   };
 }
 
 async function recordRunCost(
   sessionId: string,
   options: PipelineOptions,
+  dependencies: PipelineDependencies,
   phase: ResearchPhase,
   measurementMethod: 'estimated' | 'provider_usage',
   usage: RunUsage,
@@ -498,10 +594,12 @@ async function recordRunCost(
   const runId = options.run?.id;
   if (!runId) return null;
 
-  const persistence = persistenceFor(options);
+  const persistence = persistenceFor(options, dependencies);
   const estimate = estimateRunCost(usage);
-  const cost = await persistence.mutate('save_run_cost', phase, 'cost_estimator', () => saveRunCost(runId, sessionId, usage, estimate, measurementMethod));
-  const budgetRemainingUsd = roundBudgetUsd(env.RUN_BUDGET_USD - cost.totalUsd);
+  const cost = await persistence.mutate('save_run_cost', phase, 'cost_estimator', () =>
+    dependencies.repository.saveRunCost(runId, sessionId, usage, estimate, measurementMethod),
+  );
+  const budgetRemainingUsd = roundBudgetUsd(dependencies.config.RUN_BUDGET_USD - cost.totalUsd);
   const budgetExceeded = budgetRemainingUsd < 0;
   await persistence.event(
     sessionId,
@@ -509,7 +607,7 @@ async function recordRunCost(
     measurementMethod === 'provider_usage' ? 'Run provider usage cost recorded.' : 'Run cost estimate recorded.',
     {
       usage,
-      budgetUsd: env.RUN_BUDGET_USD,
+      budgetUsd: dependencies.config.RUN_BUDGET_USD,
       estimatedCostUsd: cost.totalUsd,
       budgetExceeded,
       budgetRemainingUsd,
@@ -529,18 +627,19 @@ async function recordRunCost(
 async function emitBudgetCriticalGapEvent(
   sessionId: string,
   options: PipelineOptions,
+  dependencies: PipelineDependencies,
   phase: ResearchPhase,
   recordedCost: RecordedRunCost | null,
   criticalGaps: ClaimGap[],
 ) {
   if (!recordedCost?.budgetExceeded || criticalGaps.length === 0) return;
-  const persistence = persistenceFor(options);
+  const persistence = persistenceFor(options, dependencies);
   await persistence.event(
     sessionId,
     phase,
     'Run budget exceeded while critical claim gaps remain; human approval required before continuing.',
     {
-      budgetUsd: env.RUN_BUDGET_USD,
+      budgetUsd: dependencies.config.RUN_BUDGET_USD,
       totalUsd: recordedCost.cost.totalUsd,
       budgetExceeded: true,
       budgetRemainingUsd: recordedCost.budgetRemainingUsd,

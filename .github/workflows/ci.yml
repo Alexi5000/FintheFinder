@@ -29,6 +29,7 @@ jobs:
       - run: npm run notebooks:check
       - run: npm run test:coverage
       - run: npm run evals -- artifacts/evals/offline-summary.json
+      - run: npm run evals:replay -- artifacts/evals/orchestration-replay-summary.json
       - run: npm run benchmark:check
       - uses: actions/upload-artifact@v7.0.1
         if: always()

@@ -1,0 +1,252 @@
+{
+  "schemaVersion": 1,
+  "mode": "credential_free_orchestration_replay",
+  "passed": true,
+  "scenarioId": "approved-reporting-happy-path",
+  "commands": [
+    "npm run evals:replay"
+  ],
+  "coverage": [
+    "processNextRun",
+    "runResearchSession",
+    "approvalDecision",
+    "runApprovedReportSession",
+    "publishReport"
+  ],
+  "ids": {
+    "sessionId": "10000000-0000-4000-8000-000000000001",
+    "researchRunId": "10000000-0000-4000-8000-000000000003",
+    "approvalId": "10000000-0000-4000-8000-000000000007",
+    "reportingRunId": "10000000-0000-4000-8000-000000000005"
+  },
+  "assertions": [
+    {
+      "id": "research_worker_processed",
+      "passed": true,
+      "details": "processNextRun should process the queued research run."
+    },
+    {
+      "id": "research_awaiting_approval",
+      "passed": true,
+      "details": "Research must stop at HITL approval."
+    },
+    {
+      "id": "no_report_before_approval",
+      "passed": true,
+      "details": "Report must not exist before approval."
+    },
+    {
+      "id": "artifact_replacement_fenced",
+      "passed": true,
+      "details": "Research artifacts must be written with run/attempt/worker fence."
+    },
+    {
+      "id": "approval_queues_distinct_reporting_run",
+      "passed": true,
+      "details": "Approval should queue a distinct reporting run."
+    },
+    {
+      "id": "reporting_worker_processed",
+      "passed": true,
+      "details": "processNextRun should process the queued reporting run."
+    },
+    {
+      "id": "reporting_publish_fenced",
+      "passed": true,
+      "details": "Report publication must include run/attempt/worker fence."
+    },
+    {
+      "id": "no_direct_report_ready_write",
+      "passed": true,
+      "details": "Pipeline must not directly write report_ready through updateSessionState."
+    },
+    {
+      "id": "reporting_run_completed_by_publish",
+      "passed": true,
+      "details": "Publish should finalize reporting run and session."
+    },
+    {
+      "id": "report_citations_known_sources",
+      "passed": true,
+      "details": "Every report section must cite known source IDs."
+    },
+    {
+      "id": "report_claim_ids_present",
+      "passed": true,
+      "details": "Every report section must carry claim IDs."
+    },
+    {
+      "id": "no_open_critical_gaps_at_publish",
+      "passed": true,
+      "details": "No open critical gaps may remain at publish."
+    },
+    {
+      "id": "research_cost_recorded",
+      "passed": true,
+      "details": "Research cost must include two deterministic searches."
+    },
+    {
+      "id": "reporting_cost_recorded",
+      "passed": true,
+      "details": "Reporting cost must include report, citation audit, and final review calls."
+    },
+    {
+      "id": "ordered_event_lineage",
+      "passed": true,
+      "details": "Events should preserve planning/search/eval/extract/review/approval/reporting/report_ready lineage."
+    },
+    {
+      "id": "no_live_external_clients",
+      "passed": true,
+      "details": "Replay must use deterministic in-memory agents/search and no live clients."
+    }
+  ],
+  "artifactCounts": {
+    "sources": 2,
+    "evaluations": 2,
+    "learnings": 2,
+    "claims": 2,
+    "approvals": 1,
+    "reports": 1
+  },
+  "cost": {
+    "researchExaSearches": 2,
+    "researchModelCalls": 6,
+    "reportingModelCalls": 3,
+    "totalModelCalls": 9,
+    "measurementMethods": [
+      "provider_usage"
+    ]
+  },
+  "events": {
+    "total": 14,
+    "lineage": [
+      {
+        "phase": "planning",
+        "eventType": "state_transition",
+        "runId": "10000000-0000-4000-8000-000000000003"
+      },
+      {
+        "phase": "planning",
+        "eventType": "agent_started",
+        "stepId": "planner",
+        "runId": "10000000-0000-4000-8000-000000000003",
+        "attemptId": "10000000-0000-4000-8000-000000000004"
+      },
+      {
+        "phase": "searching",
+        "eventType": "tool_started",
+        "stepId": "exa_search",
+        "runId": "10000000-0000-4000-8000-000000000003",
+        "attemptId": "10000000-0000-4000-8000-000000000004"
+      },
+      {
+        "phase": "searching",
+        "eventType": "tool_started",
+        "stepId": "exa_search",
+        "runId": "10000000-0000-4000-8000-000000000003",
+        "attemptId": "10000000-0000-4000-8000-000000000004"
+      },
+      {
+        "phase": "evaluating",
+        "eventType": "agent_started",
+        "stepId": "source_evaluator",
+        "runId": "10000000-0000-4000-8000-000000000003",
+        "attemptId": "10000000-0000-4000-8000-000000000004"
+      },
+      {
+        "phase": "extracting",
+        "eventType": "agent_started",
+        "stepId": "learning_extractor",
+        "runId": "10000000-0000-4000-8000-000000000003",
+        "attemptId": "10000000-0000-4000-8000-000000000004"
+      },
+      {
+        "phase": "reviewing",
+        "eventType": "agent_started",
+        "stepId": "claim_audit",
+        "runId": "10000000-0000-4000-8000-000000000003",
+        "attemptId": "10000000-0000-4000-8000-000000000004"
+      },
+      {
+        "phase": "reviewing",
+        "eventType": "tool_completed",
+        "stepId": "cost_estimator",
+        "runId": "10000000-0000-4000-8000-000000000003",
+        "attemptId": "10000000-0000-4000-8000-000000000004"
+      },
+      {
+        "phase": "reviewing",
+        "eventType": "state_transition",
+        "stepId": "awaiting_approval",
+        "runId": "10000000-0000-4000-8000-000000000003",
+        "attemptId": "10000000-0000-4000-8000-000000000004"
+      },
+      {
+        "phase": "reporting",
+        "eventType": "approval_recorded",
+        "stepId": "approval_recorded",
+        "runId": "10000000-0000-4000-8000-000000000005"
+      },
+      {
+        "phase": "reporting",
+        "eventType": "state_transition",
+        "runId": "10000000-0000-4000-8000-000000000005"
+      },
+      {
+        "phase": "reporting",
+        "eventType": "agent_started",
+        "stepId": "report_writer",
+        "runId": "10000000-0000-4000-8000-000000000005",
+        "attemptId": "10000000-0000-4000-8000-000000000006"
+      },
+      {
+        "phase": "complete",
+        "eventType": "tool_completed",
+        "stepId": "cost_estimator",
+        "runId": "10000000-0000-4000-8000-000000000005",
+        "attemptId": "10000000-0000-4000-8000-000000000006"
+      },
+      {
+        "phase": "complete",
+        "eventType": "report_ready",
+        "stepId": "report_ready",
+        "runId": "10000000-0000-4000-8000-000000000005",
+        "attemptId": "10000000-0000-4000-8000-000000000006"
+      }
+    ]
+  },
+  "evals": {
+    "passed": true,
+    "total": 1,
+    "failed": 0,
+    "results": [
+      {
+        "id": "orchestration-replay-approved-reporting",
+        "passed": true,
+        "observedPass": true,
+        "regressions": [],
+        "issues": [],
+        "scores": {
+          "correctness": 1,
+          "safety": 1,
+          "completeness": 1,
+          "quality": 1
+        }
+      }
+    ]
+  },
+  "providerBoundary": {
+    "liveOpenAiCalls": 0,
+    "liveExaCalls": 0,
+    "liveSupabaseCalls": 0,
+    "deterministicAgentCalls": 9,
+    "deterministicSearchCalls": 2
+  },
+  "issues": [],
+  "regressions": [],
+  "limits": [
+    "Does not prove live provider quality, Supabase RLS, hosted auth, or measured live cost.",
+    "Uses deterministic in-memory adapters to prove orchestration and state-machine behavior without credentials."
+  ]
+}

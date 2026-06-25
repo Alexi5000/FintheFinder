@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { approvalRequestSchema } from '@/lib/schemas';
 import { apiError, parseError } from '@/server/http';
-import { addApproval, addEvent, enqueueResearchRun, getOpenCriticalGaps, getSessionDetail, updateSessionState, waiveClaimGaps } from '@/server/research/repository';
+import { recordApprovalDecision, type ApprovalDecisionErrorCode, type ApprovalDecisionResult } from '@/server/research/repository';
 import { getUserFromRequest, hasSupabaseConfig } from '@/server/supabase/server';
 import { withSpan } from '@/server/telemetry';
 
@@ -12,7 +12,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!user) return apiError('unauthorized', 'Sign in to approve research.', 401);
 
     const { id } = await context.params;
-    const session = await getSessionDetail(user.id, id);
     const input = approvalRequestSchema.parse(await request.json());
 
     return await withSpan(
@@ -23,59 +22,35 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         'research.waived_gap_count': input.waivedGapIds.length,
       },
       async () => {
-        if (session.status !== 'awaiting_approval') {
-          return apiError('approval_not_available', 'Research decisions can only be recorded while the session is awaiting approval.', 409, {
-            currentStatus: session.status,
-            requestedAction: input.action,
-          });
-        }
-
-        if (input.action === 'approve') {
-          const openCriticalGaps = await getOpenCriticalGaps(id);
-          const waived = new Set(input.waivedGapIds);
-          const unwaivedCriticalGaps = openCriticalGaps.filter((gap) => !waived.has(gap.id));
-
-          if (openCriticalGaps.length > 0 && input.waivedGapIds.length > 0 && !input.notes?.trim()) {
-            return apiError('waiver_notes_required', 'Critical gap waivers require reviewer notes.', 422, {
-              openCriticalGapIds: openCriticalGaps.map((gap) => gap.id),
-            });
-          }
-
-          if (unwaivedCriticalGaps.length > 0) {
-            return apiError('critical_gaps_unresolved', 'Resolve or explicitly waive critical claim gaps before approving report generation.', 409, {
-              openCriticalGapIds: unwaivedCriticalGaps.map((gap) => gap.id),
-            });
-          }
-
-          await waiveClaimGaps(id, input.waivedGapIds, input.notes ?? 'Waived during human approval.');
-          await addApproval(id, user.id, input.action, input.notes, input.approvedSourceIds, input.waivedGapIds);
-          await addEvent(
-            id,
-            'reviewing',
-            'Human approval recorded.',
-            { approvedSourceIds: input.approvedSourceIds, waivedGapIds: input.waivedGapIds },
-            { eventType: 'approval_recorded', actor: 'user', stepId: 'human_approval' },
-          );
-          const run = await enqueueResearchRun(
-            id,
-            { stage: 'reporting', approvedBy: user.id, approvedSourceIds: input.approvedSourceIds, waivedGapIds: input.waivedGapIds },
-            'reporting',
-          );
-          return NextResponse.json({ ok: true, runId: run.id, status: run.status, run }, { status: 202 });
-        }
-
-        await addApproval(id, user.id, input.action, input.notes, input.approvedSourceIds, input.waivedGapIds);
-        await addEvent(id, 'reviewing', `Human ${input.action} recorded.`, { notes: input.notes ?? null }, { eventType: 'approval_recorded', actor: 'user', stepId: 'human_approval' });
-        if (input.action === 'reject') await updateSessionState(id, 'rejected', 'reviewing');
-        if (input.action === 'follow_up') {
-          const run = await enqueueResearchRun(id, { stage: 'research', requestedBy: user.id, followUpNotes: input.notes ?? null }, 'planning');
-          return NextResponse.json({ ok: true, runId: run.id, status: run.status, run }, { status: 202 });
-        }
-
-        return NextResponse.json({ ok: true });
+        return responseForApprovalDecision(await recordApprovalDecision(user.id, id, input));
       },
     );
   } catch (error) {
     return parseError(error);
   }
+}
+
+function responseForApprovalDecision(result: ApprovalDecisionResult) {
+  if (!result.ok) return approvalDecisionErrorResponse(result.code, result.details);
+  if (result.action === 'reject') return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, runId: result.runId, status: result.status, run: result.run }, { status: 202 });
+}
+
+function approvalDecisionErrorResponse(code: ApprovalDecisionErrorCode, details: unknown) {
+  if (code === 'approval_not_available') {
+    return apiError('approval_not_available', 'Research decisions can only be recorded while the session is awaiting approval.', 409, details);
+  }
+  if (code === 'waiver_notes_required') {
+    return apiError('waiver_notes_required', 'Critical gap waivers require reviewer notes.', 422, details);
+  }
+  if (code === 'critical_gaps_unresolved') {
+    return apiError('critical_gaps_unresolved', 'Resolve or explicitly waive critical claim gaps before approving report generation.', 409, details);
+  }
+  if (code === 'active_run_conflict') {
+    return apiError('active_run_conflict', 'A research run is already active for this session.', 409, details);
+  }
+  if (code === 'session_not_found') {
+    return apiError('session_not_found', 'Research session was not found for this user.', 404);
+  }
+  return apiError('invalid_approval_request', 'The approval decision request is invalid.', 422, details);
 }

@@ -72,3 +72,5 @@ All user-owned tables have row-level security. Server routes use Supabase Auth b
 Mastra LibSQL remains local workflow storage for development. Product records are persisted in Supabase so the web app has durable session history and report access.
 
 Worker-owned artifact replacement is transaction-fenced in Supabase. The worker pipeline proves current `research_run_attempts` ownership before persistence, then the `replace_research_artifacts` RPC locks the run/attempt rows, verifies the worker and unexpired lease, and rebuilds sources, evaluations, learnings, claims, evidence, gaps, audits, and optional report data in one database transaction.
+
+Human approval decisions are also transaction-owned by Supabase. The hosted approval route validates auth and request shape, then calls `record_research_approval_decision`, which locks the owned session, rechecks `awaiting_approval`, applies critical-gap rules, records the approval event, and either queues the next run or rejects the session atomically.

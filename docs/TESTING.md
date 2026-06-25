@@ -26,7 +26,7 @@ Current unit coverage includes:
 - Shared Zod schemas
 - Container runtime config for non-root image execution, Docker healthcheck, compose healthchecks, and restart policy
 - Demo proof verifier CLI behavior
-- Hosted API route contracts for queueing runs, run status, SSE events, report export, claims, memory ownership, and stale HITL approval-state rejection
+- Hosted API route contracts for queueing runs, run status, SSE events, report export, claims, memory ownership, and transactional HITL approval-decision mapping
 - Canonical URL normalization
 - Citation auditing
 - Logger redaction for nested credentials, prompts, queries, and secret-like error messages
@@ -37,7 +37,7 @@ Current unit coverage includes:
 - Repository persistence mapping for costs, memories, and post-mortems
 - Smoke-script hosted health contract and secret-leak rejection
 - Worker runtime config parsing, no-work paths, attempt-token lease heartbeats, lease-guarded pipeline persistence, lease-loss terminal-write blocking, reporting dispatch, sanitized failure artifacts, and best-effort run-summary memory
-- Supabase migration parity for table columns, SQL/Zod enum checks, event constraints, RLS, cross-session graph integrity, durable run attempts, attempt-fenced service-role RPCs, transactional artifact replacement fencing, expired-lease heartbeat rejection, API-only approval writes, and repository artifact/event payload shape
+- Supabase migration parity for table columns, SQL/Zod enum checks, event constraints, RLS, cross-session graph integrity, durable run attempts, attempt-fenced service-role RPCs, transactional artifact replacement fencing, transactional approval decisions, expired-lease heartbeat rejection, API-only approval writes, and repository artifact/event payload shape
 - Supabase DB type parity with a committed migration-derived snapshot, typed clients, RPC/table union checks, and migration inventory tests
 
 Add new unit tests for every new schema, service, and agent contract.

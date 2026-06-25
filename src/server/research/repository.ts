@@ -1,4 +1,5 @@
 import type {
+  ApprovalRequest,
   ClaimAudit,
   ClaimEvidence,
   ClaimGap,
@@ -53,6 +54,18 @@ type ResearchArtifactReplacementFence = {
   attemptId: string;
   workerId: string;
 };
+
+export type ApprovalDecisionErrorCode =
+  | 'session_not_found'
+  | 'approval_not_available'
+  | 'waiver_notes_required'
+  | 'critical_gaps_unresolved'
+  | 'active_run_conflict'
+  | 'invalid_approval_request';
+
+export type ApprovalDecisionResult =
+  | { ok: true; action: ResearchApproval['action']; run: ResearchRun | null; runId: string | null; status: RunStatus | null }
+  | { ok: false; code: ApprovalDecisionErrorCode; details?: unknown };
 
 export async function createSession(userId: string, query: string): Promise<ResearchSession> {
   const supabase = createSupabaseAdmin();
@@ -628,6 +641,22 @@ export async function waiveClaimGaps(sessionId: string, gapIds: string[], resolu
   if (error) throw new Error(error.message);
 }
 
+export async function recordApprovalDecision(userId: string, sessionId: string, input: ApprovalRequest): Promise<ApprovalDecisionResult> {
+  const supabase = createSupabaseAdmin();
+  const { data, error } = await supabase.rpc('record_research_approval_decision', {
+    p_session_id: sessionId,
+    p_user_id: userId,
+    p_action: input.action,
+    p_notes: input.notes ?? null,
+    p_approved_source_ids: toJson(input.approvedSourceIds),
+    p_waived_gap_ids: toJson(input.waivedGapIds),
+    p_trace_id: activeTraceId() ?? null,
+    p_correlation_id: null,
+  });
+  if (error) throw new Error(error.message);
+  return mapApprovalDecisionResult(data);
+}
+
 export async function listResearchMemories(userId: string, options: { sessionId?: string } = {}): Promise<ResearchMemory[]> {
   const supabase = createSupabaseAdmin();
   if (options.sessionId) await assertSessionOwnership(userId, options.sessionId);
@@ -996,6 +1025,48 @@ function mapApprovalRow(row: Record<string, unknown>): ResearchApproval {
     waivedGapIds: Array.isArray(row.waived_gap_ids) ? row.waived_gap_ids.map(String) : [],
     createdAt: String(row.created_at),
   };
+}
+
+function mapApprovalDecisionResult(value: unknown): ApprovalDecisionResult {
+  const record = recordFromJson(value);
+  if (record.ok === true) {
+    const action = record.action === 'reject' || record.action === 'follow_up' ? record.action : 'approve';
+    const runRecord = recordFromJson(record.run);
+    const run = Object.keys(runRecord).length > 0 ? mapRunRow(runRecord) : null;
+    return {
+      ok: true,
+      action,
+      run,
+      runId: run?.id ?? (record.runId ? String(record.runId) : null),
+      status: run?.status ?? (isRunStatus(record.status) ? record.status : null),
+    };
+  }
+
+  const error = recordFromJson(record.error);
+  const code = approvalDecisionErrorCode(error.code);
+  return {
+    ok: false,
+    code,
+    details: error.details,
+  };
+}
+
+function approvalDecisionErrorCode(value: unknown): ApprovalDecisionErrorCode {
+  if (
+    value === 'session_not_found' ||
+    value === 'approval_not_available' ||
+    value === 'waiver_notes_required' ||
+    value === 'critical_gaps_unresolved' ||
+    value === 'active_run_conflict' ||
+    value === 'invalid_approval_request'
+  ) {
+    return value;
+  }
+  return 'invalid_approval_request';
+}
+
+function isRunStatus(value: unknown): value is RunStatus {
+  return value === 'queued' || value === 'leased' || value === 'running' || value === 'awaiting_approval' || value === 'completed' || value === 'failed' || value === 'cancelled';
 }
 
 function mapPostMortemRow(row: Record<string, unknown>): ResearchPostMortem {

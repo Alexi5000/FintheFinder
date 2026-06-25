@@ -49,6 +49,7 @@ type ExpectedFunctions =
   | 'extend_research_run_lease'
   | 'transition_research_run'
   | 'replace_research_artifacts'
+  | 'record_research_approval_decision'
   | 'ensure_research_approval_owner'
   | 'ensure_run_child_session_integrity'
   | 'ensure_claim_evidence_session_integrity'
@@ -95,6 +96,20 @@ export type SupabaseDbParityAssertions = [
       'p_session_id' | 'p_run_id' | 'p_attempt_id' | 'p_worker_id' | 'p_payload'
     >
   >,
+  Assert<
+    Equal<
+      keyof DbFunctionArgs<'record_research_approval_decision'>,
+      | 'p_session_id'
+      | 'p_user_id'
+      | 'p_action'
+      | 'p_notes'
+      | 'p_approved_source_ids'
+      | 'p_waived_gap_ids'
+      | 'p_trace_id'
+      | 'p_correlation_id'
+    >
+  >,
+  Assert<Equal<DbFunctionArgs<'record_research_approval_decision'>['p_action'], ApprovalRequest['action']>>,
   Assert<Equal<DbFunctionReturns<'claim_next_research_run'>, DbRow<'research_runs'>>>,
   Assert<Equal<DbFunctionReturns<'extend_research_run_lease'>, DbRow<'research_runs'>>>,
   Assert<Equal<DbFunctionReturns<'transition_research_run'>, DbRow<'research_runs'>>>,

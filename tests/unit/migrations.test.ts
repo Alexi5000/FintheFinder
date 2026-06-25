@@ -33,6 +33,7 @@ const migrations = [
   '010_expired_lease_heartbeat_guard.sql',
   '011_durable_run_attempt_fencing.sql',
   '012_fenced_artifact_replacement.sql',
+  '013_transactional_approval_decision.sql',
 ];
 
 function readMigration(name: string) {
@@ -453,6 +454,7 @@ describe('database migrations', () => {
       'public.extend_research_run_lease(uuid, uuid, text, integer)',
       'public.transition_research_run(uuid, uuid, text, text, text, timestamptz, timestamptz)',
       'public.replace_research_artifacts(uuid, uuid, uuid, text, jsonb)',
+      'public.record_research_approval_decision(uuid, uuid, text, text, jsonb, jsonb, text, text)',
       'public.record_eval_run(uuid, text, text, jsonb, jsonb, timestamptz)',
     ]) {
       expect(sql).toMatch(new RegExp(`revoke (all|execute) on function ${escapeRegex(signature)} from public, anon, authenticated`, 'i'));
@@ -520,6 +522,34 @@ describe('database migrations', () => {
     expect(migration).toContain('from jsonb_to_record(p_payload -> \'report\')');
     expect(migration).toContain('revoke execute on function public.replace_research_artifacts(uuid, uuid, uuid, text, jsonb) from public, anon, authenticated');
     expect(migration).toContain('grant execute on function public.replace_research_artifacts(uuid, uuid, uuid, text, jsonb) to service_role');
+  });
+
+  it('adds a transactional approval decision RPC', () => {
+    const migration = readMigration('013_transactional_approval_decision.sql');
+
+    expect(migration).toContain('create or replace function public.record_research_approval_decision');
+    expect(migration).toContain('p_session_id uuid');
+    expect(migration).toContain('p_user_id uuid');
+    expect(migration).toContain('p_action text');
+    expect(migration).toContain('p_approved_source_ids jsonb');
+    expect(migration).toContain('p_waived_gap_ids jsonb');
+    expect(migration).toContain('security definer');
+    expect(migration).toMatch(/from public\.research_sessions[\s\S]*where id = p_session_id[\s\S]*and user_id = p_user_id[\s\S]*for update/i);
+    expect(migration).toContain("session_record.status <> 'awaiting_approval'");
+    expect(migration).toContain("'approval_not_available'");
+    expect(migration).toMatch(/from public\.research_runs[\s\S]*status in \('queued','leased','running'\)[\s\S]*for update/i);
+    expect(migration).toContain("'active_run_conflict'");
+    expect(migration).toMatch(/from public\.claim_gaps[\s\S]*severity = 'critical'[\s\S]*status = 'open'[\s\S]*for update/i);
+    expect(migration).toContain("'waiver_notes_required'");
+    expect(migration).toContain("'critical_gaps_unresolved'");
+    expect(migration).toMatch(/insert into public\.research_runs[\s\S]*on conflict \(session_id\) where status in \('queued','leased','running'\) do nothing[\s\S]*returning \* into queued_run/i);
+    expect(migration).toMatch(/update public\.claim_gaps[\s\S]*set status = 'waived'/i);
+    expect(migration).toContain('insert into public.research_approvals');
+    expect(migration).toContain('insert into public.research_events');
+    expect(migration).toMatch(/update public\.research_sessions[\s\S]*status = 'rejected'/i);
+    expect(migration).toMatch(/update public\.research_sessions[\s\S]*status = 'queued'/i);
+    expect(migration).toContain('revoke execute on function public.record_research_approval_decision(uuid, uuid, text, text, jsonb, jsonb, text, text) from public, anon, authenticated');
+    expect(migration).toContain('grant execute on function public.record_research_approval_decision(uuid, uuid, text, text, jsonb, jsonb, text, text) to service_role');
   });
 });
 

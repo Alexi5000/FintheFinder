@@ -7,6 +7,7 @@ const supabaseHarness = vi.hoisted(() => {
   const singleResponses: Array<{ data: unknown; error: null | { message: string } }> = [];
   const rpcMaybeSingleResponses: Array<{ data: unknown; error: null | { message: string } }> = [];
   const rpcSingleResponses: Array<{ data: unknown; error: null | { message: string } }> = [];
+  const rpcResponses: Array<{ data: unknown; error: null | { message: string } }> = [];
   const rowsResponses: Array<{ data: unknown[]; error: null | { message: string } }> = [];
 
   function createBuilder(table: string) {
@@ -44,6 +45,7 @@ const supabaseHarness = vi.hoisted(() => {
     maybeSingleResponses,
     rpcMaybeSingleResponses,
     rpcSingleResponses,
+    rpcResponses,
     singleResponses,
     rowsResponses,
     supabase: {
@@ -53,7 +55,7 @@ const supabaseHarness = vi.hoisted(() => {
         const rpcBuilder = {
           maybeSingle: vi.fn(async () => rpcMaybeSingleResponses.shift() ?? { data: null, error: null }),
           single: vi.fn(async () => rpcSingleResponses.shift() ?? { data: null, error: null }),
-          then: (resolve: (value: { data: unknown; error: null | { message: string } }) => void) => resolve({ data: null, error: null }),
+          then: (resolve: (value: { data: unknown; error: null | { message: string } }) => void) => resolve(rpcResponses.shift() ?? { data: null, error: null }),
         };
         return rpcBuilder;
       }),
@@ -72,6 +74,7 @@ describe('research repository persistence helpers', () => {
     supabaseHarness.maybeSingleResponses.length = 0;
     supabaseHarness.rpcMaybeSingleResponses.length = 0;
     supabaseHarness.rpcSingleResponses.length = 0;
+    supabaseHarness.rpcResponses.length = 0;
     supabaseHarness.singleResponses.length = 0;
     supabaseHarness.rowsResponses.length = 0;
     vi.clearAllMocks();
@@ -638,6 +641,83 @@ describe('research repository persistence helpers', () => {
     expect(approvals[0]?.action).toBe('reject');
     expect(supabaseHarness.supabase.from).toHaveBeenNthCalledWith(1, 'research_sessions');
     expect(supabaseHarness.supabase.from).toHaveBeenNthCalledWith(2, 'research_approvals');
+  });
+
+  it('records approval decisions through the transactional RPC and maps queued runs', async () => {
+    supabaseHarness.rpcResponses.push({
+      data: {
+        ok: true,
+        action: 'approve',
+        runId: 'run_reporting',
+        status: 'queued',
+        run: {
+          id: 'run_reporting',
+          session_id: 'session_1',
+          status: 'queued',
+          attempt: 1,
+          current_attempt_id: null,
+          metadata: { stage: 'reporting' },
+          worker_id: null,
+          lease_expires_at: null,
+          started_at: null,
+          completed_at: null,
+          error: null,
+          created_at: '2026-06-24T00:00:00.000Z',
+          updated_at: '2026-06-24T00:00:00.000Z',
+        },
+      },
+      error: null,
+    });
+
+    const { recordApprovalDecision } = await import('@/server/research/repository');
+    const result = await recordApprovalDecision('user_1', 'session_1', {
+      action: 'approve',
+      notes: 'Reviewed.',
+      approvedSourceIds: ['src_1'],
+      waivedGapIds: ['gap_1'],
+    });
+
+    expect(supabaseHarness.rpcCalls).toEqual([
+      {
+        functionName: 'record_research_approval_decision',
+        args: expect.objectContaining({
+          p_session_id: 'session_1',
+          p_user_id: 'user_1',
+          p_action: 'approve',
+          p_notes: 'Reviewed.',
+          p_approved_source_ids: ['src_1'],
+          p_waived_gap_ids: ['gap_1'],
+        }),
+      },
+    ]);
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        action: 'approve',
+        runId: 'run_reporting',
+        status: 'queued',
+        run: expect.objectContaining({ id: 'run_reporting', metadata: { stage: 'reporting' } }),
+      }),
+    );
+  });
+
+  it('maps transactional approval decision blockers without throwing', async () => {
+    const { recordApprovalDecision } = await import('@/server/research/repository');
+
+    for (const code of ['approval_not_available', 'waiver_notes_required', 'critical_gaps_unresolved', 'active_run_conflict'] as const) {
+      supabaseHarness.rpcResponses.push({
+        data: { ok: false, error: { code, details: { openCriticalGapIds: ['gap_1'], currentStatus: 'queued' } } },
+        error: null,
+      });
+
+      await expect(
+        recordApprovalDecision('user_1', 'session_1', {
+          action: 'approve',
+          approvedSourceIds: [],
+          waivedGapIds: [],
+        }),
+      ).resolves.toEqual({ ok: false, code, details: { openCriticalGapIds: ['gap_1'], currentStatus: 'queued' } });
+    }
   });
 
   it('does not read approval history when ownership is not proven', async () => {

@@ -322,6 +322,19 @@ export type Database = {
         Args: { p_session_id: string; p_run_id: string; p_attempt_id: string; p_worker_id: string; p_payload: Json };
         Returns: void;
       };
+      record_research_approval_decision: {
+        Args: {
+          p_session_id: string;
+          p_user_id: string;
+          p_action: DbApprovalAction;
+          p_notes?: string | null;
+          p_approved_source_ids?: Json;
+          p_waived_gap_ids?: Json;
+          p_trace_id?: string | null;
+          p_correlation_id?: string | null;
+        };
+        Returns: Json;
+      };
       ensure_research_approval_owner: {
         Args: Record<string, never>;
         Returns: unknown;
@@ -400,6 +413,7 @@ export const databaseFunctionNames = [
   'extend_research_run_lease',
   'transition_research_run',
   'replace_research_artifacts',
+  'record_research_approval_decision',
   'ensure_research_approval_owner',
   'ensure_run_child_session_integrity',
   'ensure_claim_evidence_session_integrity',

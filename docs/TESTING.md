@@ -60,6 +60,12 @@ Playwright is configured in `playwright.config.ts`.
 npm run test:e2e
 ```
 
+If port `3100` is already in use locally, override it without changing the config:
+
+```bash
+PLAYWRIGHT_PORT=3101 npm run test:e2e
+```
+
 E2E coverage should prioritize:
 
 - Workspace loads without configured providers

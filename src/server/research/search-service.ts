@@ -22,6 +22,8 @@ export async function searchWeb(query: string, options: SearchOptions = {}): Pro
 
   const exa = new Exa(env.EXA_API_KEY);
   const timeoutMs = options.timeoutMs ?? 20000;
+  const requestedResults = options.numResults ?? env.EXA_MAX_RESULTS;
+  const numResults = Math.min(requestedResults, env.EXA_MAX_RESULTS);
   let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timeoutHandle = setTimeout(() => reject(new SearchProviderError('Exa search timed out.', 'timeout')), timeoutMs);
@@ -30,13 +32,12 @@ export async function searchWeb(query: string, options: SearchOptions = {}): Pro
   try {
     const response = await Promise.race([
       exa.search(query, {
-        numResults: options.numResults ?? 6,
+        type: env.EXA_SEARCH_TYPE,
+        numResults,
         contents: {
-          text: {
-            maxCharacters: 10000,
+          highlights: {
+            maxCharacters: env.EXA_HIGHLIGHT_MAX_CHARACTERS,
           },
-          summary: true,
-          livecrawl: 'always',
         },
       }),
       timeout,
@@ -49,6 +50,15 @@ export async function searchWeb(query: string, options: SearchOptions = {}): Pro
       const canonicalUrl = canonicalizeUrl(result.url);
       if (seen.has(canonicalUrl)) return [];
       seen.add(canonicalUrl);
+      const highlights = Array.isArray(result.highlights)
+        ? result.highlights.filter((highlight): highlight is string => typeof highlight === 'string' && highlight.length > 0)
+        : [];
+      const highlightText = highlights.join('\n\n');
+      const fallbackFields = result as Record<string, unknown>;
+      const fallbackText = typeof fallbackFields.text === 'string' ? fallbackFields.text : '';
+      const fallbackSummary = typeof fallbackFields.summary === 'string' ? fallbackFields.summary : '';
+      const content = highlightText || fallbackSummary || fallbackText;
+      const snippet = highlights[0] || fallbackSummary || fallbackText.slice(0, 400) || '';
 
       return [
         {
@@ -57,8 +67,8 @@ export async function searchWeb(query: string, options: SearchOptions = {}): Pro
           url: result.url,
           canonicalUrl,
           domain: domainFromUrl(result.url),
-          snippet: result.summary || result.text.slice(0, 400) || '',
-          content: result.text || '',
+          snippet,
+          content,
           publishedAt: result.publishedDate || null,
           score: Math.max(0, 1 - index * 0.08),
           credibility: 'unknown',

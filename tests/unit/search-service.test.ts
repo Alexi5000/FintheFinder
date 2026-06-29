@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const exaHarness = vi.hoisted(() => ({
-  env: { EXA_API_KEY: '' },
+  env: {
+    EXA_API_KEY: '',
+    EXA_SEARCH_TYPE: 'auto',
+    EXA_MAX_RESULTS: 3,
+    EXA_HIGHLIGHT_MAX_CHARACTERS: 1200,
+  },
   search: vi.fn(),
   constructor: vi.fn(),
 }));
@@ -44,6 +49,7 @@ describe('search service', () => {
           title: 'Primary Source',
           summary: 'Short summary',
           text: 'Full source text',
+          highlights: ['Best evidence highlight.'],
           publishedDate: '2026-06-20',
         },
         {
@@ -51,6 +57,7 @@ describe('search service', () => {
           title: 'Duplicate Source',
           summary: 'Duplicate summary',
           text: 'Duplicate text',
+          highlights: ['Duplicate highlight.'],
           publishedDate: '2026-06-21',
         },
         {
@@ -77,10 +84,12 @@ describe('search service', () => {
     expect(exaHarness.search).toHaveBeenCalledWith(
       'agent research',
       expect.objectContaining({
+        type: 'auto',
         numResults: 3,
         contents: expect.objectContaining({
-          summary: true,
-          livecrawl: 'always',
+          highlights: {
+            maxCharacters: 1200,
+          },
         }),
       }),
     );
@@ -88,12 +97,12 @@ describe('search service', () => {
     expect(sources[0]).toEqual(
       expect.objectContaining({
         canonicalUrl: 'https://example.com/path',
-        content: 'Full source text',
+        content: 'Best evidence highlight.',
         credibility: 'unknown',
         domain: 'example.com',
         publishedAt: '2026-06-20',
         score: 1,
-        snippet: 'Short summary',
+        snippet: 'Best evidence highlight.',
         title: 'Primary Source',
         url: 'https://www.example.com/path/?utm_source=newsletter#section',
       }),

@@ -463,6 +463,7 @@ function createPipelineDependencies(store: ReplayStore): PipelineDependencyOverr
       exa: true,
       supabase: true,
       models: { primary: 'gpt-5.5', fast: 'gpt-5.4-mini', reasoningEffort: 'high' },
+      exaConfig: { searchType: 'auto', maxResults: 3, highlightMaxCharacters: 1200 },
     }),
     logger: {
       warn: (metadata: Record<string, unknown>, message: string) => {

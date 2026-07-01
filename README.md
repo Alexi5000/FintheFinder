@@ -43,7 +43,7 @@ Fin the Finder is a Mastra-based deep research workspace for analysts who need m
 
 The repo started from the Mastra deep research template. The value added here is the production foundation around that template: typed contracts, Supabase-backed state, queued execution, provenance-bound demo export, eval gates, cost rows, OpenTelemetry hooks, redacted logging, CI, Docker, and explicit FDE evidence docs.
 
-This project intentionally separates shipped proof from future proof. The current release is offline-gated and ready for configured-provider runs, but it does not claim a recorded live benchmark until real credentials, media, Supabase rows, eval output, and benchmark rows all point to the same run.
+This project intentionally separates shipped proof from future proof. The current release has deterministic offline gates plus one recorded configured-live proof run where real credentials, media, Supabase rows, eval output, cost evidence, and the benchmark row all point to the same session.
 
 ## Proof And Release Status
 
@@ -54,8 +54,8 @@ This project intentionally separates shipped proof from future proof. The curren
 | Health route version | `1.0.0` |
 | License | Apache-2.0 |
 | CI | GitHub Actions CI configured and green on the current published branch |
-| Proof tier | Offline-gated production foundation |
-| Live proof | Pending real OpenAI, Exa, Supabase credentials and recorded media |
+| Proof tier | Offline-gated production foundation with recorded configured-live proof |
+| Live proof | Passed on 2026-07-01 with session `f6487144-8db9-4833-88e2-999c31a352ba`, reporting run `9dea3bb6-a4a2-4dfd-b9d9-8714a0ea654d`, manifest `docs/demo/live-demo.json`, and measured cost `$0.17287` |
 | Source of truth | `docs/FDE_GATES.md`, `docs/BENCHMARK.md`, `docs/ARCHITECTURE.md` |
 
 ## Built With Mastra
@@ -76,8 +76,8 @@ Fin follows Mastra's agent, tool, and workflow model, then wraps it in product-g
 ## Product Capabilities
 
 - Deep research pipeline with planner, search, evaluation, extraction, contradiction checking, citation auditing, report writing, and final review.
-- OpenAI model configuration through environment variables, with model IDs recorded before live benchmark claims.
-- Exa search integration with timeout handling, canonical URLs, duplicate filtering, and typed source records.
+- OpenAI-compatible model configuration through environment variables, with model IDs recorded in live proof artifacts.
+- Exa search integration with conservative default retrieval, timeout handling, canonical URLs, duplicate filtering, and typed source records.
 - Supabase Auth and Postgres schema for multi-user sessions, source records, learnings, approvals, events, runs, claims, costs, post-mortems, memory, and reports.
 - Next.js product shell with workspace, About, session history, session detail, report reader, settings, health, and API routes.
 - Cited markdown report export with claim and source lineage.
@@ -118,7 +118,7 @@ Benchmarks are documented in [docs/BENCHMARK.md](docs/BENCHMARK.md). The current
 
 - Offline fixture evidence is tracked and gateable today.
 - Credential-free orchestration replay verifies the worker and pipeline path without provider secrets.
-- Configured-live benchmark rows remain pending until a real run has matching Supabase lineage, cost rows, final audit, report artifacts, eval output, and recorded media.
+- Configured-live benchmark evidence is recorded for the 2026-07-01 proof run with matching Supabase lineage, cost rows, final audit, report artifacts, eval output, and recorded media.
 
 Run the local benchmark gate:
 
@@ -137,6 +137,16 @@ npm run evals:live
 ```
 
 Before a live claim is approved, `docs/demo/live-demo.json`, the recorded media, the Supabase reporting run, the research run, the approval row, the final audit, the cost row, and the Live Run Log in `docs/BENCHMARK.md` must agree.
+
+Current recorded proof:
+
+- Session: `f6487144-8db9-4833-88e2-999c31a352ba`
+- Research run: `4ccaaafe-3fe4-47a3-8c03-80fcbf8c4034`
+- Reporting run: `9dea3bb6-a4a2-4dfd-b9d9-8714a0ea654d`
+- Approval: `d3da714a-b1d6-4047-97ab-12157ae12442`
+- Manifest SHA-256: `5ad4e21d448e414ec6a64682c1e7d5436261479d95d6e7ed25f5d21fe6c036a3`
+- Measured cost: `$0.17287`
+- Artifacts: `docs/demo/live-demo.json`, `docs/demo/artifacts/report.md`, `docs/demo/artifacts/eval-summary.json`, `docs/demo/artifacts/run-export.json`, `docs/demo/artifacts/proof-run-terminal.png`, `docs/demo/artifacts/proof-run-terminal.txt`
 
 ## Scripts
 

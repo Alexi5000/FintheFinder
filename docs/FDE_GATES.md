@@ -1,6 +1,6 @@
 # FDE Gates
 
-Last updated: 2026-06-25.
+Last updated: 2026-07-01.
 
 Fin is production-ready only when each public claim is implemented, tested, demoed, and documented. A row marked partial or planned is not portfolio-ready copy yet.
 
@@ -14,9 +14,9 @@ Fin is production-ready only when each public claim is implemented, tested, demo
 | Plateau scorer | Implemented pure module | `src/server/research/plateau-scorer.ts` | `npm run test` |
 | Notebook authoring surface | Implemented as non-runtime artifact with secret-like content scanning | `notebooks/`, `scripts/check-notebooks.ts` | `npm run notebooks:check`, `npx vitest run tests/unit/notebook-check.test.ts` |
 | Containerization | Implemented | Non-root `Dockerfile`, web healthcheck, compose restart/healthcheck policy, worker command, runtime public Supabase config passed from server pages into browser clients, and worker config/Supabase healthcheck that does not claim queue work | `npm run container:build`, `npx vitest run tests/unit/container-config.test.ts tests/unit/supabase-browser-config.test.ts` |
-| FDE narrative README/About | Implemented | `README.md`, `docs/ABOUT.md`, `/about` with dynamic package version, offline-gated proof tier, pending configured-live proof state, and narrow-desktop overflow coverage | `npm run build`, Playwright |
+| FDE narrative README/About | Implemented | `README.md`, `docs/ABOUT.md`, `/about` with dynamic package version, offline-gated proof tier, recorded configured-live proof state, and narrow-desktop overflow coverage | `npm run build`, Playwright |
 | Honest benchmark doc | Implemented | `docs/BENCHMARK.md`, 10-scenario `docs/benchmark/offline-eval-summary.json`, credential-free `docs/benchmark/orchestration-replay-summary.json` | `npm run benchmark:check` |
-| Recorded live demo proof | Pending configured credentials | `scripts/demo-export.ts`, Supabase provenance-bound manifest/export builder, three-scenario live eval artifact, exhaustive artifact hashes, `docs/demo/live-demo.example.json`, `scripts/demo-record.mjs`, demo verifier tests for session-level research run, approval, reporting run, final audit, per-stage cost, aggregate usage, benchmark, and media evidence | `npm run demo:export -- --reporting-run-id <id> --media <path>`, `npm run demo:record`, and `npm run evals:live` after live run |
+| Recorded live demo proof | Implemented with 2026-07-01 configured-live run | `docs/demo/live-demo.json`, `docs/demo/artifacts/report.md`, `docs/demo/artifacts/eval-summary.json`, `docs/demo/artifacts/run-export.json`, `docs/demo/artifacts/proof-run-terminal.png`, `docs/BENCHMARK.md`, `scripts/demo-export.ts`, `scripts/demo-record.mjs`, demo verifier tests for session-level research run, approval, reporting run, final audit, per-stage cost, aggregate usage, benchmark, and media evidence | `npm run demo:record`, `npm run evals:live`, `npm run benchmark:check` |
 | ADRs | Implemented | `docs/adr/` | File review |
 | Coverage gate for new surface | Implemented enforced baseline; expansion in progress | Unit tests for contracts, repository adapters, Supabase schema/type parity, demo verifier, hosted API routes, worker runtime, logger redaction, rate limiting, smoke health secrecy, coverage config, and enforced coverage thresholds over first-party contract/server code | `npm run test:coverage` |
 | Contract single source of truth | Implemented | `contracts/schema.json` | `npm run contracts:check` |

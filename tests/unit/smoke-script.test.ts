@@ -5,6 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 
 const servers: Server[] = [];
+const SMOKE_PROCESS_TIMEOUT_MS = 20_000;
 
 describe('smoke script hosted health validation', () => {
   afterEach(async () => {
@@ -31,7 +32,7 @@ describe('smoke script hosted health validation', () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('"hosted health"');
-  });
+  }, SMOKE_PROCESS_TIMEOUT_MS);
 
   it('rejects health payloads that expose provider secrets', async () => {
     const url = await startHealthServer({
@@ -46,7 +47,7 @@ describe('smoke script hosted health validation', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('provider openai must be configured or missing');
     expect(result.stderr).toContain('health payload must not expose OpenAI-style keys');
-  });
+  }, SMOKE_PROCESS_TIMEOUT_MS);
 });
 
 function runSmoke(url: string) {

@@ -70,7 +70,7 @@ E2E coverage should prioritize:
 
 - Workspace loads without configured providers
 - Settings exposes provider status
-- About renders the package version, offline-gated proof tier, pending configured-live proof state, and narrow-desktop layout without horizontal overflow
+- About renders the package version, offline-gated proof tier, configured-live proof state, and narrow-desktop layout without horizontal overflow
 - Authenticated session flow
 - Report export flow
 
@@ -109,3 +109,5 @@ npm run demo:export -- --reporting-run-id <id> --media docs/demo/artifacts/sessi
 npm run demo:record
 npm run evals:live
 ```
+
+The checked 2026-07-01 live proof uses `docs/demo/live-demo.json` and passed `npm run demo:record` plus `npm run evals:live` with session `f6487144-8db9-4833-88e2-999c31a352ba`, reporting run `9dea3bb6-a4a2-4dfd-b9d9-8714a0ea654d`, and measured cost `$0.17287`.

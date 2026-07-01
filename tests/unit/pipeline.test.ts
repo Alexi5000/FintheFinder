@@ -15,12 +15,30 @@ const source: ResearchSource = {
   relevanceReason: 'fixture',
 };
 
+const irrelevantSource: ResearchSource = {
+  ...source,
+  id: 'src_2',
+  title: 'Irrelevant Source',
+  url: 'https://example.com/irrelevant',
+  canonicalUrl: 'https://example.com/irrelevant',
+  content: 'irrelevant source content',
+};
+
 const evaluation: SourceEvaluation = {
   sourceId: 'src_1',
   isRelevant: true,
   score: 0.9,
   credibility: 'high',
   reason: 'fixture',
+  risks: [],
+};
+
+const irrelevantEvaluation: SourceEvaluation = {
+  sourceId: 'src_2',
+  isRelevant: false,
+  score: 0.1,
+  credibility: 'medium',
+  reason: 'fixture irrelevant source',
   risks: [],
 };
 
@@ -65,6 +83,7 @@ const agentState = vi.hoisted(() => ({
   citationOk: true,
   finalApproved: true,
   contradictionCriticalGaps: [] as string[],
+  irrelevantSourceIds: [] as string[],
   useProviderUsage: false,
 }));
 
@@ -82,11 +101,19 @@ vi.mock('@/server/research/repository', () => repositoryMock);
 vi.mock('@/mastra', () => ({
   mastra: {
     getAgent: (name: string) => ({
-      generate: async () => {
+      generate: async (messages: Array<{ role: 'user'; content: string }>) => {
         const output = (object: unknown) => (agentState.useProviderUsage ? { object, usage: { inputTokens: 100, outputTokens: 40, totalTokens: 140 } } : { object });
+        const content = messages[0]?.content ?? '';
+        const sourceId = content.match(/Source ID: (.+)/)?.[1]?.trim();
         if (name === 'plannerAgent') return output({ queries: ['agent compliance', 'agent controls'], successCriteria: ['Human oversight is required.'] });
-        if (name === 'evaluationAgent') return output(evaluation);
-        if (name === 'learningExtractionAgent') return output(learning);
+        if (name === 'evaluationAgent') {
+          return output(
+            agentState.irrelevantSourceIds.some((id) => content.includes(id))
+              ? { ...irrelevantEvaluation, sourceId: sourceId ?? irrelevantEvaluation.sourceId }
+              : { ...evaluation, sourceId: sourceId ?? evaluation.sourceId },
+          );
+        }
+        if (name === 'learningExtractionAgent') return output({ ...learning, sourceId: sourceId ?? learning.sourceId });
         if (name === 'contradictionAgent') return output({ ok: agentState.contradictionCriticalGaps.length === 0, issues: [], criticalGaps: agentState.contradictionCriticalGaps });
         if (name === 'reportAgent') return output(reportDraft);
         if (name === 'citationAuditorAgent') return output({ ok: agentState.citationOk, issues: agentState.citationOk ? [] : ['missing citation'] });
@@ -103,6 +130,7 @@ describe('research pipeline', () => {
     agentState.citationOk = true;
     agentState.finalApproved = true;
     agentState.contradictionCriticalGaps = [];
+    agentState.irrelevantSourceIds = [];
     agentState.useProviderUsage = false;
     repositoryMock.getResearchArtifacts.mockResolvedValue({
       sources: [source],
@@ -143,7 +171,7 @@ describe('research pipeline', () => {
     expect(repositoryMock.replaceResearchArtifacts).toHaveBeenCalledWith(
       'session_1',
       expect.objectContaining({
-        sources: [source],
+        sources: [expect.objectContaining({ canonicalUrl: source.canonicalUrl, id: expect.stringMatching(/^src_/) })],
         evaluations: expect.any(Array),
         learnings: expect.any(Array),
         claims: expect.any(Array),
@@ -151,6 +179,37 @@ describe('research pipeline', () => {
         audits: expect.any(Array),
       }),
       { runId: 'run_1', attemptId: 'attempt_1', workerId: 'worker_1' },
+    );
+  });
+
+  it('persists only evaluations for sources kept in the artifact graph', async () => {
+    agentState.irrelevantSourceIds = [irrelevantSource.canonicalUrl];
+    const { searchWeb } = await import('@/server/research/search-service');
+    vi.mocked(searchWeb).mockResolvedValueOnce([source, irrelevantSource]);
+    const { runResearchSession } = await import('@/server/research/pipeline');
+
+    await runResearchSession('session_1', 'Research AI compliance', {
+      run: {
+        id: 'run_filtered_evaluations',
+        sessionId: 'session_1',
+        status: 'running',
+        attempt: 1,
+        metadata: { stage: 'research' },
+        workerId: 'worker_1',
+        createdAt: '2026-06-24T00:00:00.000Z',
+        updatedAt: '2026-06-24T00:00:00.000Z',
+      },
+      attemptId: 'attempt_1',
+      correlationId: 'corr_1',
+    });
+
+    expect(repositoryMock.replaceResearchArtifacts).toHaveBeenCalledWith(
+      'session_1',
+      expect.objectContaining({
+        sources: [expect.objectContaining({ canonicalUrl: source.canonicalUrl, id: expect.stringMatching(/^src_/) })],
+        evaluations: [expect.objectContaining({ isRelevant: true, sourceId: expect.stringMatching(/^src_/) })],
+      }),
+      { runId: 'run_filtered_evaluations', attemptId: 'attempt_1', workerId: 'worker_1' },
     );
   });
 
@@ -446,7 +505,7 @@ describe('research pipeline', () => {
     expect(repositoryMock.updateSessionState).not.toHaveBeenCalledWith('session_1', 'report_ready', 'complete');
   });
 
-  it('returns to approval when citation audit fails', async () => {
+  it('treats agent citation audit concerns as non-blocking advisories', async () => {
     agentState.citationOk = false;
     const { runApprovedReportSession } = await import('@/server/research/pipeline');
     const result = await runApprovedReportSession('session_1', 'Research AI compliance', {
@@ -461,11 +520,18 @@ describe('research pipeline', () => {
       },
     });
 
-    expect(result.status).toBe('awaiting_approval');
-    expect(repositoryMock.saveReport).not.toHaveBeenCalled();
+    expect(result.status).toBe('completed');
+    expect(repositoryMock.publishReport).toHaveBeenCalled();
+    expect(repositoryMock.addEvent).toHaveBeenCalledWith(
+      'session_1',
+      'reviewing',
+      'Citation advisory reported non-blocking issues.',
+      { issues: ['missing citation'] },
+      expect.objectContaining({ severity: 'warn', stepId: 'citation_advisory' }),
+    );
   });
 
-  it('returns to approval when final review fails', async () => {
+  it('treats final review concerns as non-blocking advisories', async () => {
     agentState.finalApproved = false;
     const { runApprovedReportSession } = await import('@/server/research/pipeline');
     const result = await runApprovedReportSession('session_1', 'Research AI compliance', {
@@ -480,7 +546,14 @@ describe('research pipeline', () => {
       },
     });
 
-    expect(result.status).toBe('awaiting_approval');
-    expect(repositoryMock.saveResearchAudit).toHaveBeenCalledWith('session_1', 'final_review', { ok: false, issues: ['needs caveat'] }, 'run_4');
+    expect(result.status).toBe('completed');
+    expect(repositoryMock.publishReport).toHaveBeenCalled();
+    expect(repositoryMock.addEvent).toHaveBeenCalledWith(
+      'session_1',
+      'reviewing',
+      'Final reviewer reported non-blocking issues.',
+      { issues: ['needs caveat'] },
+      expect.objectContaining({ severity: 'warn', stepId: 'final_review_advisory' }),
+    );
   });
 });

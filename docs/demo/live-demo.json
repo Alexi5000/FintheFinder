@@ -1,0 +1,229 @@
+{
+  "date": "2026-07-01",
+  "prompt": "Find current official guidance on AI audit logs for enterprise compliance. Keep scope narrow and cite primary sources.",
+  "sessionId": "f6487144-8db9-4833-88e2-999c31a352ba",
+  "researchRunId": "4ccaaafe-3fe4-47a3-8c03-80fcbf8c4034",
+  "researchTraceId": "55e70c01a68561723d575601f6b7722a",
+  "reportingRunId": "9dea3bb6-a4a2-4dfd-b9d9-8714a0ea654d",
+  "reportingTraceId": "fd59f9e6cf3dd6bef1dca827813ba87a",
+  "approvalId": "d3da714a-b1d6-4047-97ab-12157ae12442",
+  "runId": "9dea3bb6-a4a2-4dfd-b9d9-8714a0ea654d",
+  "traceId": "fd59f9e6cf3dd6bef1dca827813ba87a",
+  "reportExport": "docs/demo/artifacts/report.md",
+  "evalOutput": "docs/demo/artifacts/eval-summary.json",
+  "runExport": "docs/demo/artifacts/run-export.json",
+  "screenshotsOrVideo": [
+    "docs/demo/artifacts/proof-run-terminal.png"
+  ],
+  "benchmarkDoc": "docs/BENCHMARK.md",
+  "cost": {
+    "totalUsd": 0.17287,
+    "measurementMethod": "provider_usage",
+    "pricingEffectiveDate": "2026-06-24",
+    "usage": {
+      "exaSearches": 6,
+      "modelCalls": [
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 118,
+          "outputTokens": 123
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 610,
+          "outputTokens": 137
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 645,
+          "outputTokens": 100
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 761,
+          "outputTokens": 91
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 610,
+          "outputTokens": 89
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 441,
+          "outputTokens": 87
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 557,
+          "outputTokens": 103
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 548,
+          "outputTokens": 172
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 664,
+          "outputTokens": 142
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 513,
+          "outputTokens": 114
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 344,
+          "outputTokens": 123
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 460,
+          "outputTokens": 140
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 1773,
+          "outputTokens": 147
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 2627,
+          "outputTokens": 1435
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 4268,
+          "outputTokens": 55
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 3722,
+          "outputTokens": 246
+        }
+      ]
+    },
+    "stages": {
+      "research": {
+        "runId": "4ccaaafe-3fe4-47a3-8c03-80fcbf8c4034",
+        "traceId": "55e70c01a68561723d575601f6b7722a",
+        "totalUsd": 0.09374,
+        "measurementMethod": "provider_usage",
+        "pricingEffectiveDate": "2026-06-24",
+        "usage": {
+          "modelCalls": [
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 118,
+              "outputTokens": 123
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 610,
+              "outputTokens": 137
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 645,
+              "outputTokens": 100
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 761,
+              "outputTokens": 91
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 610,
+              "outputTokens": 89
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 441,
+              "outputTokens": 87
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 557,
+              "outputTokens": 103
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 548,
+              "outputTokens": 172
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 664,
+              "outputTokens": 142
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 513,
+              "outputTokens": 114
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 344,
+              "outputTokens": 123
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 460,
+              "outputTokens": 140
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 1773,
+              "outputTokens": 147
+            }
+          ],
+          "exaSearches": 6
+        }
+      },
+      "reporting": {
+        "runId": "9dea3bb6-a4a2-4dfd-b9d9-8714a0ea654d",
+        "traceId": "fd59f9e6cf3dd6bef1dca827813ba87a",
+        "totalUsd": 0.07913,
+        "measurementMethod": "provider_usage",
+        "pricingEffectiveDate": "2026-06-24",
+        "usage": {
+          "modelCalls": [
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 2627,
+              "outputTokens": 1435
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 4268,
+              "outputTokens": 55
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 3722,
+              "outputTokens": 246
+            }
+          ],
+          "exaSearches": 0
+        }
+      }
+    }
+  },
+  "provenance": {
+    "source": "supabase_export",
+    "exporter": "scripts/demo-export.ts",
+    "exportedAt": "2026-07-01T19:51:13.752Z",
+    "reportingRunId": "9dea3bb6-a4a2-4dfd-b9d9-8714a0ea654d",
+    "sessionId": "f6487144-8db9-4833-88e2-999c31a352ba",
+    "supabaseUrl": "https://jjomxaaipotlpglyddag.supabase.co",
+    "artifactHashes": {
+      "docs/demo/artifacts/report.md": "c3643bf9037705cca3ac9448325455ba04de0d7931ef848ca822246f06bb06bb",
+      "docs/demo/artifacts/eval-summary.json": "689c5d588be753d54971176b11ee0770ab2d81da785ece226e6ca6b6ebbb8f24",
+      "docs/demo/artifacts/run-export.json": "ec13cf26a780802a8f9ab8304d8e8f86ec0b42d61ab082392a26fa974f9d6c42",
+      "docs/demo/artifacts/proof-run-terminal.png": "13955e8e8586ae5e02dafc6e94d311c73b274b480e352fb437dd1301585a52b7"
+    }
+  }
+}

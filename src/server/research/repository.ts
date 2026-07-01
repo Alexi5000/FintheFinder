@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type {
   ApprovalRequest,
   ClaimAudit,
@@ -842,7 +843,7 @@ export async function addEvent(
     phase,
     message,
     ...options,
-    traceId: options.traceId ?? activeTraceId(),
+    traceId: options.traceId ?? activeTraceId() ?? fallbackTraceId(options.runId, options.correlationId),
     metadata,
     createdAt: nowIso(),
   };
@@ -865,6 +866,11 @@ export async function addEvent(
   });
   if (error) throw new Error(error.message);
   return event;
+}
+
+function fallbackTraceId(runId?: string, correlationId?: string) {
+  const seed = correlationId ?? runId;
+  return seed ? createHash('sha256').update(seed).digest('hex').slice(0, 32) : undefined;
 }
 
 export async function getEvents(sessionId: string, options: { runId?: string } = {}): Promise<ResearchRunEvent[]> {

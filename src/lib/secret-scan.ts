@@ -12,7 +12,7 @@ type SecretScanOptions = {
 
 const secretKeyPattern = /(^|_)(api_key|authorization|bearer|client_secret|password|passwd|private_key|refresh_token|secret|token)(_|$)/;
 const secretValuePatterns: Array<{ pattern: RegExp; reason: string }> = [
-  { pattern: /sk-[A-Za-z0-9_-]{16,}/, reason: 'OpenAI-style API key' },
+  { pattern: /(^|[^A-Za-z0-9])sk-[A-Za-z0-9_-]{16,}/, reason: 'OpenAI-style API key' },
   { pattern: /eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/, reason: 'JWT-like token' },
   { pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----/, reason: 'private key block' },
   { pattern: /bearer\s+[A-Za-z0-9._~+/=-]{20,}/i, reason: 'bearer token' },

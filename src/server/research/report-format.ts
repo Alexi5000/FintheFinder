@@ -21,7 +21,7 @@ export function renderReportMarkdown(report: Omit<ResearchReport, 'markdown'>, s
     lines.push('## Evidence Notes', '');
     for (const learning of learnings) {
       const source = sourceById.get(learning.sourceId);
-      lines.push(`- ${learning.claim} ${source ? `([source](${source.url}))` : ''}`);
+      lines.push(`- ${learning.evidence} ${source ? `([source](${source.url}))` : ''}`);
     }
     lines.push('');
   }

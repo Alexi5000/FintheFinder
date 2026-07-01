@@ -44,9 +44,9 @@ The production layer around the Mastra core includes:
 
 ## Proof Tier
 
-Fin is offline-gated today. Deterministic contracts, unit coverage, Playwright, Docker build, smoke checks, audit, offline evals, credential-free orchestration replay, and benchmark drift checks are the current release gate.
+Fin is offline-gated with one recorded configured-live proof run. Deterministic contracts, unit coverage, Playwright, Docker build, smoke checks, audit, offline evals, credential-free orchestration replay, and benchmark drift checks remain the normal release gate.
 
-Configured-provider research is supported when OpenAI, Exa, and Supabase credentials are present. Measured live benchmark rows and recorded live demo evidence are not claimed until `npm run demo:export -- --reporting-run-id <id> --media <path>` creates a Supabase-derived proof bundle and the same real session, research run, reporting run, approval, final audit, media, scenario eval, and cost evidence pass `npm run demo:record`, `npm run evals:live`, and the Live Run Log in `docs/BENCHMARK.md`.
+Configured-provider research is supported when OpenAI-compatible, Exa, and Supabase credentials are present. The recorded 2026-07-01 proof bundle was created from Supabase evidence and passed `npm run demo:record`, `npm run evals:live`, and the Live Run Log in `docs/BENCHMARK.md` against the same real session, research run, reporting run, approval, final audit, media, scenario eval, and measured cost evidence.
 
 ## Release Status
 
@@ -54,5 +54,5 @@ Configured-provider research is supported when OpenAI, Exa, and Supabase credent
 - Package version: `1.0.0`
 - Health route version: `1.0.0`
 - License: Apache-2.0
-- Proof tier: offline-gated production foundation
-- Live proof: pending configured credentials and recorded media
+- Proof tier: offline-gated production foundation with recorded configured-live proof
+- Live proof: passed on 2026-07-01; manifest `docs/demo/live-demo.json`; measured cost `$0.17287`

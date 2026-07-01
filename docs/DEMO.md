@@ -51,3 +51,16 @@ On success, `npm run evals:live` re-fetches Supabase evidence for the exported r
 
 Do not claim live demo proof from the example manifest.
 `npm run evals:live` also fails closed unless provider credentials, exporter provenance, Supabase evidence, and the recorded live scenario artifact exist.
+
+## Current Recorded Proof
+
+The checked 2026-07-01 proof bundle passed `npm run demo:record` and `npm run evals:live`.
+
+- Session: `f6487144-8db9-4833-88e2-999c31a352ba`
+- Research run: `4ccaaafe-3fe4-47a3-8c03-80fcbf8c4034`
+- Reporting run: `9dea3bb6-a4a2-4dfd-b9d9-8714a0ea654d`
+- Approval: `d3da714a-b1d6-4047-97ab-12157ae12442`
+- Manifest: `docs/demo/live-demo.json`
+- Manifest SHA-256: `5ad4e21d448e414ec6a64682c1e7d5436261479d95d6e7ed25f5d21fe6c036a3`
+- Measured cost: `$0.17287`
+- Media: `docs/demo/artifacts/proof-run-terminal.png`, `docs/demo/artifacts/proof-run-terminal.txt`

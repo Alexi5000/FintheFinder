@@ -27,4 +27,4 @@ Post-mortems are persisted on worker failure and linked to run events. The UI ex
 - Provider usage is preferred when Mastra returns token accounting; deterministic estimates remain the fallback.
 - Memory is explicit product data, not hidden transcript retention.
 - Memory writes use the hosted API boundary so schema, size, ownership, and secret-like content checks cannot be bypassed by authenticated table writes.
-- Live benchmark proof still requires configured OpenAI, Exa, Supabase, and recorded artifacts.
+- Live benchmark proof requires configured OpenAI-compatible model access, Exa, Supabase, and recorded artifacts. The 2026-07-01 proof bundle satisfies that requirement for one configured-live run.

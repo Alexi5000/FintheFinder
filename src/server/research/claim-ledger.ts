@@ -1,8 +1,9 @@
+import { createHash } from 'node:crypto';
 import type { ClaimAudit, ClaimEvidence, ClaimGap, ResearchClaim, ResearchLearning, ResearchSource } from '@/lib/schemas';
 import { nowIso } from '@/lib/utils';
 
 function stableId(prefix: string, value: string) {
-  return `${prefix}_${Buffer.from(value).toString('base64url').slice(0, 24)}`;
+  return `${prefix}_${createHash('sha256').update(value).digest('base64url').slice(0, 24)}`;
 }
 
 function normalizeClaim(text: string) {

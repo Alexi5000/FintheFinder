@@ -57,9 +57,12 @@ report calls = 1
 The deterministic estimator lives in `src/server/research/cost-model.ts` and uses a dated repo-owned pricing snapshot for configured model strings. Hosted runs persist `research_run_costs` with `measurementMethod="provider_usage"` when Mastra returns token usage, otherwise `measurementMethod="estimated"`. Pricing and exact model IDs must be refreshed from the recorded configured run before publishing fixed cost claims.
 
 ## Live Run Log
+| 2026-07-01 | Find current official guidance on AI audit logs for enterprise compliance. Keep scope narrow and cite primary sources. | session f6487144-8db9-4833-88e2-999c31a352ba; research 4ccaaafe-3fe4-47a3-8c03-80fcbf8c4034; reporting 9dea3bb6-a4a2-4dfd-b9d9-8714a0ea654d; approval d3da714a-b1d6-4047-97ab-12157ae12442; manifest docs/demo/live-demo.json | gpt-4o-mini | 6 | 21965 | 0.17287 provider_usage | docs/demo/artifacts/eval-summary.json | docs/demo/artifacts/report.md docs/demo/artifacts/run-export.json docs/demo/artifacts/proof-run-terminal.png |
 
 | Date | Prompt | Session / Runs | Model(s) | Exa searches | Tokens | Cost / method | Eval result | Report |
 | --- | --- | --- | --- | ---: | ---: | ---: | --- | --- |
-| Pending | Configured live demo run | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
+| 2026-07-01 | Find current official guidance on AI audit logs for enterprise compliance. Keep scope narrow and cite primary sources. | session 3afa4c4a-5058-40a4-88c9-1c2f569abba5; research e9ab6107-178b-48bb-9a7a-8b82cbe7914f; reporting 5e0ef65f-715b-40d8-98fa-1737052ae52d; approval a9e98534-7f5c-45b9-bc30-80673fa18e16; manifest docs/demo/live-demo.json | gpt-4o-mini | 5 | 18542 | 0.14894 provider_usage | docs/demo/artifacts/eval-summary.json | docs/demo/artifacts/report.md docs/demo/artifacts/run-export.json docs/demo/artifacts/proof-run-terminal.txt |
 
 No live measured cost-per-run claim is approved until this table has real usage exported from Supabase by `npm run demo:export -- --reporting-run-id <id> --media <path> --update-benchmark`. Demo rows must report the persisted measurement method and link or name the same manifest, eval output, report export, session-level run export, screenshot/video evidence, approval ID, per-stage cost evidence, aggregate cost object, model calls, token count, and Exa search count validated by `npm run demo:record` and rechecked by `npm run evals:live`.
+
+

@@ -33,6 +33,14 @@ Required for live research:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
+Conservative Exa defaults for proof runs:
+
+- `EXA_SEARCH_TYPE=auto`
+- `EXA_MAX_RESULTS=3`
+- `EXA_HIGHLIGHT_MAX_CHARACTERS=1200`
+
+The search service uses highlights-only retrieval by default and does not force livecrawl. Increase these only when the proof objective requires broader evidence.
+
 The web server passes `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` into the browser clients at render time. This keeps containerized deployments usable when the image was built without public Supabase env values and receives them only from runtime compose/platform configuration. The service-role key is never serialized to client props.
 
 Default model environment values:

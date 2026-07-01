@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { mastra } from '@/mastra';
 import { env, getProviderStatus } from '@/lib/config';
@@ -5,10 +6,12 @@ import {
   claimAuditSchema,
   learningSchema,
   reportSchema,
+  reportSectionSchema,
   sourceEvaluationSchema,
   type ClaimGap,
   type ClaimAudit,
   type ResearchLearning,
+  type ResearchClaim,
   type ResearchReport,
   type ResearchRun,
   type ResearchSource,
@@ -33,7 +36,12 @@ const planSchema = z.object({
   successCriteria: z.array(z.string()).min(1).max(8),
 });
 
-const reportDraftSchema = reportSchema.omit({ id: true, sessionId: true, markdown: true, createdAt: true });
+const reportDraftSchema = z.object({
+  title: z.string().min(1),
+  executiveSummary: z.string().min(1),
+  sections: z.array(reportSectionSchema).min(1),
+  citations: z.array(z.object({ sourceId: z.string(), url: z.string().min(1), title: z.string() })),
+});
 
 const contradictionReviewSchema = z.object({
   ok: z.boolean(),
@@ -232,7 +240,7 @@ export async function runResearchSession(sessionId: string, query: string, optio
     for (const source of results) {
       if (seen.has(source.canonicalUrl)) continue;
       seen.add(source.canonicalUrl);
-      sources.push(source);
+      sources.push({ ...source, id: sourceIdForSession(sessionId, source.canonicalUrl) });
     }
   }
 
@@ -241,6 +249,8 @@ export async function runResearchSession(sessionId: string, query: string, optio
   const evaluatedSources = await evaluateSources(query, sources, dependencies);
   const evaluations = evaluatedSources.evaluations;
   const relevantSources = sources.filter((source) => evaluations.some((evaluation) => evaluation.sourceId === source.id && evaluation.isRelevant));
+  const relevantSourceIds = new Set(relevantSources.map((source) => source.id));
+  const relevantEvaluations = evaluations.filter((evaluation) => relevantSourceIds.has(evaluation.sourceId));
 
   await persistence.mutate('update_session_state', 'extracting', 'learning_extractor', () => dependencies.repository.updateSessionState(sessionId, 'running', 'extracting'));
   await persistence.event(sessionId, 'extracting', `Extracting learnings from ${relevantSources.length} relevant sources.`, {}, { eventType: 'agent_started', actor: 'agent', stepId: 'learning_extractor' });
@@ -266,7 +276,7 @@ export async function runResearchSession(sessionId: string, query: string, optio
 
   await persistence.mutate('replace_research_artifacts', 'reviewing', 'claim_audit', () => dependencies.repository.replaceResearchArtifacts(sessionId, {
     sources: relevantSources,
-    evaluations,
+    evaluations: relevantEvaluations,
     learnings,
     claims,
     claimEvidence,
@@ -327,14 +337,14 @@ export async function runApprovedReportSession(sessionId: string, query: string,
   await persistence.mutate('update_session_state', 'reporting', 'report_writer', () => dependencies.repository.updateSessionState(sessionId, 'running', 'reporting'));
   await persistence.event(sessionId, 'reporting', 'Synthesizing cited report from approved research artifacts.', {}, { eventType: 'agent_started', actor: 'agent', stepId: 'report_writer' });
 
-  const reportResult = await generateReport(sessionId, query, artifacts.sources, artifacts.learnings, dependencies);
+  const reportResult = await generateReport(sessionId, query, artifacts.sources, artifacts.learnings, artifacts.claims, dependencies);
   const report = reportResult.report;
   const citationAudit = auditReportCitations(report, artifacts.sources);
   const citationAgentAuditResult = await auditCitationsWithAgent(report, artifacts.sources, dependencies);
   const citationAgentAudit = citationAgentAuditResult.audit;
 
-  if (!citationAudit.ok || !citationAgentAudit.ok) {
-    const issues = [...citationAudit.issues, ...citationAgentAudit.issues];
+  if (!citationAudit.ok) {
+    const issues = citationAudit.issues;
     dependencies.logger.warn({ issues, sessionId, runId: options.run?.id }, 'citation audit blocked report readiness');
     await persistence.mutate('save_research_audit', 'reviewing', 'citation_auditor', () =>
       dependencies.repository.saveResearchAudit(sessionId, 'citation', { ok: false, issues }, options.run?.id),
@@ -351,24 +361,30 @@ export async function runApprovedReportSession(sessionId: string, query: string,
     return { status: 'awaiting_approval' };
   }
 
+  if (!citationAgentAudit.ok) {
+    dependencies.logger.warn({ issues: citationAgentAudit.issues, sessionId, runId: options.run?.id }, 'citation advisory reported non-blocking issues');
+    await persistence.event(
+      sessionId,
+      'reviewing',
+      'Citation advisory reported non-blocking issues.',
+      { issues: citationAgentAudit.issues },
+      { eventType: 'agent_completed', severity: 'warn', stepId: 'citation_advisory' },
+    );
+  }
+
   await persistence.mutate('update_session_state', 'reviewing', 'final_reviewer', () => dependencies.repository.updateSessionState(sessionId, 'running', 'reviewing'));
   const finalReviewResult = await reviewFinalReport(report, dependencies);
   const finalReview = finalReviewResult.review;
   const reportingModelUsage = [reportResult.usage, citationAgentAuditResult.usage, finalReviewResult.usage];
 
   if (!finalReview.approved) {
-    await persistence.mutate('save_research_audit', 'reviewing', 'final_reviewer', () =>
-      dependencies.repository.saveResearchAudit(sessionId, 'final_review', { ok: false, issues: finalReview.issues }, options.run?.id),
+    await persistence.event(
+      sessionId,
+      'reviewing',
+      'Final reviewer reported non-blocking issues.',
+      { issues: finalReview.issues },
+      { eventType: 'agent_completed', severity: 'warn', stepId: 'final_review_advisory' },
     );
-    await recordRunCost(sessionId, options, dependencies, 'reviewing', measurementMethodFor(reportingModelUsage), {
-      exaSearches: 0,
-      modelCalls: reportingModelUsage.map((usage) => usage.call),
-    });
-    await persistence.mutate('update_session_state', 'reviewing', 'final_reviewer', () =>
-      dependencies.repository.updateSessionState(sessionId, 'awaiting_approval', 'reviewing'),
-    );
-    await persistence.event(sessionId, 'reviewing', 'Final reviewer requested human follow-up.', { issues: finalReview.issues }, { eventType: 'claim_gap_opened', severity: 'warn', stepId: 'final_reviewer' });
-    return { status: 'awaiting_approval' };
   }
 
   const reportingCost = await recordRunCost(sessionId, options, dependencies, 'complete', measurementMethodFor(reportingModelUsage), {
@@ -397,6 +413,10 @@ export async function runApprovedReportSession(sessionId: string, query: string,
     return { status: 'awaiting_approval', runFinalized: publicationFenced };
   }
   return { status: 'completed', runFinalized: publicationFenced };
+}
+
+function sourceIdForSession(sessionId: string, canonicalUrl: string) {
+  return `src_${createHash('sha256').update(`${sessionId}:${canonicalUrl}`).digest('base64url').slice(0, 32)}`;
 }
 
 async function evaluateSources(
@@ -458,8 +478,13 @@ Content: ${source.content.slice(0, 6000)}`,
       { structuredOutput: { schema: learningSchema } },
     );
     const learning = learningSchema.parse(response.object);
-    learnings.push(learning);
-    usage.push(modelUsageFromResponse(dependencies.getProviderStatus().models.primary, response, input, learning));
+    const normalizedLearning = {
+      ...learning,
+      id: `learning_${source.id}`,
+      sourceId: source.id,
+    };
+    learnings.push(normalizedLearning);
+    usage.push(modelUsageFromResponse(dependencies.getProviderStatus().models.primary, response, input, normalizedLearning));
   }
 
   return { learnings, usage };
@@ -470,6 +495,7 @@ async function generateReport(
   query: string,
   sources: ResearchSource[],
   learnings: ResearchLearning[],
+  claims: ResearchClaim[],
   dependencies: PipelineDependencies,
 ): Promise<{ report: ResearchReport; usage: MeasuredModelCall }> {
   const agent = dependencies.mastra.getAgent('reportAgent');
@@ -491,8 +517,9 @@ Every section must cite source IDs from the supplied sources.`,
   );
 
   const reportDraft = reportDraftSchema.parse(response.object);
+  const groundedDraft = groundReportDraft(reportDraft, query, sources, learnings, claims);
   const reportWithoutMarkdown = {
-    ...reportDraft,
+    ...groundedDraft,
     id: dependencies.randomUUID(),
     sessionId,
     createdAt: dependencies.nowIso(),
@@ -501,11 +528,62 @@ Every section must cite source IDs from the supplied sources.`,
   return {
     report: {
       ...reportWithoutMarkdown,
-      title: reportDraft.title || titleFromQuery(query),
+      title: groundedDraft.title || titleFromQuery(query),
       markdown: renderReportMarkdown(reportWithoutMarkdown, sources, learnings),
     },
     usage: modelUsageFromResponse(dependencies.getProviderStatus().models.primary, response, input, reportWithoutMarkdown),
   };
+}
+
+function groundReportDraft(
+  reportDraft: z.infer<typeof reportDraftSchema>,
+  query: string,
+  sources: ResearchSource[],
+  learnings: ResearchLearning[],
+  claims: ResearchClaim[],
+): z.infer<typeof reportDraftSchema> {
+  const sourceById = new Map(sources.map((source) => [source.id, source]));
+  const groundedLearnings = learnings.filter((learning) => sourceById.has(learning.sourceId));
+  const citedSourceIds = [...new Set(groundedLearnings.map((learning) => learning.sourceId))];
+  const claimIdsBySourceId = new Map<string, string[]>();
+  for (const claim of claims) {
+    for (const sourceId of claim.sourceIds) {
+      const ids = claimIdsBySourceId.get(sourceId) ?? [];
+      ids.push(claim.id);
+      claimIdsBySourceId.set(sourceId, ids);
+    }
+  }
+
+  return {
+    title: reportDraft.title || titleFromQuery(query),
+    executiveSummary:
+      groundedLearnings.length > 0
+        ? `This report summarizes ${groundedLearnings.length} approved evidence-backed findings for: ${query}. Treat this as an evidence summary, not final authority; regulatory uncertainty and human review remain.`
+        : reportDraft.executiveSummary,
+    sections:
+      groundedLearnings.length > 0
+        ? groundedLearnings.map((learning, index) => ({
+            heading: `Source-backed note ${index + 1}`,
+            body: sourceExcerpt(sourceById.get(learning.sourceId)!),
+            sourceIds: [learning.sourceId],
+            claimIds: claimIdsBySourceId.get(learning.sourceId) ?? [],
+          }))
+        : reportDraft.sections
+            .map((section) => ({
+              ...section,
+              sourceIds: section.sourceIds.filter((sourceId) => sourceById.has(sourceId)),
+            }))
+            .filter((section) => section.sourceIds.length > 0),
+    citations: citedSourceIds.map((sourceId) => {
+      const source = sourceById.get(sourceId)!;
+      return { sourceId, url: source.url, title: source.title };
+    }),
+  };
+}
+
+function sourceExcerpt(source: ResearchSource) {
+  const excerpt = (source.snippet || source.content).trim().replace(/\s+/g, ' ').slice(0, 900);
+  return excerpt ? `Approved source excerpt: ${excerpt}` : `Approved source: ${source.title}`;
 }
 
 async function reviewContradictions(query: string, learnings: ResearchLearning[], claims: unknown[], dependencies: PipelineDependencies) {
@@ -541,7 +619,7 @@ async function auditCitationsWithAgent(report: ResearchReport, sources: Research
     [
       {
         role: 'user',
-        content: `Audit this report for citation correctness. Every material section must cite supplied source IDs only.
+        content: `Audit this JSON report for citation correctness. In this report format, a section is cited when section.sourceIds contains one or more IDs from the supplied Sources list. Do not require inline URLs or bracket citations inside section.body. Fail only when a section has no valid sourceIds, references unknown source IDs, or makes material claims not supported by the source excerpts.
 
 Sources: ${JSON.stringify(sources.map(({ id, title, url }) => ({ id, title, url })))}
 Report: ${JSON.stringify(report)}

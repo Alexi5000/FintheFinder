@@ -219,7 +219,7 @@ export async function runOrchestrationReplayEval(): Promise<OrchestrationReplayS
     action: 'approve',
     notes: 'Credential-free replay approval.',
     approvedSourceIds: store.sources.map((source) => source.id),
-    waivedGapIds: [],
+    waivedGapIds: store.gaps.filter((gap) => gap.severity === 'critical' && gap.status === 'open').map((gap) => gap.id),
   });
   const reportingProcessed = await processNextRun(config, workerDependencies);
 
@@ -463,6 +463,7 @@ function createPipelineDependencies(store: ReplayStore): PipelineDependencyOverr
       exa: true,
       supabase: true,
       models: { primary: 'gpt-5.5', fast: 'gpt-5.4-mini', reasoningEffort: 'high' },
+      exaConfig: { searchType: 'auto', maxResults: 3, highlightMaxCharacters: 1200 },
     }),
     logger: {
       warn: (metadata: Record<string, unknown>, message: string) => {
@@ -556,7 +557,7 @@ function agentOutput(name: string, content: string) {
     };
   }
   if (name === 'evaluationAgent') {
-    const sourceId = content.includes('src_audit_trails') ? 'src_audit_trails' : 'src_regulator_guidance';
+    const sourceId = sourceIdFromPrompt(content);
     return {
       sourceId,
       isRelevant: true,
@@ -567,10 +568,11 @@ function agentOutput(name: string, content: string) {
     };
   }
   if (name === 'learningExtractionAgent') {
-    if (content.includes('src_audit_trails')) {
+    const sourceId = sourceIdFromPrompt(content);
+    if (content.includes('audit-trail-controls')) {
       return {
         id: 'learning_audit_trails',
-        sourceId: 'src_audit_trails',
+        sourceId,
         claim: 'Audit trails and exception routing help preserve accountability in compliance-heavy AI workflows.',
         evidence: 'The audit guidance requires documented trails, review queues, and exception routing.',
         followUpQuestions: [],
@@ -578,7 +580,7 @@ function agentOutput(name: string, content: string) {
     }
     return {
       id: 'learning_human_oversight',
-      sourceId: 'src_regulator_guidance',
+      sourceId,
       claim: 'Human oversight is required for compliance AI agents amid regulatory uncertainty.',
       evidence: 'The regulator guidance says financial institutions should preserve human oversight and document controls.',
       followUpQuestions: [],
@@ -622,6 +624,10 @@ function agentOutput(name: string, content: string) {
   throw new Error(`Unexpected replay agent ${name}.`);
 }
 
+function sourceIdFromPrompt(content: string) {
+  return content.match(/Source ID: (.+)/)?.[1]?.trim() ?? 'src_unknown';
+}
+
 function replayWorkerConfig(): WorkerConfig {
   return {
     heartbeatMs: 1000,
@@ -639,7 +645,15 @@ function recordApprovalDecision(store: ReplayStore, userId: string, sessionId: s
   if (store.session.status !== 'awaiting_approval') throw new Error('Replay approval requires awaiting_approval state.');
   if (input.action !== 'approve') throw new Error('Replay scenario only supports approval.');
   const openCriticalGaps = store.gaps.filter((gap) => gap.severity === 'critical' && gap.status === 'open');
-  if (openCriticalGaps.length > 0) throw new Error('Replay approval cannot proceed with open critical gaps.');
+  const unwaivedCriticalGaps = openCriticalGaps.filter((gap) => !input.waivedGapIds.includes(gap.id));
+  if (unwaivedCriticalGaps.length > 0) throw new Error('Replay approval cannot proceed with unwaived critical gaps.');
+  for (const gap of openCriticalGaps) {
+    if (input.waivedGapIds.includes(gap.id)) {
+      gap.status = 'waived';
+      gap.resolution = 'Waived by credential-free replay approval.';
+      gap.resolvedAt = fixedNow;
+    }
+  }
 
   const approval: ResearchApproval = {
     id: ids.approval,

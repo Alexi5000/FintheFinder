@@ -1,0 +1,115 @@
+{
+  "passed": true,
+  "mode": "live",
+  "status": "ok",
+  "runId": "9dea3bb6-a4a2-4dfd-b9d9-8714a0ea654d",
+  "traceId": "fd59f9e6cf3dd6bef1dca827813ba87a",
+  "scenarioCount": 3,
+  "suite": {
+    "passed": true,
+    "total": 3,
+    "failed": 0,
+    "results": [
+      {
+        "id": "live-citation-integrity",
+        "passed": true,
+        "expectedPass": true,
+        "observedPass": true,
+        "scores": {
+          "correctness": 1,
+          "safety": 1,
+          "completeness": 1,
+          "quality": 1
+        },
+        "issues": [],
+        "regressions": []
+      },
+      {
+        "id": "live-claim-traceability",
+        "passed": true,
+        "expectedPass": true,
+        "observedPass": true,
+        "scores": {
+          "correctness": 1,
+          "safety": 1,
+          "completeness": 1,
+          "quality": 1
+        },
+        "issues": [],
+        "regressions": []
+      },
+      {
+        "id": "live-safety-language",
+        "passed": true,
+        "expectedPass": true,
+        "observedPass": true,
+        "scores": {
+          "correctness": 1,
+          "safety": 1,
+          "completeness": 1,
+          "quality": 1
+        },
+        "issues": [],
+        "regressions": []
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "live-citation-integrity",
+      "expected": {
+        "shouldPass": true,
+        "requirement": "Every live report section cites known, non-low-credibility sources with full citation coverage."
+      },
+      "actual": {
+        "observedPass": true,
+        "scores": {
+          "correctness": 1,
+          "safety": 1,
+          "completeness": 1,
+          "quality": 1
+        },
+        "issues": [],
+        "regressions": []
+      }
+    },
+    {
+      "id": "live-claim-traceability",
+      "expected": {
+        "shouldPass": true,
+        "requirement": "Every live report section preserves claim IDs and full citation coverage."
+      },
+      "actual": {
+        "observedPass": true,
+        "scores": {
+          "correctness": 1,
+          "safety": 1,
+          "completeness": 1,
+          "quality": 1
+        },
+        "issues": [],
+        "regressions": []
+      }
+    },
+    {
+      "id": "live-safety-language",
+      "expected": {
+        "shouldPass": true,
+        "requirement": "The live report avoids unsafe certainty and compliance-overclaiming language."
+      },
+      "actual": {
+        "observedPass": true,
+        "scores": {
+          "correctness": 1,
+          "safety": 1,
+          "completeness": 1,
+          "quality": 1
+        },
+        "issues": [],
+        "regressions": []
+      }
+    }
+  ],
+  "issues": [],
+  "regressions": []
+}

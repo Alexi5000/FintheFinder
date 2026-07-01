@@ -9,6 +9,9 @@ const booleanFromEnv = z.preprocess((value) => {
 const serverEnvSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   EXA_API_KEY: z.string().optional(),
+  EXA_SEARCH_TYPE: z.enum(['auto', 'fast', 'instant', 'deep-lite', 'deep', 'deep-reasoning']).default('auto'),
+  EXA_MAX_RESULTS: z.coerce.number().int().min(1).max(10).default(3),
+  EXA_HIGHLIGHT_MAX_CHARACTERS: z.coerce.number().int().positive().default(1200),
   OPENAI_MODEL_PRIMARY: z.string().default('gpt-5.5'),
   OPENAI_MODEL_FAST: z.string().default('gpt-5.4-mini'),
   OPENAI_REASONING_EFFORT: z.enum(['none', 'low', 'medium', 'high', 'xhigh']).default('high'),
@@ -38,6 +41,11 @@ export function getProviderStatus() {
       primary: env.OPENAI_MODEL_PRIMARY,
       fast: env.OPENAI_MODEL_FAST,
       reasoningEffort: env.OPENAI_REASONING_EFFORT,
+    },
+    exaConfig: {
+      searchType: env.EXA_SEARCH_TYPE,
+      maxResults: env.EXA_MAX_RESULTS,
+      highlightMaxCharacters: env.EXA_HIGHLIGHT_MAX_CHARACTERS,
     },
   };
 }

@@ -1,0 +1,333 @@
+{
+  "sessionId": "f6487144-8db9-4833-88e2-999c31a352ba",
+  "status": "report_ready",
+  "researchRun": {
+    "runId": "4ccaaafe-3fe4-47a3-8c03-80fcbf8c4034",
+    "traceId": "55e70c01a68561723d575601f6b7722a",
+    "status": "awaiting_approval",
+    "cost": {
+      "runId": "4ccaaafe-3fe4-47a3-8c03-80fcbf8c4034",
+      "traceId": "55e70c01a68561723d575601f6b7722a",
+      "totalUsd": 0.09374,
+      "measurementMethod": "provider_usage",
+      "pricingEffectiveDate": "2026-06-24",
+      "usage": {
+        "modelCalls": [
+          {
+            "model": "gpt-4o-mini",
+            "inputTokens": 118,
+            "outputTokens": 123
+          },
+          {
+            "model": "gpt-4o-mini",
+            "inputTokens": 610,
+            "outputTokens": 137
+          },
+          {
+            "model": "gpt-4o-mini",
+            "inputTokens": 645,
+            "outputTokens": 100
+          },
+          {
+            "model": "gpt-4o-mini",
+            "inputTokens": 761,
+            "outputTokens": 91
+          },
+          {
+            "model": "gpt-4o-mini",
+            "inputTokens": 610,
+            "outputTokens": 89
+          },
+          {
+            "model": "gpt-4o-mini",
+            "inputTokens": 441,
+            "outputTokens": 87
+          },
+          {
+            "model": "gpt-4o-mini",
+            "inputTokens": 557,
+            "outputTokens": 103
+          },
+          {
+            "model": "gpt-4o-mini",
+            "inputTokens": 548,
+            "outputTokens": 172
+          },
+          {
+            "model": "gpt-4o-mini",
+            "inputTokens": 664,
+            "outputTokens": 142
+          },
+          {
+            "model": "gpt-4o-mini",
+            "inputTokens": 513,
+            "outputTokens": 114
+          },
+          {
+            "model": "gpt-4o-mini",
+            "inputTokens": 344,
+            "outputTokens": 123
+          },
+          {
+            "model": "gpt-4o-mini",
+            "inputTokens": 460,
+            "outputTokens": 140
+          },
+          {
+            "model": "gpt-4o-mini",
+            "inputTokens": 1773,
+            "outputTokens": 147
+          }
+        ],
+        "exaSearches": 6
+      }
+    }
+  },
+  "reportingRun": {
+    "runId": "9dea3bb6-a4a2-4dfd-b9d9-8714a0ea654d",
+    "traceId": "fd59f9e6cf3dd6bef1dca827813ba87a",
+    "status": "completed",
+    "cost": {
+      "runId": "9dea3bb6-a4a2-4dfd-b9d9-8714a0ea654d",
+      "traceId": "fd59f9e6cf3dd6bef1dca827813ba87a",
+      "totalUsd": 0.07913,
+      "measurementMethod": "provider_usage",
+      "pricingEffectiveDate": "2026-06-24",
+      "usage": {
+        "modelCalls": [
+          {
+            "model": "gpt-4o-mini",
+            "inputTokens": 2627,
+            "outputTokens": 1435
+          },
+          {
+            "model": "gpt-4o-mini",
+            "inputTokens": 4268,
+            "outputTokens": 55
+          },
+          {
+            "model": "gpt-4o-mini",
+            "inputTokens": 3722,
+            "outputTokens": 246
+          }
+        ],
+        "exaSearches": 0
+      }
+    }
+  },
+  "approval": {
+    "id": "d3da714a-b1d6-4047-97ab-12157ae12442",
+    "action": "approve",
+    "waivedGapIds": [
+      "gap__f8ia6Vl1O3nEQX5QwJPZuIX",
+      "gap_069TK-vGk_Oz6ZvnvYIZ3G7G",
+      "gap_PNWM6HLaDT9X95KIU6RNRrg9",
+      "gap_7Uayl1f4NcNXsYP0vRzAB6da",
+      "gap_FfkzJcuDoEPnDJbIJwzmEefb",
+      "gap_5bbdf0e7-a78a-4dc3-a181-557312b39b88",
+      "gap_fbe6d032-9189-48bc-a602-5a6dea2d201f"
+    ]
+  },
+  "finalAudit": {
+    "id": "7980e5dc-0948-4672-ab70-3626547d1e7d",
+    "runId": "9dea3bb6-a4a2-4dfd-b9d9-8714a0ea654d",
+    "auditType": "final_review",
+    "ok": true
+  },
+  "cost": {
+    "totalUsd": 0.17287,
+    "measurementMethod": "provider_usage",
+    "pricingEffectiveDate": "2026-06-24",
+    "usage": {
+      "exaSearches": 6,
+      "modelCalls": [
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 118,
+          "outputTokens": 123
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 610,
+          "outputTokens": 137
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 645,
+          "outputTokens": 100
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 761,
+          "outputTokens": 91
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 610,
+          "outputTokens": 89
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 441,
+          "outputTokens": 87
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 557,
+          "outputTokens": 103
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 548,
+          "outputTokens": 172
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 664,
+          "outputTokens": 142
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 513,
+          "outputTokens": 114
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 344,
+          "outputTokens": 123
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 460,
+          "outputTokens": 140
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 1773,
+          "outputTokens": 147
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 2627,
+          "outputTokens": 1435
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 4268,
+          "outputTokens": 55
+        },
+        {
+          "model": "gpt-4o-mini",
+          "inputTokens": 3722,
+          "outputTokens": 246
+        }
+      ]
+    },
+    "stages": {
+      "research": {
+        "runId": "4ccaaafe-3fe4-47a3-8c03-80fcbf8c4034",
+        "traceId": "55e70c01a68561723d575601f6b7722a",
+        "totalUsd": 0.09374,
+        "measurementMethod": "provider_usage",
+        "pricingEffectiveDate": "2026-06-24",
+        "usage": {
+          "modelCalls": [
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 118,
+              "outputTokens": 123
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 610,
+              "outputTokens": 137
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 645,
+              "outputTokens": 100
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 761,
+              "outputTokens": 91
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 610,
+              "outputTokens": 89
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 441,
+              "outputTokens": 87
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 557,
+              "outputTokens": 103
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 548,
+              "outputTokens": 172
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 664,
+              "outputTokens": 142
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 513,
+              "outputTokens": 114
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 344,
+              "outputTokens": 123
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 460,
+              "outputTokens": 140
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 1773,
+              "outputTokens": 147
+            }
+          ],
+          "exaSearches": 6
+        }
+      },
+      "reporting": {
+        "runId": "9dea3bb6-a4a2-4dfd-b9d9-8714a0ea654d",
+        "traceId": "fd59f9e6cf3dd6bef1dca827813ba87a",
+        "totalUsd": 0.07913,
+        "measurementMethod": "provider_usage",
+        "pricingEffectiveDate": "2026-06-24",
+        "usage": {
+          "modelCalls": [
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 2627,
+              "outputTokens": 1435
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 4268,
+              "outputTokens": 55
+            },
+            {
+              "model": "gpt-4o-mini",
+              "inputTokens": 3722,
+              "outputTokens": 246
+            }
+          ],
+          "exaSearches": 0
+        }
+      }
+    }
+  }
+}

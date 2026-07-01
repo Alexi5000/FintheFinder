@@ -1,0 +1,6 @@
+FinTheFinder live proof terminal artifact
+Session: f6487144-8db9-4833-88e2-999c31a352ba
+Research run: 4ccaaafe-3fe4-47a3-8c03-80fcbf8c4034
+Reporting run: 9dea3bb6-a4a2-4dfd-b9d9-8714a0ea654d
+Status: report_ready
+Created: 2026-07-01T19:50:46.248Z

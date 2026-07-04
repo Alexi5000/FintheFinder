@@ -99,9 +99,9 @@ const proofSurfaces = [
   },
   {
     label: 'Live demo',
-    status: 'Pending configured credentials',
+    status: 'Recorded proof passed',
     value: 'demo:export, demo:record, evals:live',
-    detail: 'No live claim is approved until the manifest, Supabase lineage, eval output, media, and benchmark row agree.',
+    detail: 'The checked 2026-07-01 proof bundle ties the manifest, Supabase lineage, eval output, media, and benchmark row to one real session.',
   },
   {
     label: 'Deployment',
@@ -115,8 +115,8 @@ const status = [
   { label: 'Version', value: packageJson.version },
   { label: 'License', value: packageJson.license },
   { label: 'Mastra', value: '1.x' },
-  { label: 'Proof Tier', value: 'Offline-gated' },
-  { label: 'Live Proof', value: 'Pending credentials' },
+  { label: 'Proof Tier', value: 'Offline + configured-live' },
+  { label: 'Live Proof', value: 'Passed 2026-07-01' },
 ];
 
 export default function AboutPage() {

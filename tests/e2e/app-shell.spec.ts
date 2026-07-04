@@ -23,8 +23,8 @@ test('about page exposes product architecture and proof status', async ({ page }
   await expect(page.getByRole('heading', { name: 'Mastra-based research that leaves an evidence trail.' })).toBeVisible();
   await expect(page.getByLabel('Product status')).toContainText(new RegExp(`Version\\s*${escapedVersion}`));
   await expect(page.getByLabel('Product status')).toContainText(/Mastra\s*1\.x/);
-  await expect(page.getByLabel('Product status')).toContainText(/Proof Tier\s*Offline-gated/);
-  await expect(page.getByLabel('Product status')).toContainText(/Live Proof\s*Pending credentials/);
+  await expect(page.getByLabel('Product status')).toContainText(/Proof Tier\s*Offline \+ configured-live/);
+  await expect(page.getByLabel('Product status')).toContainText(/Live Proof\s*Passed 2026-07-01/);
   await expect(page.getByLabel('Mastra Workflow')).toContainText('Audit');
   await expect(page.getByRole('heading', { name: 'Template lineage, production surface.' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Evidence model' })).toBeVisible();
@@ -34,8 +34,8 @@ test('about page exposes product architecture and proof status', async ({ page }
   await expect(proofSurfaces).toContainText('Unit verified');
   await expect(proofSurfaces).toContainText('Migration verified');
   await expect(proofSurfaces).toContainText('CI and Docker configured');
-  await expect(page.getByText('Pending configured credentials').first()).toBeVisible();
-  await expect(page.getByText(/Configured-live benchmark rows and recorded demo evidence remain intentionally pending real provider credentials/)).toBeVisible();
+  await expect(page.getByText('Recorded proof passed').first()).toBeVisible();
+  await expect(page.getByText(/The 2026-07-01 configured-live proof run passed with real provider calls/)).toBeVisible();
 });
 
 test('about page avoids horizontal overflow on narrow desktop', async ({ page }) => {

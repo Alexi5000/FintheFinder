@@ -276,8 +276,8 @@ export default function AboutPage() {
           repository proof docs.
         </p>
         <p className="muted">
-          Configured-live benchmark rows and recorded demo evidence remain intentionally pending real provider credentials, Supabase proof rows, and media. The
-          FDE gate matrix tracks that proof explicitly.
+          The 2026-07-01 configured-live proof run passed with real provider calls, Supabase rows, recorded media, demo export, live eval validation, and measured
+          provider usage. The FDE gate matrix tracks what that proof covers and what remains deployment-pilot work.
         </p>
         <div className="about-actions">
           <Link className="button secondary" href="/api/research/evals">

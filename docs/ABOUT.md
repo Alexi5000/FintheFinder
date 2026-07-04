@@ -40,7 +40,7 @@ The production layer around the Mastra core includes:
 - Offline evals, credential-free orchestration replay, benchmark drift checks, and expected versus actual scenario fixtures.
 - Citation and contradiction gates, human approval status, report readiness checks, and provenance-bound demo export.
 - Structured Pino logging with redaction, OpenTelemetry trace hooks, cost rows, and post-mortem generation.
-- CI, Docker build, Playwright smoke coverage, audit checks, issue templates, PR template, Dependabot, and repo hygiene docs.
+- CI, Docker build, Playwright smoke coverage, audit checks, issue templates, PR template, and repo hygiene docs.
 
 ## Proof Tier
 

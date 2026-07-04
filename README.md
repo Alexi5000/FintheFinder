@@ -27,6 +27,7 @@
   <a href="#quick-start">Quick Start</a> &middot;
   <a href="#built-with-mastra">Mastra Architecture</a> &middot;
   <a href="#proof-and-release-status">Proof Gates</a> &middot;
+  <a href="#reviewer-path">Reviewer Path</a> &middot;
   <a href="#benchmarks">Benchmarks</a> &middot;
   <a href="#api">API</a> &middot;
   <a href="#security-and-contributing">Security</a> &middot;
@@ -57,6 +58,17 @@ This project intentionally separates shipped proof from future proof. The curren
 | Proof tier | Offline-gated production foundation with recorded configured-live proof |
 | Live proof | Passed on 2026-07-01 with session `f6487144-8db9-4833-88e2-999c31a352ba`, reporting run `9dea3bb6-a4a2-4dfd-b9d9-8714a0ea654d`, manifest `docs/demo/live-demo.json`, and measured cost `$0.17287` |
 | Source of truth | `docs/FDE_GATES.md`, `docs/BENCHMARK.md`, `docs/ARCHITECTURE.md` |
+
+## Reviewer Path
+
+If you are reviewing the repo, start here:
+
+1. Read the proof status table above.
+2. Inspect [docs/FDE_GATES.md](docs/FDE_GATES.md) for the evidence matrix.
+3. Inspect [docs/demo/live-demo.json](docs/demo/live-demo.json) and [docs/demo/README.md](docs/demo/README.md) for the recorded live proof bundle.
+4. Run `npm run demo:record` to validate the checked proof artifacts.
+5. Run `npm run verify` to validate the local engineering gate.
+6. Read [docs/releases/v1.0.0.md](docs/releases/v1.0.0.md) and [docs/ROADMAP.md](docs/ROADMAP.md) to see what v1 claims and what is intentionally future work.
 
 ## Built With Mastra
 
@@ -231,7 +243,7 @@ npm run smoke
 
 ## Repo Hygiene
 
-- License, changelog, security policy, contribution guide, AGENTS memory, issue templates, PR template, Dependabot, and CI workflow are present.
+- License, changelog, security policy, contribution guide, AGENTS memory, issue templates, PR template, and CI workflow are present.
 - Architecture decisions are captured in [docs/adr](docs/adr).
 - FDE status is tracked in [docs/FDE_GATES.md](docs/FDE_GATES.md).
 - Benchmark honesty is tracked in [docs/BENCHMARK.md](docs/BENCHMARK.md).

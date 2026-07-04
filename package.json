@@ -34,10 +34,21 @@
     "verify": "npm run typecheck && npm run lint && npm run contracts:check && npm run notebooks:check && npm run test:coverage && npm run evals && npm run evals:replay && npm run benchmark:check && npm run build && npm run audit && npm run smoke",
     "smoke": "node scripts/smoke.mjs"
   },
-  "keywords": [],
+  "keywords": [
+    "ai",
+    "agents",
+    "deep-research",
+    "mastra",
+    "openai",
+    "exa",
+    "supabase",
+    "typescript",
+    "evidence",
+    "evals"
+  ],
   "author": "",
   "license": "Apache-2.0",
-  "description": "Advanced AI deep research assistant using Mastra's workflows and agent capabilities. Creates an interactive, human-in-the-loop research system that allows users to explore topics, evaluate results, and generate comprehensive reports.",
+  "description": "Evidence-first AI research system with Mastra agents, Exa search, Supabase persistence, citation gates, evals, and recorded live proof artifacts.",
   "type": "module",
   "packageManager": "npm@11.7.0",
   "engines": {

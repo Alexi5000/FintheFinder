@@ -17,7 +17,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "audit": "npm audit --audit-level=moderate",
+    "audit": "node scripts/audit-dependencies.cjs",
     "contracts:sync": "tsx scripts/contracts-sync.ts",
     "contracts:check": "tsx scripts/contracts-check.ts",
     "evals": "tsx scripts/evals.ts",
@@ -86,12 +86,14 @@
     "mastra": "^1.15.1",
     "tsx": "^4.22.4",
     "typescript": "6.0.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "braces": "file:vendor/braces-3.0.3.tgz"
   },
   "overrides": {
-    "postcss": "8.5.15",
-    "js-yaml": "4.2.0",
-    "gray-matter": "npm:@11ty/gray-matter@2.1.0",
-    "@ai-sdk/provider-utils-v5": "npm:@ai-sdk/provider-utils@4.0.30"
+    "postcss": "^8.5.15",
+    "js-yaml": "^4.3.2",
+    "gray-matter": "npm:@11ty/gray-matter@^2.1.0",
+    "@ai-sdk/provider-utils-v5": "npm:@ai-sdk/provider-utils@4.0.30",
+    "braces": "$braces"
   }
 }

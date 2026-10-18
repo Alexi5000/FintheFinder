@@ -40,7 +40,7 @@ Return id, sourceId, claim, evidence, and followUpQuestions.`,
         },
       );
 
-      return response.object;
+      return learningSchema.parse(response.object);
     } catch (error) {
       logger.warn({ error }, 'learning extraction failed');
       return learningSchema.parse({

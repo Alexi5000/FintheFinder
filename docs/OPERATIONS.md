@@ -104,3 +104,10 @@ Regenerate contract artifacts with:
 ```bash
 npm run contracts:sync
 ```
+
+
+## Temporary braces backport
+
+GHSA-vfj7-8cjw-p6xm has no official fixed release as of 2026-10-18. The vendored 3.0.3 source applies proposal micromatch/braces#72 at commit 28d440b5dd449dbf1fe6f3506cf94ecca4d02660. Its 904 upstream tests passed locally. The audit gate verifies source hashes, the lockfile source of every braces copy, normal expansion, depth boundaries, and direct AST rejection before recognizing only this advisory as mitigated. Other moderate-or-higher advisories still fail. Raw npm and GitHub advisory counts remain visible; this is not an official patched version.
+
+Owner: repository maintainer. Review date: 2026-11-18. Remove this exception when a supported upstream fix or replacement is available. Source and license are retained in `vendor/braces`; the reproducible npm package is `vendor/braces-3.0.3.tgz`.

@@ -57,9 +57,11 @@ Use webSearchTool, evaluateResultTool, and extractLearningsTool. Return queries,
       },
     );
 
+    const researchData = researchPacketSchema.parse(result.object);
+
     return {
-      researchData: result.object,
-      summary: `Research completed on "${inputData.query}" with ${result.object.searchResults.length} sources and ${result.object.learnings.length} learnings.`,
+      researchData,
+      summary: `Research completed on "${inputData.query}" with ${researchData.searchResults.length} sources and ${researchData.learnings.length} learnings.`,
     };
   },
 });

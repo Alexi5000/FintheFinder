@@ -51,7 +51,7 @@ Return a strict JSON-compatible object with sourceId, isRelevant, score from 0 t
         },
       );
 
-      return response.object;
+      return sourceEvaluationSchema.parse(response.object);
     } catch (error) {
       logger.warn({ error }, 'source evaluation failed');
       return sourceEvaluationSchema.parse({

@@ -55,6 +55,15 @@ describe('demo-record script', () => {
     );
   });
 
+  it('rejects reports larger than the bounded artifact limit', () => {
+    const manifestPath = writeDemoBundle();
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    writeFileSync(join(workspace, manifest.reportExport), 'x'.repeat(2_000_001));
+    const result = runDemoRecord(manifestPath);
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('reportExport must be 2MB or smaller.');
+  });
+
   it('rejects the example manifest and placeholder proof values', () => {
     const result = runDemoRecord('docs/demo/live-demo.example.json');
 

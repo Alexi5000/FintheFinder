@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { closeSync, constants, existsSync, fstatSync, lstatSync, openSync, readFileSync, readSync, realpathSync, statSync } from 'node:fs';
 import { extname, isAbsolute, relative, resolve } from 'node:path';
 
 const manifestPath = process.argv[2] ?? 'docs/demo/live-demo.json';
@@ -194,8 +194,33 @@ function requireLocalArtifact(path, name, errors) {
 }
 
 function validateReportArtifact(path, errors) {
-  if (statSync(path).size > 2_000_000) errors.push('reportExport must be 2MB or smaller.');
-  const report = readFileSync(path, 'utf8');
+  const descriptor = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  let report;
+  try {
+    const metadata = fstatSync(descriptor);
+    if (!metadata.isFile()) {
+      errors.push('reportExport must point to a regular file.');
+      return;
+    }
+    if (metadata.size > 2_000_000) {
+      errors.push('reportExport must be 2MB or smaller.');
+      return;
+    }
+    const buffer = Buffer.alloc(2_000_001);
+    let offset = 0;
+    while (offset < buffer.length) {
+      const bytes = readSync(descriptor, buffer, offset, buffer.length - offset, null);
+      if (bytes === 0) break;
+      offset += bytes;
+    }
+    if (offset > 2_000_000) {
+      errors.push('reportExport must be 2MB or smaller.');
+      return;
+    }
+    report = buffer.subarray(0, offset).toString('utf8');
+  } finally {
+    closeSync(descriptor);
+  }
   if (report.trim().length < 200) errors.push('reportExport must contain a nontrivial markdown report.');
   if (/TODO|PENDING|TBD/i.test(report)) errors.push('reportExport must not contain placeholder markers.');
   if (!/^#\s+/m.test(report)) errors.push('reportExport must include a markdown title.');

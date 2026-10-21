@@ -23,7 +23,7 @@
 </p>
 
 <p>
-  <a href="#about">About</a> &middot;
+  <a href="#why-this-exists">Why this exists</a> &middot;
   <a href="#quick-start">Quick Start</a> &middot;
   <a href="#built-with-mastra">Mastra Architecture</a> &middot;
   <a href="#proof-and-release-status">Proof Gates</a> &middot;
@@ -38,13 +38,17 @@
 
 </div>
 
-## About
+## Why this exists
 
-Fin the Finder is a Mastra-based deep research workspace for analysts who need more than a long answer. It plans a research run, searches the web, evaluates source quality, extracts evidence-backed learnings, checks contradictions, audits citations, records human decisions, and exports cited reports.
+**What it does.** Fin the Finder runs a Mastra-based deep research pipeline: it plans a research run, searches the web through Exa, scores source quality, extracts evidence-backed learnings, checks contradictions, audits citations, stops at a human approval gate, and exports a cited markdown report. Session state, sources, claims, approvals, costs and reports persist in Supabase Postgres, and execution runs through a queued worker.
 
-The repo started from the Mastra deep research template. The value added here is the production foundation around that template: typed contracts, Supabase-backed state, queued execution, provenance-bound demo export, eval gates, cost rows, OpenTelemetry hooks, redacted logging, CI, Docker, and explicit FDE evidence docs.
+**Who it serves.** Analysts and research-ops teams who need research output they can inspect, approve, resume and reproduce rather than a single long model answer, and engineers who want a worked example of hardening a Mastra agent template into a reviewable service with typed contracts, evals and proof artifacts.
+
+**Why Alex built it.** The repository began as the Mastra deep research template (initial commit `9e7959b`, 2025-10-17, authored by `mastra-cloud[bot]`). The first README rewrite (`13665e7`, 2026-02-18: "state-of-the-art README, cover art, icon, and branding") framed the problem as research that costs hours of tab-skimming and note-taking, and the answer as a research assistant where "you stay in the loop". The production layer followed in `5158d2b` (2026-05-19: "ship production v1 foundation") and PR #1 (`4f809f7`, 2026-06-24: "Build FDE foundation and queued research worker"), which added typed contracts, Supabase-backed state, queued execution, provenance-bound demo export, eval gates, cost rows, OpenTelemetry hooks, redacted logging, CI and Docker. `docs/FDE_GATES.md` records the standard the project holds itself to: a public claim counts only when it is implemented, tested, demoed and documented.
 
 This project intentionally separates shipped proof from future proof. The current release has deterministic offline gates plus one recorded configured-live proof run where real credentials, media, Supabase rows, eval output, cost evidence, and the benchmark row all point to the same session.
+
+**Real-world use case (2025 to 2026 evidence).** **Verified in this repository.** A compliance analyst asks for current official guidance on AI audit logs for enterprise compliance, scoped narrowly and cited to primary sources. The recorded 2026-07-01 configured-live run executed exactly that prompt: six Exa searches, 21,965 tokens on `gpt-4o-mini`, a measured provider cost of $0.17287, a human approval row, and a cited report in `docs/demo/artifacts/report.md`, all bound together by `docs/demo/live-demo.json` and re-validated by `npm run demo:record` (see the Live Run Log in `docs/BENCHMARK.md`). The surrounding platform direction supports this pattern: Mastra 1.0 locked its agent and workflow APIs in January 2026 and reports production use at companies including Replit, PayPal and Sanity[^1]; Exa shipped Exa 2.0 with an agentic "Deep" search type in October 2025[^2] and Exa 2.1 with higher-quality fast and agentic search in November 2025[^3]; and Exa's own research-agent write-up describes planner, task and observer roles, structured JSON output and token-level observability as production requirements for research agents[^4].
 
 ## Proof And Release Status
 
@@ -252,6 +256,8 @@ npm run smoke
 
 Security policy: [SECURITY.md](SECURITY.md)
 
+Dependency posture as of 2026-10-20: GitHub reports zero open Dependabot, code-scanning and secret-scanning alerts for this repository. `braces` advisory [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) is a known upstream advisory with no fixed release as of 2026-10-20; this repository mitigates it with a locally built backport (`vendor/braces-3.0.3.tgz`, pinned through npm `overrides`, verified by `npm run audit` via `scripts/verify-braces.cjs`, introduced in PR #15). The backport is not an official patched version; see the "Temporary braces backport" section of [docs/OPERATIONS.md](docs/OPERATIONS.md) for its review date. A local `npm audit` on 2026-10-20 still lists that one advisory as a chain of high-severity entries reached through `micromatch`, `fast-glob`, `find-workspaces`, `@mastra/deployer` and `eslint-config-next`; `scripts/audit-dependencies.cjs` treats only GHSA-vfj7-8cjw-p6xm as covered and fails on any other moderate or higher finding.
+
 Contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 Agent instructions: [AGENTS.md](AGENTS.md)
@@ -259,3 +265,8 @@ Agent instructions: [AGENTS.md](AGENTS.md)
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
+
+[^1]: Mastra, "Announcing Mastra 1.0!", https://mastra.ai/blog/announcing-mastra-1, published 2026-01-20.
+[^2]: Exa, "Introducing Exa 2.0", https://exa.ai/blog/exa-api-2-0, published 2025-10-10.
+[^3]: Exa, "Introducing Exa 2.1", https://exa.ai/blog/exa-api-2-1, published 2025-11-24.
+[^4]: LangChain, "How Exa built a Web Research Multi-Agent System with LangGraph and LangSmith", https://www.langchain.com/blog/exa, published 2025-07-01.

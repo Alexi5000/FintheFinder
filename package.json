@@ -72,7 +72,7 @@
     "pino": "10.3.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "zod": "4.4.3"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
@@ -94,6 +94,9 @@
     "js-yaml": "^4.3.2",
     "gray-matter": "npm:@11ty/gray-matter@^2.1.0",
     "@ai-sdk/provider-utils-v5": "npm:@ai-sdk/provider-utils@4.0.30",
-    "braces": "$braces"
+    "braces": "$braces",
+    "exa-js": {
+      "zod": "$zod"
+    }
   }
 }

@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 20.9 or newer
+- Node.js 22.13 or newer (CI and the Docker image use Node 24; see `.nvmrc`). `@mastra/core` and the `mastra` CLI require `>=22.13.0`.
 - npm 11 or newer
 - OpenAI API key for live model calls
 - Exa API key for web search

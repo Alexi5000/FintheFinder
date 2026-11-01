@@ -20,6 +20,7 @@ Policy:
 - Do not run `npm audit fix --force`.
 - Prefer patched stable framework releases and minimal targeted overrides.
 - Current overrides keep `postcss`, `js-yaml`, `gray-matter`, and the Mastra AI SDK provider-utils alias on patched lines while preserving the Next 16 / React 19 / Mastra 1.x stack.
+- `@hono/node-server` is overridden to `^2.1.3` for [GHSA-rmxm-3fg6-px4f](https://github.com/advisories/GHSA-rmxm-3fg6-px4f). It is reached only through the dev-only `mastra` CLI (`mastra` -> `@mastra/deployer` -> `@hono/node-ws` -> `@hono/node-server`). `@hono/node-ws` 1.3.1 still declares a `^1.19.11` peer range, but it does not import `@hono/node-server` at runtime, and `@mastra/deployer` itself is built against `@hono/node-server` 2.x. `npm run dev:mastra` and `npm run build:mastra` were checked with the override (2026-11-01). Remove the override once `@hono/node-ws` accepts node-server 2.x.
 - If a stable release is not available, evaluate a canary release only in a dedicated dependency PR.
 - Document any temporary exception with advisory ID, affected package, exploitability, mitigation, owner, and planned review date.
 

@@ -97,6 +97,7 @@
     "braces": "$braces",
     "exa-js": {
       "zod": "$zod"
-    }
+    },
+    "@hono/node-server": "^2.1.3"
   }
 }

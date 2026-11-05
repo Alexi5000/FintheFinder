@@ -52,7 +52,7 @@
   "type": "module",
   "packageManager": "npm@11.7.0",
   "engines": {
-    "node": ">=20.9.0"
+    "node": ">=22.13.0"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.75",
